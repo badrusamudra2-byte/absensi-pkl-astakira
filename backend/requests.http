@@ -1,0 +1,81 @@
+### Uji API dengan ekstensi REST Client. Ganti kata sandi sesuai SEED_PASSWORD di .env
+@host = http://localhost:4000/api
+@sandi = GANTI_DENGAN_SEED_PASSWORD
+
+### Cek server
+GET {{host}}/health
+
+### Login pembimbing
+# @name loginPembimbing
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "identifier": "mahesa@astakira.id", "password": "{{sandi}}" }
+
+###
+@tokenPembimbing = {{loginPembimbing.response.body.token}}
+
+### Ringkasan pembimbing
+GET {{host}}/pembimbing/ringkasan
+Authorization: Bearer {{tokenPembimbing}}
+
+### Login peserta
+# @name loginPeserta
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "identifier": "samudra@astakira.id", "password": "{{sandi}}" }
+
+###
+@tokenPeserta = {{loginPeserta.response.body.token}}
+
+### Jadwal kerja
+GET {{host}}/workshift
+Authorization: Bearer {{tokenPeserta}}
+
+### Pembimbing: tayangkan QR (peserta memindai QR ini dengan HP-nya)
+# @name tayangQr
+POST {{host}}/absensi/qr-tayang
+Authorization: Bearer {{tokenPembimbing}}
+
+###
+@tokenTayang = {{tayangQr.response.body.token}}
+
+### Peserta: konfirmasi hasil pindaian (mode qr — tanpa wajah)
+POST {{host}}/absensi/konfirmasi-scan
+Authorization: Bearer {{tokenPeserta}}
+Content-Type: application/json
+
+{ "token": "{{tokenTayang}}", "jenis": "masuk" }
+
+### Peserta: konfirmasi hasil pindaian (mode qr_wajah — dengan embedding + nonce)
+# POST {{host}}/absensi/konfirmasi-scan
+# Authorization: Bearer {{tokenPeserta}}
+# Content-Type: application/json
+#
+# { "token": "{{tokenTayang}}", "jenis": "masuk", "embedding": [0.1, -0.1, 0.1], "nonce": "NONCE-DARI-FACE-TANTANGAN" }
+
+### Tulis jurnal dan langsung kirim
+POST {{host}}/jurnal
+Authorization: Bearer {{tokenPeserta}}
+Content-Type: application/json
+
+{ "judul": "Desain banner", "uraian": "Membuat banner promosi.", "hasil": "Selesai", "kendala": "-", "rencana": "Revisi", "aksi": "kirim" }
+
+### Login admin
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "identifier": "admin@astakira.id", "password": "{{sandi}}" }
+
+###
+@tokenAdmin = {{loginAdmin.response.body.token}}
+
+### Ringkasan admin
+GET {{host}}/admin/ringkasan
+Authorization: Bearer {{tokenAdmin}}
+
+### Audit log
+GET {{host}}/admin/audit
+Authorization: Bearer {{tokenAdmin}}

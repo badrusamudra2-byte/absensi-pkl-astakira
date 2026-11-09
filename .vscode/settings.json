@@ -1,0 +1,10 @@
+{
+  "liveServer.settings.root": "/frontend",
+  "files.eol": "\n",
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "files.exclude": {
+    "**/node_modules": true
+  },
+  "liveServer.settings.port": 5501
+}

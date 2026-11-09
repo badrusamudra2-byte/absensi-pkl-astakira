@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Siswa - Panel Absensi PKL</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #1f2937;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    header p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #374151;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+    }
+
+    .action-card {
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+      background: #f9fafb;
+    }
+
+    .action-card:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .action-card strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: #1f2937;
+    }
+
+    .action-card small {
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 5px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .table th {
+      background: #f9fafb;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .table td {
+      font-size: 0.9rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-hadir {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-pulang {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-izin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 15px;
+      }
+
+      header h1 {
+        font-size: 1.25rem;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Selamat datang, Samudra Badru Tamam!</h1>
+      <p>Kumpulkan absensi masuk/pulang melalui verifikasi wajah dan QR, dan tulis jurnal kegiatan harian.</p>
+      <span class="badge">Siswa PKL</span>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="number">22</div>
+        <div class="label">Hadir Bulan Ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">18</div>
+        <div class="label">Jurnal Disetujui</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">95%</div>
+        <div class="label">Kehadiran</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">2</div>
+        <div class="label">Izin</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mulai dari sini</h2>
+      <div class="actions">
+        <a href="#" class="action-card">
+          <strong>Absen masuk / pulang</strong>
+          <small>Mulai proses absensi dengan verifikasi wajah dan QR.</small>
+        </a>
+        <a href="#" class="action-card">
+          <strong>Lihat riwayat absensi</strong>
+          <small>Rekap absensi masuk dan pulang Anda.</small>
+        </a>
+        <a href="#" class="action-card">
+          <strong>Tulis jurnal harian</strong>
+          <small>Dokumentasikan kegiatan PKL hari ini.</small>
+        </a>
+        <a href="#" class="action-card">
+          <strong>Daftar wajah</strong>
+          <small>Registrasi wajah untuk verifikasi absensi.</small>
+        </a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Riwayat Absensi Terbaru</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Masuk</th>
+            <th>Pulang</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>18 Okt 2026</td>
+            <td>07:45</td>
+            <td>16:30</td>
+            <td><span class="status-badge status-hadir">Hadir</span></td>
+          </tr>
+          <tr>
+            <td>17 Okt 2026</td>
+            <td>07:50</td>
+            <td>16:15</td>
+            <td><span class="status-badge status-hadir">Hadir</span></td>
+          </tr>
+          <tr>
+            <td>16 Okt 2026</td>
+            <td>-</td>
+            <td>-</td>
+            <td><span class="status-badge status-izin">Izin</span></td>
+          </tr>
+          <tr>
+            <td>15 Okt 2026</td>
+            <td>07:55</td>
+            <td>16:45</td>
+            <td><span class="status-badge status-hadir">Hadir</span></td>
+          </tr>
+          <tr>
+            <td>14 Okt 2026</td>
+            <td>07:40</td>
+            <td>16:20</td>
+            <td><span class="status-badge status-hadir">Hadir</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Jurnal Terbaru</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Kegiatan</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>18 Okt 2026</td>
+            <td>Membuat desain UI untuk halaman login dashboard...</td>
+            <td><span class="status-badge status-pulang">Menunggu Review</span></td>
+          </tr>
+          <tr>
+            <td>17 Okt 2026</td>
+            <td>Implementasi fitur autentikasi dengan JWT...</td>
+            <td><span class="status-badge status-hadir">Disetujui</span></td>
+          </tr>
+          <tr>
+            <td>15 Okt 2026</td>
+            <td>Setup database MySQL dan migrasi Sequelize...</td>
+            <td><span class="status-badge status-hadir">Disetujui</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 0.85rem;">
+      <p>Ini adalah demo statis. Untuk aplikasi lengkap, hubungkan dengan backend API.</p>
+      <p>&copy; 2026 Astakira Media - Panel Absensi PKL</p>
+    </div>
+  </div>
+</body>
+
+</html>

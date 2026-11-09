@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Backend: npm install", "type": "shell", "command": "npm install", "options": { "cwd": "${workspaceFolder}/backend" } },
+    { "label": "Backend: seed", "type": "shell", "command": "npm run seed", "options": { "cwd": "${workspaceFolder}/backend" } },
+    { "label": "Backend: dev", "type": "shell", "command": "npm run dev", "isBackground": true, "options": { "cwd": "${workspaceFolder}/backend" } }
+  ]
+}

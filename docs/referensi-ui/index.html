@@ -1,0 +1,196 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Panel Absensi PKL - Astakira Media</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#f1f5f9;--sf:#fff;--tx:#0f172a;--mu:#5b6b84;--bd:#dbe3ee;--pr:#1d4ed8;--on:#fff;--nv:#0b1f4d;--pl:#e0eaff;--g:#15803d;--y:#a16207;--o:#c2410c;--r:#b91c1c;--s:#475569;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b1220;--sf:#111b30;--tx:#e6ecf8;--mu:#93a3bf;--bd:#223152;--pr:#6ea0ff;--on:#0b1220;--nv:#070f22;--pl:#1b2c52;--g:#4ade80;--y:#facc15;--o:#fb923c;--r:#f87171;--s:#a8b5cc;color-scheme:dark}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;font:14px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--sf);z-index:30}
+h1,h2,h3{margin:0}h2{font-size:16px;margin-bottom:12px}h3{font-size:13px;color:var(--mu);margin:14px 0 2px}p{margin:6px 0}
+.mu{color:var(--mu)}.er-t{color:var(--r);min-height:20px;font-weight:600}
+.app{display:flex;min-height:100vh}
+aside{width:240px;background:var(--nv);color:#cfe0ff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0;z-index:40}
+.lg{padding:22px 20px;font-size:20px;color:#fff}.lg b{font-weight:800}.lg small{display:block;font-size:12px;color:#8fb0ee}
+nav{flex:1;padding:0 10px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+nav a{padding:10px 12px;border-radius:8px;color:#cfe0ff;text-decoration:none;font-weight:500}
+nav a:hover{background:#ffffff14}nav a.on{background:#fff;color:#0b1f4d;font-weight:700}
+.sf{padding:16px 20px;font-size:12px;color:#8fb0ee}.sf b{color:#fff;font-size:13px}.sf .btn{margin-top:10px;width:100%}
+.mn{flex:1;min-width:0}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;padding:10px 20px;flex-wrap:wrap}
+header h1{font-size:18px;flex:1;min-width:120px}.rs{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px}
+.ib{display:none;background:none;border:1px solid var(--bd);border-radius:8px;font-size:18px;padding:4px 10px;color:var(--tx)}
+.ov{display:none}
+main{padding:20px;max-width:1080px}
+.off{background:color-mix(in srgb,var(--y) 18%,var(--sf));color:var(--y);padding:10px 20px;font-weight:600;border-bottom:1px solid var(--bd)}
+.cd{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:16px}
+.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+.st{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.st span{color:var(--mu);font-size:12px}.st b{font-size:26px;font-weight:800;line-height:1.2}.st small{color:var(--mu)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}.sp{justify-content:space-between}
+.btn{background:var(--pr);color:var(--on);border:1px solid var(--pr);border-radius:8px;padding:9px 16px;font:600 14px inherit;font-family:inherit;cursor:pointer}
+.btn.gh{background:transparent;color:var(--pr);border-color:var(--bd)}aside .btn.gh{color:#cfe0ff;border-color:#ffffff30}
+.btn.sm{padding:4px 10px;font-size:12px}.btn.dg{color:var(--r)}.btn.dg2{background:var(--r);border-color:var(--r);color:var(--on)}
+.btn:hover{filter:brightness(1.08)}
+:focus-visible{outline:3px solid var(--pr);outline-offset:2px}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0}
+input,select,textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.fl label{display:flex;align-items:center;gap:8px;margin:0}.fl input{width:auto;margin:0}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:520px}
+th{text-align:left;font-size:12px;color:var(--mu);padding:8px 10px;border-bottom:1px solid var(--bd)}td{padding:10px;border-bottom:1px solid var(--bd);vertical-align:top}
+.bd{padding:2px 10px;border-radius:99px;font-weight:600;font-size:12px;white-space:nowrap;display:inline-block}
+.b-g{color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent)}.b-y{color:var(--y);background:color-mix(in srgb,var(--y) 16%,transparent)}
+.b-b{color:var(--pr);background:var(--pl)}.b-o{color:var(--o);background:color-mix(in srgb,var(--o) 14%,transparent)}.b-s{color:var(--s);background:color-mix(in srgb,var(--s) 14%,transparent)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tabs button{border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:99px;padding:5px 14px;font:inherit;cursor:pointer}.tabs button.on{background:var(--pr);color:var(--on);border-color:var(--pr)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:12px}.seg button{text-align:left;border:2px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:12px;padding:16px;font:inherit;cursor:pointer;display:flex;flex-direction:column}.seg button.on{border-color:var(--pr);background:var(--pl)}.seg small{color:var(--mu)}
+.vf{position:relative;aspect-ratio:4/3;max-width:460px;background:#0b1220;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;margin-bottom:14px}
+.vf p{color:#9db4e6;font-size:13px;padding:10px;text-align:center;z-index:1}
+.vf i{position:absolute;width:36px;height:36px;border:4px solid #60a5fa}.vf i:nth-child(1){top:18%;left:18%;border-right:0;border-bottom:0}.vf i:nth-child(2){top:18%;right:18%;border-left:0;border-bottom:0}.vf i:nth-child(3){bottom:22%;left:18%;border-right:0;border-top:0}.vf i:nth-child(4){bottom:22%;right:18%;border-left:0;border-top:0}
+.ln{position:absolute;left:18%;right:18%;height:3px;background:#60a5fa;box-shadow:0 0 14px #60a5fa;animation:sc 2.2s ease-in-out infinite alternate}
+@keyframes sc{from{top:20%}to{top:76%}}
+.ov2{position:absolute;top:10%;left:30%;right:30%;bottom:20%;border:3px dashed #60a5fa;border-radius:50%}
+.lv{list-style:none;padding:0;margin:0 0 8px}.lv li{padding:4px 0 4px 24px;position:relative;color:var(--mu)}.lv li::before{content:"";position:absolute;left:0;top:9px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bd)}.lv li.dn{color:var(--g)}.lv li.dn::before{background:var(--g);border-color:var(--g)}
+.al{border-radius:10px;padding:12px 14px;margin:10px 0;border:1px solid;max-width:460px}.al.er{border-color:var(--r);background:color-mix(in srgb,var(--r) 10%,var(--sf))}.al.wa{border-color:var(--y);background:color-mix(in srgb,var(--y) 12%,var(--sf))}.al .btn{margin-top:4px}
+.tl{display:flex;list-style:none;padding:0;margin:8px 0 14px}.tl li{flex:1;text-align:center;color:var(--mu);font-weight:600;padding-top:20px;position:relative}.tl li::before{content:"";position:absolute;top:0;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--bd)}.tl li::after{content:"";position:absolute;top:6px;left:-50%;width:100%;height:2px;background:var(--bd);z-index:-1}.tl li:first-child::after{display:none}.tl li.dn{color:var(--tx)}.tl li.dn::before,.tl li.dn::after{background:var(--pr)}.tl li.cu::before{box-shadow:0 0 0 4px var(--pl)}
+.res{text-align:center;padding:10px}.res .tk{width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--g) 16%,transparent);color:var(--g);font-size:34px;line-height:64px;margin:0 auto 8px}.res dl{display:grid;grid-template-columns:auto auto;gap:6px 24px;justify-content:center;text-align:left}.res dt{color:var(--mu)}.res dd{margin:0;font-weight:700}
+.ch{display:flex;gap:18px;align-items:flex-end;padding:8px 0}.ch>div{text-align:center;flex:1}.bar{height:130px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}.bar i{width:70%;max-width:36px;background:var(--pr);border-radius:4px 4px 0 0}.bar u{width:70%;max-width:36px;background:var(--y);border-radius:4px 4px 0 0}
+.pf{display:flex;gap:16px;align-items:center}.av{width:72px;height:72px;border-radius:50%;background:var(--pr);color:var(--on);font-size:30px;font-weight:800;display:grid;place-items:center;overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}
+.mo{position:fixed;inset:0;background:#0b122099;display:grid;place-items:center;padding:16px;z-index:60;overflow:auto}.md{background:var(--sf);border-radius:14px;padding:22px;width:100%;max-width:520px;max-height:100%;overflow:auto}
+#toasts{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:8px;z-index:80}
+.tt{background:var(--sf);border:1px solid var(--bd);border-left:5px solid var(--pr);border-radius:8px;padding:10px 14px;box-shadow:0 6px 20px #0003;max-width:320px;font-weight:600}.tt.ok{border-left-color:var(--g)}.tt.warn{border-left-color:var(--y)}
+.lgn{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}.lgl{background:var(--nv);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:flex-end}.lgl h1{font-size:34px;line-height:1.2}.lgl p{color:#9db4e6;max-width:340px}
+.lgr{display:grid;place-items:center;padding:24px}.lgr form{width:100%;max-width:360px}
+@media(max-width:820px){aside{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s}aside.open{transform:none}.ov.show{display:block;position:fixed;inset:0;background:#0b122099;z-index:35}.ib{display:block}.lgn{grid-template-columns:1fr}.lgl{padding:28px;min-height:200px}main{padding:14px}.seg{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.ln{animation:none;top:48%}aside{transition:none}}
+</style></head><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<div id="app"></div><div id="modal"></div><div id="toasts" aria-live="polite"></div>
+<script>
+const $=s=>document.querySelector(s),T=new Date(),iso=d=>d.toISOString().slice(0,10);
+const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ME='Alya Rahma';let PW='password';
+const JR=(id,t,ps,j,s,c='')=>({id,t,ps,j,u:'Mengerjakan tugas sesuai arahan pembimbing dan mendokumentasikan prosesnya.',h:'Tugas selesai sesuai target harian.',k:'Tidak ada kendala berarti.',r:'Melanjutkan tugas berikutnya.',s,c});
+const D={
+pes:[{id:1,n:'Alya Rahma',a:'alya@astakira.id',dv:'Desain Grafis',pb:'Rizal Hakim',on:1},{id:2,n:'Bima Pratama',a:'bima@astakira.id',dv:'Videografi',pb:'Sinta Maharani',on:1},{id:3,n:'Citra Lestari',a:'citra@astakira.id',dv:'Desain Grafis',pb:'Rizal Hakim',on:1},{id:4,n:'Dimas Saputra',a:'dimas@astakira.id',dv:'Sosial Media',pb:'Sinta Maharani',on:0}],
+pem:[{id:1,n:'Rizal Hakim',a:'rizal@astakira.id',dv:'Desain Grafis',on:1},{id:2,n:'Sinta Maharani',a:'sinta@astakira.id',dv:'Konten Kreatif',on:1}],
+abs:[['2026-10-15','07:54','16:02','Hadir','QR'],['2026-10-14','08:27','16:10','Terlambat','Wajah'],['2026-10-13','','','Izin','-'],['2026-10-12','07:49','16:00','Hadir','QR'],['2026-10-09','','','Sakit','-'],['2026-10-08','07:58','16:04','Hadir','Wajah']],
+jur:[JR(1,'2026-10-15',ME,'Desain poster Hari Sumpah Pemuda','Disetujui'),JR(2,'2026-10-14',ME,'Edit video profil kantor','Revisi','Tambahkan nama software dan durasi pengerjaan di bagian uraian.'),JR(3,'2026-10-13',ME,'Riset referensi logo','Dikirim'),JR(4,'2026-10-12',ME,'Catatan rapat mingguan','Draft'),JR(5,'2026-10-15','Bima Pratama','Pengambilan gambar di studio','Dikirim'),JR(6,'2026-10-15','Citra Lestari','Retouch foto produk','Dikirim')],
+jad:[['Senin','08:00','16:00',15,1],['Selasa','08:00','16:00',15,1],['Rabu','08:00','16:00',15,1],['Kamis','08:00','16:00',15,1],['Jumat','08:00','15:30',15,1],['Sabtu','08:00','12:00',15,0],['Minggu','08:00','12:00',15,0]],
+log:[['Admin Astakira','Ubah jadwal workshift','15/10/2026 14.20.11','Chrome di Windows, 10.12.4.21'],['Admin Astakira','Tambah peserta: Dimas Saputra','12/10/2026 09.02.45','Chrome di Windows, 10.12.4.21'],['Rizal Hakim','Setujui jurnal: Desain poster Hari Sumpah Pemuda','15/10/2026 16.40.03','Safari di iPhone, 10.12.6.8']]};
+const S={u:null,role:'peserta',pg:'dash',today:{},f:{from:'',to:''},off:false,nav:false,mode:'masuk',reg:false,res:null,al:null,rej:'',jid:null,ed:null,jf:'Semua',av:''};
+const N={peserta:[['dash','Beranda'],['abs','Absensi'],['face','Verifikasi wajah'],['qr','QR absensi saya'],['hasil','Hasil absensi'],['riw','Riwayat absensi'],['jur','Jurnal kegiatan'],['prof','Profil']],pembimbing:[['dash','Beranda'],['scan','Scan absensi'],['peserta','Peserta bimbingan'],['review','Review jurnal'],['rekap','Rekap'],['prof','Profil']],admin:[['dash','Beranda'],['kp','Data peserta'],['kb','Data pembimbing'],['jad','Jadwal workshift'],['lap','Laporan'],['audit','Audit log'],['prof','Profil']]};
+const RL={peserta:'Peserta PKL',pembimbing:'Pembimbing',admin:'Admin'};
+const BM={Hadir:'g',Terlambat:'y',Izin:'b',Sakit:'o',Draft:'s',Dikirim:'b',Revisi:'o',Disetujui:'g',Aktif:'g',Nonaktif:'s'};
+const badge=s=>`<span class="bd b-${BM[s]||'s'}">${s}</span>`;
+const fmt=d=>new Date(d+'T00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+const hhmm=()=>T.toTimeString().slice(0,5),mins=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
+const JW=()=>D.jad.find(r=>r[4]);
+const card=(t,b)=>`<section class="cd">${t?`<h2>${t}</h2>`:''}${b}</section>`;
+const stat=(l,v,s='')=>`<div class="st"><span>${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+const tbl=(h,r,em='Tidak ada data pada rentang ini.')=>`<div class="tw"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r.length?r.map(c=>`<tr>${c.map(x=>`<td>${x}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${h.length}" class="mu">${em}</td></tr>`}</tbody></table></div>`;
+const ok=d=>(!S.f.from||d>=S.f.from)&&(!S.f.to||d<=S.f.to);
+const filt=()=>`<div class="row fl"><label>Dari <input type="date" value="${S.f.from}" onchange="A.f('from',this.value)"></label><label>Sampai <input type="date" value="${S.f.to}" onchange="A.f('to',this.value)"></label><button class="btn gh sm" onclick="A.f('')">Atur ulang</button></div>`;
+const det=j=>[['Uraian kegiatan','u'],['Hasil','h'],['Kendala','k'],['Rencana berikutnya','r']].map(([l,k])=>`<h3>${l}</h3><p>${e(j[k]||'-')}</p>`).join('');
+const lg=a=>D.log.unshift([S.u.name,a,new Date().toLocaleString('id-ID'),'Chrome di Windows, 10.12.4.21']);
+const AM={exp:['QR kedaluwarsa','Kode QR hanya berlaku 30 detik. Minta kode baru di layar resepsionis, lalu scan ulang.'],inv:['QR tidak valid','Kode ini bukan QR absensi Astakira Media. Scan kode yang tampil di layar resepsionis.'],nf:['Wajah tidak terbaca','Hadapkan wajah lurus ke kamera di dalam bingkai dan cari tempat dengan cahaya cukup.'],nm:['Wajah tidak cocok','Wajah tidak sesuai dengan template yang terdaftar. Coba lagi atau gunakan Scan QR.'],dup:['Sudah absen hari ini',''],bb:['Bukan peserta bimbingan','']};
+const alr=()=>{if(!S.al)return'';const m=AM[S.al];return `<div class="al ${S.al=='dup'?'wa':'er'}" role="alert"><b>${m[0]}</b><p>${S.al=='dup'?`Absen ${S.mode} Anda sudah tercatat pukul ${S.today[S.mode]||'-'}.`:m[1]}</p><button class="btn sm" onclick="A.ca()">Coba lagi</button></div>`};
+const net=()=>{if(S.off){toast('Anda sedang offline. Hubungkan internet lalu coba lagi.','warn');return 0}return 1};
+function toast(m,t=''){const d=document.createElement('div');d.className='tt '+t;d.textContent=m;$('#toasts').append(d);setTimeout(()=>d.remove(),3800)}
+
+/* Peserta */
+const pd=()=>{const td=S.today,l=D.jur.find(j=>j.ps==ME),w=JW();return `<div class="gr">${stat('Kehadiran hari ini',badge(td.masuk?td.st:'Belum absen'),td.masuk?`Masuk ${td.masuk}${td.pulang?', pulang '+td.pulang:''}`:'Jam masuk '+w[1])}${stat('Jurnal terakhir',badge(l.s),e(l.j))}${stat('Jam kerja',`${w[1]}-${w[2]}`,`Toleransi ${w[3]} menit`)}</div>`+card('Aksi cepat',`<div class="row"><button class="btn" onclick="A.go('abs')">Absen sekarang</button><button class="btn gh" onclick="A.jn()">Tulis jurnal</button></div>`)};
+const pa=()=>{const w=JW();return card('Pilih jenis absensi',`<div class="seg">${['masuk','pulang'].map(m=>`<button class="${S.mode==m?'on':''}" onclick="A.pick('${m}')"><b>Absen ${m}</b><small>${S.today[m]?'Tercatat pukul '+S.today[m]:'Belum tercatat'}</small></button>`).join('')}</div>`)+card('Jam kerja',`<p>Masuk ${w[1]}, pulang ${w[2]}. Absen masuk dihitung terlambat jika lewat ${w[3]} menit dari jam masuk.</p>`)+card('Langkah berikutnya',`<p>Verifikasi wajah dulu. Setelah cocok, QR absensi Anda muncul dan dipindai oleh pembimbing.</p><button class="btn" onclick="A.go('face')">Mulai verifikasi wajah</button>`)};
+const sim4=m=>`<p class="mu">Simulasikan hasil:</p><div class="row"><button class="btn" onclick="A.sim('ok','${m}')">Berhasil</button>${m=='QR'?`<button class="btn gh" onclick="A.sim('exp','QR')">Kedaluwarsa</button><button class="btn gh" onclick="A.sim('inv','QR')">Tidak valid</button>`:`<button class="btn gh" onclick="A.sim('nf','Wajah')">Tidak terbaca</button><button class="btn gh" onclick="A.sim('nm','Wajah')">Tidak cocok</button>`}<button class="btn gh" onclick="A.sim('dup','${m}')">Sudah absen</button></div>`;
+const qrs=t=>{if(typeof qrcode=='undefined')return'<p>QR tidak dapat dimuat. Periksa koneksi internet.</p>';const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag(6,0)};
+const pq=()=>{if(S.qrs=='ok')return ph();if(S.qrs=='no')return card('Absensi ditolak',`<div class="al er" role="alert"><b>Pembimbing menolak absensi</b><p>${e(S.rej)}</p></div><button class="btn" onclick="A.rt()">Tampilkan QR lagi</button>`);if(!S.fv||!S.qr)return card('Verifikasi wajah dulu',`<p>QR absensi baru muncul setelah wajah Anda terverifikasi.</p><button class="btn" onclick="A.go('face')">Verifikasi wajah</button>`);return card('QR absensi '+S.mode,`<div id="qv" role="img" aria-label="Kode QR absensi" style="background:#fff;padding:12px;border-radius:12px;width:fit-content;max-width:100%;overflow:auto">${qrs(S.qr.code)}</div><p>Tunjukkan QR ini ke pembimbing. QR berganti dalam <b id="cd">${Math.max(1,30-Math.floor((Date.now()-S.qr.ts)/1000))}</b> detik.</p><p class="mu">Menunggu pembimbing memindai.</p>`)};
+const scr=s=>s.err?`<div class="al ${s.err=='dup'?'wa':'er'}" role="alert"><b>${AM[s.err][0]}</b><p>${s.err=='dup'?`${e(s.n)} sudah tercatat absen ${s.mode} hari ini.`:s.err=='bb'?`${e(s.n)} tidak berada di bawah bimbingan Anda.`:AM[s.err][1]}</p></div>`:card('Konfirmasi absensi',`<div class="res"><dl><dt>Peserta</dt><dd>${e(s.n)}</dd><dt>Jenis</dt><dd>Absen ${s.mode}</dd><dt>Jam</dt><dd>${s.t}</dd><dt>Status</dt><dd>${badge(s.st)}</dd></dl></div><label>Alasan (wajib jika menolak)<input id="rj"></label><p class="er-t" id="merr"></p><div class="row"><button class="btn dg2" onclick="A.cfm(0)">Tolak</button><button class="btn" onclick="A.cfm(1)">Konfirmasi</button></div>`);
+const pbs=()=>card('Scan QR absensi peserta',`<div class="vf"><video id="vid" playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"></video><i></i><i></i><i></i><i></i><span class="ln"></span><p>Arahkan kamera ke QR di layar peserta</p></div><div class="row"><button class="btn" onclick="A.cam()">Aktifkan kamera</button></div><label>Atau tempel kode QR<input id="cd1" placeholder="ASTK|..."></label><button class="btn gh" onclick="A.chk($('#cd1').value)">Periksa kode</button><p class="mu">Simulasi di demo ini: buka peran Peserta dan selesaikan verifikasi wajah agar QR muncul, lalu kembali ke sini.</p><div class="row"><button class="btn gh sm" onclick="A.dm('ok')">QR peserta aktif</button><button class="btn gh sm" onclick="A.dm('exp')">Kedaluwarsa</button><button class="btn gh sm" onclick="A.dm('inv')">Tidak valid</button><button class="btn gh sm" onclick="A.dm('bb')">Peserta lain</button></div>`)+(S.sc?scr(S.sc):'');
+const pf=()=>card('Verifikasi wajah, absen '+S.mode,`<div class="vf"><span class="ov2"></span><p>${S.reg?'Posisikan wajah di dalam bingkai':'Template wajah belum terdaftar'}</p></div>${alr()}`+(S.reg?`<ul class="lv"><li class="dn">Wajah terdeteksi</li><li>Kedipkan mata</li><li>Tengok ke kanan</li></ul><p class="mu">Pemeriksaan keaslian wajah (anti-spoofing) masih berupa placeholder tampilan.</p>${sim4('Wajah')}`:`<p>Daftarkan wajah satu kali agar bisa absen dengan verifikasi wajah.</p><button class="btn" onclick="A.en()">Daftarkan template wajah</button>`));
+const ph=()=>{const r=S.res;return (r?card('',`<div class="res"><div class="tk">&#10003;</div><h2>Absen ${r.mode} berhasil</h2><dl><dt>Waktu</dt><dd>${r.t}</dd><dt>Status</dt><dd>${badge(r.st)}</dd><dt>Metode</dt><dd>${r.m}</dd></dl></div>`):card('Belum ada absensi',`<p class="mu">Belum ada absensi pada sesi ini.</p><button class="btn" onclick="A.go('abs')">Mulai absen</button>`))+(S.rej?card('Catatan penolakan terakhir',`<p>${e(S.rej)}</p>`):'')};
+const pr=()=>filt()+card('',tbl(['Tanggal','Masuk','Pulang','Metode','Status'],D.abs.filter(r=>ok(r[0])).map(r=>[fmt(r[0]),r[1]||'-',r[2]||'-',r[4],badge(r[3])])));
+const pj=()=>{const L=D.jur.filter(j=>j.ps==ME&&(S.jf=='Semua'||j.s==S.jf));return `<div class="row sp"><div class="tabs">${['Semua','Draft','Dikirim','Revisi','Disetujui'].map(s=>`<button class="${S.jf==s?'on':''}" onclick="A.jt('${s}')">${s}</button>`).join('')}</div><button class="btn" onclick="A.jn()">Tulis jurnal</button></div>`+card('',tbl(['Tanggal','Judul','Status',''],L.map(j=>[fmt(j.t),e(j.j),badge(j.s),`<button class="btn gh sm" onclick="A.jd(${j.id})">Buka</button>`]),'Belum ada jurnal dengan status ini.'))};
+const pjf=()=>{const v=S.ed||{};return (v.c?`<div class="al wa"><b>Catatan revisi dari pembimbing</b><p>${e(v.c)}</p></div>`:'')+card(S.ed?'Perbaiki jurnal':'Jurnal baru',`${[['Judul kegiatan','j',1],['Uraian kegiatan','u',4],['Hasil','h',3],['Kendala','k',3],['Rencana berikutnya','r',3]].map(([l,k,n],i)=>`<label>${l}${n==1?`<input id="f${i+1}" value="${e(v[k])}">`:`<textarea id="f${i+1}" rows="${n}">${e(v[k])}</textarea>`}</label>`).join('')}<p class="er-t" id="fe"></p><div class="row"><button class="btn gh" onclick="A.sv('Draft')">Simpan draft</button><button class="btn" onclick="A.sv('Dikirim')">Kirim jurnal</button><button class="btn gh" onclick="A.go('jur')">Batal</button></div>`)};
+const pjd=()=>{const j=D.jur.find(x=>x.id==S.jid);if(!j)return pj();const i={Draft:0,Dikirim:1,Revisi:2,Disetujui:2}[j.s];return card(e(j.j),`<p class="mu">${fmt(j.t)} ${badge(j.s)}</p><ol class="tl">${['Draft','Dikirim',j.s=='Revisi'?'Revisi':'Disetujui'].map((x,n)=>`<li class="${n<=i?'dn':''} ${n==i?'cu':''}">${x}</li>`).join('')}</ol>${j.c?`<div class="al wa"><b>Catatan revisi dari pembimbing</b><p>${e(j.c)}</p></div>`:''}${det(j)}<div class="row"><button class="btn gh" onclick="A.go('jur')">Kembali</button>${j.s=='Draft'||j.s=='Revisi'?`<button class="btn" onclick="A.ej(${j.id})">${j.s=='Revisi'?'Perbaiki dan kirim ulang':'Lanjutkan menulis'}</button>`:''}</div>`)};
+
+/* Pembimbing */
+const bd=()=>{const n=D.jur.filter(j=>j.s=='Dikirim');return `<div class="gr">${stat('Peserta bimbingan',D.pes.filter(p=>p.on).length,'peserta aktif')}${stat('Hadir hari ini',3,'1 terlambat')}${stat('Perlu direview',n.length,'jurnal menunggu')}</div>`+card('Jurnal menunggu pemeriksaan',tbl(['Peserta','Judul','Tanggal',''],n.map(j=>[e(j.ps),e(j.j),fmt(j.t),`<button class="btn sm" onclick="A.rv(${j.id})">Tinjau</button>`]),'Semua jurnal sudah diperiksa.'))};
+const bp=()=>card('',tbl(['Nama','Divisi','Status','Kehadiran 30 hari','Jurnal terakhir'],D.pes.map((p,i)=>{const j=D.jur.find(x=>x.ps==p.n);return [e(p.n),e(p.dv),badge(p.on?'Aktif':'Nonaktif'),['18 hadir, 1 terlambat','17 hadir, 3 terlambat','19 hadir','12 hadir, 4 izin'][i]||'-',j?badge(j.s):'-']})));
+const br=()=>card('',tbl(['Peserta','Judul','Tanggal','Status',''],D.jur.map(j=>[e(j.ps),e(j.j),fmt(j.t),badge(j.s),`<button class="btn ${j.s=='Dikirim'?'':'gh'} sm" onclick="A.rv(${j.id})">${j.s=='Dikirim'?'Tinjau':'Lihat'}</button>`])));
+const rekap=x=>filt()+(x?`<div class="row"><button class="btn" onclick="A.ex('Excel')">Export Excel</button><button class="btn gh" onclick="A.ex('PDF')">Export PDF</button></div>`:'')+card('Rekap kehadiran',tbl(['Tanggal','Peserta','Masuk','Pulang','Status'],D.abs.filter(r=>ok(r[0])).map((r,i)=>[fmt(r[0]),e(D.pes[i%3].n),r[1]||'-',r[2]||'-',badge(r[3])])))+card('Rekap jurnal',tbl(['Tanggal','Peserta','Judul','Status'],D.jur.filter(j=>ok(j.t)).map(j=>[fmt(j.t),e(j.ps),e(j.j),badge(j.s)])));
+
+/* Admin */
+const ad=()=>{const h=[14,15,13,15,12],t=[1,0,2,1,3];return `<div class="gr">${stat('Total peserta',D.pes.length,D.pes.filter(p=>p.on).length+' aktif')}${stat('Total pembimbing',D.pem.length)}${stat('Hadir hari ini',12,'dari 14 peserta aktif')}${stat('Terlambat hari ini',3,'perlu tindak lanjut')}</div>`+card('Kehadiran lima hari kerja terakhir',`<div class="ch" role="img" aria-label="Grafik batang hadir dan terlambat per hari">${['Sen','Sel','Rab','Kam','Jum'].map((d,i)=>`<div><div class="bar"><u style="height:${t[i]*6}px"></u><i style="height:${h[i]*6}px"></i></div><small>${d}</small></div>`).join('')}</div><p class="mu"><span class="bd b-b">Hadir</span> <span class="bd b-y">Terlambat</span></p>`)+card('Aktivitas terbaru',tbl(['Pengguna','Aktivitas','Waktu'],D.log.slice(0,3).map(l=>[e(l[0]),e(l[1]),l[2]])))};
+const KD={pes:'peserta',pem:'pembimbing'};
+const crud=k=>{const L=D[k],p=k=='pes';return `<div class="row sp"><p class="mu">${L.length} ${KD[k]} terdaftar</p><button class="btn" onclick="A.cf('${k}')">Tambah ${KD[k]}</button></div>`+card('',tbl(['Nama','Akun','Divisi',...(p?['Pembimbing']:[]),'Status','Aksi'],L.map(r=>[e(r.n),e(r.a),e(r.dv),...(p?[e(r.pb)]:[]),badge(r.on?'Aktif':'Nonaktif'),`<button class="btn gh sm" onclick="A.cf('${k}',${r.id},1)">Detail</button> <button class="btn gh sm" onclick="A.cf('${k}',${r.id})">Edit</button> <button class="btn gh sm dg" onclick="A.cx('${k}',${r.id})">Hapus</button>`]),'Belum ada data.'))};
+const aj=()=>card('Jam kerja dan toleransi keterlambatan',tbl(['Hari','Hari kerja','Jam masuk','Jam pulang','Toleransi (menit)'],D.jad.map((r,i)=>[r[0],`<input type="checkbox" id="j${i}k" ${r[4]?'checked':''} aria-label="Hari kerja ${r[0]}">`,`<input type="time" id="j${i}a" value="${r[1]}">`,`<input type="time" id="j${i}b" value="${r[2]}">`,`<input type="number" min="0" max="120" id="j${i}t" value="${r[3]}">`]))+`<button class="btn" onclick="A.sj()">Simpan jadwal</button>`);
+const al_=()=>card('',tbl(['Pengguna','Aksi','Waktu','Perangkat'],D.log.map(l=>l.map(e))));
+const prof=()=>card('Detail akun',`<div class="pf"><div class="av">${S.av?`<img src="${S.av}" alt="Foto profil">`:e(S.u.name[0])}</div><div><b>${e(S.u.name)}</b><p class="mu">${e(S.u.email)}, ${RL[S.role]}</p><label class="btn gh sm" style="display:inline-block;margin:0">Ganti foto<input type="file" accept="image/*" hidden onchange="A.ph(this)"></label></div></div>`)+card('Ubah kata sandi',`<label>Kata sandi saat ini<input id="p0" type="password" autocomplete="current-password"></label><label>Kata sandi baru<input id="p1" type="password" autocomplete="new-password"></label><label>Ulangi kata sandi baru<input id="p2" type="password" autocomplete="new-password"></label><p class="er-t" id="merr"></p><button class="btn" onclick="A.pw()">Simpan kata sandi</button>`);
+const P={peserta:{dash:pd,abs:pa,qr:pq,face:pf,hasil:ph,riw:pr,jur:pj,jf:pjf,jd:pjd},pembimbing:{dash:bd,scan:pbs,peserta:bp,review:br,rekap:()=>rekap(0)},admin:{dash:ad,kp:()=>crud('pes'),kb:()=>crud('pem'),jad:aj,lap:()=>rekap(1),audit:al_}};
+Object.values(P).forEach(p=>p.prof=prof);
+
+/* Shell */
+const login=()=>`<div class="lgn"><div class="lgl"><h1>Panel Absensi PKL<br>Astakira Media</h1><p>Absen dengan QR atau wajah, tulis jurnal harian, dan pantau kehadiran dalam satu tempat.</p></div><div class="lgr"><form onsubmit="A.login(event)" novalidate><h2 style="font-size:22px">Masuk</h2><label>Email atau username<input id="em" autocomplete="username" placeholder="peserta@astakira.id"></label><label>Kata sandi<input id="pw" type="password" autocomplete="current-password"></label><p class="er-t" id="err" role="alert"></p><button class="btn" style="width:100%">Masuk</button><p><a href="#" onclick="A.fp();return false">Lupa kata sandi?</a></p><p class="mu" style="font-size:12px">Demo: peserta@, pembimbing@ atau admin@astakira.id dengan kata sandi "password".</p></form></div></div>`;
+const shell=()=>{const nv=N[S.role],cur=['jf','jd'].includes(S.pg)?'jur':S.pg,ttl={jf:'Form jurnal',jd:'Detail jurnal'}[S.pg]||(nv.find(x=>x[0]==S.pg)||[])[1];const pg=(P[S.role][S.pg]||P[S.role].dash)();
+return `<div class="app"><aside class="${S.nav?'open':''}"><div class="lg"><b>Astakira</b> Media<small>Absensi PKL dan jurnal</small></div><nav>${nv.map(([k,l])=>`<a href="#" class="${k==cur?'on':''}" onclick="A.go('${k}');return false">${l}</a>`).join('')}</nav><div class="sf">Masuk sebagai<br><b>${e(S.u.name)}</b><button class="btn gh" onclick="A.out()">Keluar</button></div></aside><div class="ov ${S.nav?'show':''}" onclick="A.tn()"></div><div class="mn"><header><button class="ib" onclick="A.tn()" aria-label="Buka menu">&#9776;</button><h1>${ttl}</h1><label class="rs" style="margin:0">Mode peran<select style="width:auto;margin:0" onchange="A.role(this.value)">${Object.keys(RL).map(r=>`<option value="${r}" ${r==S.role?'selected':''}>${RL[r]}</option>`).join('')}</select></label><button class="btn gh sm" onclick="A.tgo()">${S.off?'Kembali online':'Simulasi offline'}</button></header>${S.off?'<div class="off">Tanpa koneksi internet. Absensi dan pengiriman jurnal ditunda sampai Anda online lagi.</div>':''}<main>${pg}</main></div></div>`};
+const render=()=>{A.sc();$('#app').innerHTML=S.u?shell():login()};
+
+/* Aksi */
+const A={
+go(p){S.pg=p;S.nav=false;S.al=null;render();scrollTo(0,0)},tn(){S.nav=!S.nav;render()},
+role(r){S.role=r;S.pg='dash';S.nav=false;render()},
+out(){S.u=null;render()},
+f(k,v){if(!k)S.f={from:'',to:''};else S.f[k]=v;render()},
+tgo(){S.off=!S.off;toast(S.off?'Mode offline aktif':'Kembali online',S.off?'warn':'ok');render()},
+fp(){const m=$('#em').value.trim(),x=$('#err');if(!/^\S+@\S+\.\S+$/.test(m)){x.textContent='Isi email yang valid untuk menerima tautan atur ulang.';return}x.textContent='';toast('Tautan atur ulang dikirim ke '+m,'ok')},
+login(ev){ev.preventDefault();const m=$('#em').value.trim().toLowerCase(),p=$('#pw').value,x=$('#err');
+ if(!m||!p){x.textContent='Email dan kata sandi wajib diisi.';return}
+ if(p!=PW){x.textContent='Email atau kata sandi salah. Periksa kembali lalu coba lagi.';return}
+ const r=m.startsWith('admin')?'admin':/^(pembimbing|rizal|sinta)/.test(m)?'pembimbing':'peserta';
+ S.u={email:m.includes('@')?m:m+'@astakira.id',name:{peserta:ME,pembimbing:'Rizal Hakim',admin:'Admin Astakira'}[r]};S.role=r;S.pg='dash';render();toast('Selamat datang, '+S.u.name,'ok')},
+pick(m){S.mode=m;S.fv=0;S.qrs='';render()},
+gen(){const ts=Date.now();S.qr={code:`ASTK|${ME}|${S.mode}|${ts}|${Math.random().toString(36).slice(2,8)}`,ts}},
+rt(){S.qrs='';S.rej='';A.gen();render()},
+tk(){if(!S.qr||!S.fv||S.qrs)return;let l=30-Math.floor((Date.now()-S.qr.ts)/1000);if(l<=0){A.gen();l=30;const v=$('#qv');if(v)v.innerHTML=qrs(S.qr.code)}const c=$('#cd');if(c)c.textContent=l},
+sc(){clearInterval(A._iv);if(A._st)A._st.getTracks().forEach(t=>t.stop());A._st=0},
+async cam(){if(!('BarcodeDetector' in window)||!navigator.mediaDevices){toast('Browser ini belum mendukung pemindai QR kamera. Tempel kode secara manual.','warn');return}try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}),v=$('#vid');v.srcObject=st;v.style.display='block';await v.play();A._st=st;const bd=new BarcodeDetector({formats:['qr_code']});A._iv=setInterval(async()=>{try{const r=await bd.detect(v);if(r[0])A.chk(r[0].rawValue)}catch{}},400)}catch{toast('Izin kamera ditolak. Tempel kode secara manual.','warn')}},
+chk(c){const p=(c||'').trim().split('|'),pe=D.pes?0:D.pes;const x=D.pes.find(q=>q.n==p[1]);let s;
+ if(p[0]!='ASTK'||p.length<5||!x)s={err:'inv'};
+ else if(Date.now()-+p[3]>30000)s={err:'exp'};
+ else if(x.pb!='Rizal Hakim')s={err:'bb',n:x.n};
+ else if(x.n==ME&&S.today[p[2]])s={err:'dup',n:x.n,mode:p[2]};
+ else{const w=JW();s={n:x.n,mode:p[2],t:hhmm(),st:p[2]=='masuk'&&mins()>+w[1].slice(0,2)*60+ +w[1].slice(3)+w[3]?'Terlambat':'Hadir'}}
+ S.sc=s;render()},
+dm(k){if(k=='ok'){if(!S.qr||!S.fv){toast('Belum ada QR aktif. Selesaikan verifikasi wajah di peran Peserta dulu.','warn');return}A.chk(S.qr.code)}else A.chk({exp:`ASTK|${ME}|masuk|${Date.now()-40000}|x`,inv:'abc123',bb:`ASTK|Bima Pratama|masuk|${Date.now()}|x`}[k])},
+cfm(a){const s=S.sc;if(!a){const r=$('#rj').value.trim();if(!r){$('#merr').textContent='Tulis alasan penolakan agar peserta tahu langkah berikutnya.';return}if(!net())return;if(s.n==ME){S.qrs='no';S.rej='Ditolak pembimbing: '+r}lg('Tolak absen '+s.mode+': '+s.n);toast('Absensi ditolak','warn')}
+ else{if(!net())return;if(s.n==ME){S.today[s.mode]=s.t;if(s.mode=='masuk')S.today.st=s.st;S.today.m='QR dan wajah';S.res={mode:s.mode,t:s.t,st:s.st,m:'QR dan wajah'};S.qrs='ok';S.rej='';S.fv=0}lg('Konfirmasi absen '+s.mode+': '+s.n);toast('Absensi '+s.n+' dikonfirmasi','ok')}
+ S.sc=null;render()},ca(){S.al=null;render()},
+en(){if(!net())return;S.reg=true;toast('Template wajah terdaftar','ok');render()},
+sim(k,m){if(!net())return;if(S.today[S.mode])k='dup';
+ if(k=='ok'){S.fv=1;S.qrs='';S.rej='';A.gen();toast('Wajah terverifikasi, QR absensi siap','ok');A.go('qr')}
+ else{S.al=k;S.rej=AM[k][0]+(k=='dup'?'':'. '+AM[k][1]);toast(AM[k][0],'warn');render()}},
+jt(s){S.jf=s;render()},jn(){S.ed=null;A.go('jf')},jd(id){S.jid=id;A.go('jd')},ej(id){S.ed=D.jur.find(x=>x.id==id);A.go('jf')},
+sv(st){const g=i=>$('#f'+i).value.trim(),o={j:g(1),u:g(2),h:g(3),k:g(4),r:g(5)};
+ if(!o.j||!o.u){$('#fe').textContent='Judul dan uraian kegiatan wajib diisi.';return}
+ if(!net())return;
+ if(S.ed)Object.assign(S.ed,o,{s:st,c:st=='Dikirim'?'':S.ed.c});else D.jur.unshift({id:Date.now(),t:iso(T),ps:ME,...o,s:st,c:''});
+ S.ed=null;toast(st=='Draft'?'Draft tersimpan':'Jurnal terkirim ke pembimbing','ok');A.go('jur')},
+mo(h){$('#modal').innerHTML=`<div class="mo" onclick="if(event.target==this)A.mc()"><div class="md" role="dialog" aria-modal="true">${h}</div></div>`},mc(){$('#modal').innerHTML=''},
+rv(id){const j=D.jur.find(x=>x.id==id),can=j.s=='Dikirim';A.mo(`<h2>${e(j.j)}</h2><p class="mu">${e(j.ps)}, ${fmt(j.t)} ${badge(j.s)}</p>${det(j)}${can?`<label>Catatan revisi (wajib jika meminta revisi)<textarea id="cat" rows="3"></textarea></label><p class="er-t" id="merr"></p><div class="row"><button class="btn gh" onclick="A.mc()">Tutup</button><button class="btn dg2" onclick="A.dec(${id},0)">Minta revisi</button><button class="btn" onclick="A.dec(${id},1)">Setujui</button></div>`:`${j.c?`<div class="al wa"><b>Catatan revisi</b><p>${e(j.c)}</p></div>`:''}<div class="row"><button class="btn gh" onclick="A.mc()">Tutup</button></div>`}`)},
+dec(id,a){const j=D.jur.find(x=>x.id==id),c=$('#cat').value.trim();if(!a&&!c){$('#merr').textContent='Tulis alasan revisi agar peserta tahu bagian yang perlu diperbaiki.';return}if(!net())return;j.s=a?'Disetujui':'Revisi';j.c=a?'':c;lg((a?'Setujui':'Minta revisi')+' jurnal: '+j.j);A.mc();toast(a?'Jurnal disetujui':'Permintaan revisi dikirim','ok');render()},
+cf(k,id,vw){const r=id?D[k].find(x=>x.id==id):{n:'',a:'',dv:'',pb:D.pem[0].n,on:1},d=vw?'disabled':'';A.mo(`<h2>${vw?'Detail':id?'Edit':'Tambah'} ${KD[k]}</h2><label>Nama<input id="c1" value="${e(r.n)}" ${d}></label><label>Akun email<input id="c2" value="${e(r.a)}" ${d}></label><label>Divisi<input id="c3" value="${e(r.dv)}" ${d}></label>${k=='pes'?`<label>Pembimbing<select id="c4" ${d}>${D.pem.map(p=>`<option ${p.n==r.pb?'selected':''}>${e(p.n)}</option>`).join('')}</select></label>`:''}<label>Status<select id="c5" ${d}><option value="1" ${r.on?'selected':''}>Aktif</option><option value="0" ${r.on?'':'selected'}>Nonaktif</option></select></label><p class="er-t" id="merr"></p><div class="row"><button class="btn gh" onclick="A.mc()">${vw?'Tutup':'Batal'}</button>${vw?'':`<button class="btn" onclick="A.cs('${k}',${id||0})">Simpan</button>`}</div>`)},
+cs(k,id){const n=$('#c1').value.trim(),a=$('#c2').value.trim();if(!n||!/^\S+@\S+\.\S+$/.test(a)){$('#merr').textContent='Isi nama dan email akun yang valid.';return}if(!net())return;const o={n,a,dv:$('#c3').value.trim(),on:+$('#c5').value};if(k=='pes')o.pb=$('#c4').value;if(id)Object.assign(D[k].find(x=>x.id==id),o);else D[k].push({id:Date.now(),...o});lg((id?'Ubah ':'Tambah ')+KD[k]+': '+n);A.mc();toast('Data disimpan','ok');render()},
+cx(k,id){const r=D[k].find(x=>x.id==id);A.mo(`<h2>Hapus ${KD[k]}?</h2><p>${e(r.n)} akan dihapus dari daftar dan tindakan ini tercatat di audit log.</p><div class="row"><button class="btn gh" onclick="A.mc()">Batal</button><button class="btn dg2" onclick="A.cdo('${k}',${id})">Hapus</button></div>`)},
+cdo(k,id){if(!net())return;const r=D[k].find(x=>x.id==id);D[k]=D[k].filter(x=>x.id!=id);lg('Hapus '+KD[k]+': '+r.n);A.mc();toast('Data dihapus','ok');render()},
+sj(){const rows=D.jad.map((r,i)=>[r[0],$('#j'+i+'a').value,$('#j'+i+'b').value,+$('#j'+i+'t').value,$('#j'+i+'k').checked?1:0]);
+ const bad=rows.find(r=>r[4]&&(!r[1]||!r[2]||r[2]<=r[1]||r[3]<0));if(bad){toast('Jam pulang '+bad[0]+' harus setelah jam masuk dan toleransi tidak boleh negatif.','warn');return}
+ if(!net())return;D.jad=rows;lg('Ubah jadwal workshift');toast('Jadwal disimpan','ok')},
+ex(t){if(!net())return;lg('Export laporan '+t);toast('Export '+t+' dimulai (simulasi, belum ada file dibuat)','ok')},
+ph(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{S.av=r.result;toast('Foto profil diperbarui','ok');render()};r.readAsDataURL(f)},
+pw(){const a=$('#p0').value,b=$('#p1').value,c=$('#p2').value,m=$('#merr');if(a!=PW){m.textContent='Kata sandi saat ini salah.';return}if(b.length<8){m.textContent='Kata sandi baru minimal 8 karakter.';return}if(b!=c){m.textContent='Ulangi kata sandi baru dengan teks yang sama.';return}if(!net())return;PW=b;['p0','p1','p2'].forEach(x=>$('#'+x).value='');m.textContent='';toast('Kata sandi diubah','ok')}
+};
+addEventListener('offline',()=>{S.off=true;toast('Koneksi internet terputus','warn');render()});
+addEventListener('online',()=>{S.off=false;toast('Koneksi kembali tersambung','ok');render()});
+addEventListener('keydown',ev=>{if(ev.key=='Escape')A.mc()});
+setInterval(A.tk,1000);
+render();
+</script></body></html>

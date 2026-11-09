@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Tema biru & putih mengikuti docs/referensi-ui/index.html */
+@theme {
+  --color-bg: #f1f5f9;
+  --color-kartu: #ffffff;
+  --color-teks: #0f172a;
+  --color-mu: #5b6b84;
+  --color-garis: #dbe3ee;
+  --color-pr: #1d4ed8;
+  --color-pr-t: #ffffff;
+  --color-nv: #0b1f4d;
+  --color-nv-t: #cfe0ff;
+  --color-pl: #e0eaff;
+  --color-g: #15803d;
+  --color-y: #a16207;
+  --color-o: #c2410c;
+  --color-r: #b91c1c;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-teks);
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-pr);
+  outline-offset: 2px;
+}
