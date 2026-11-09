@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../konteks/Auth';
 import { ApiError } from '../lib/api';
-import { Kartu, Tombol, Galat, Label, Masukan } from '../komponen/ui';
+import { Kartu, Tombol, Galat, Label, Masukan, MasukanSandi } from '../komponen/ui';
 
 export default function Login() {
   const { masuk } = useAuth();
@@ -58,9 +58,8 @@ export default function Login() {
                 onChange={(e) => setId(e.target.value)}
               />
               <Label htmlFor="lg-pw">Kata sandi</Label>
-              <Masukan
+              <MasukanSandi
                 id="lg-pw"
-                type="password"
                 autoComplete="current-password"
                 value={pw}
                 onChange={(e) => setPw(e.target.value)}

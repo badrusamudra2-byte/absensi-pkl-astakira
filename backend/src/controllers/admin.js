@@ -2,16 +2,15 @@ const bcrypt = require('bcryptjs');
 const { Op, fn } = require('sequelize');
 const {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification, TantanganWajah,
-  TokenPembimbing, QrToken, AbsensiPenolakan, Absensi, Jurnal, AuditLog,
+  QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, AuditLog,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { wajib, jam, email, kuat } = require('../utils/validasi');
-const { acak } = require('../utils/crypto');
+const { acak, dekripBait } = require('../utils/crypto');
 const { HARI, bagian, rentang } = require('../utils/waktu');
 const mail = require('../utils/mailer');
 const csv = require('../utils/csv');
 const audit = require('../utils/audit');
-const keterangan = require('../services/keterangan');
 
 /* ---------- CRUD peserta dan pembimbing (satu pabrik untuk keduanya) ---------- */
 function crud(role, Profile, alias) {
@@ -95,8 +94,8 @@ function crud(role, Profile, alias) {
           await FaceTemplate.destroy(w);
           await FaceVerification.destroy(w);
           await TantanganWajah.destroy(w);
-          if (role === 'pembimbing') await TokenPembimbing.destroy({ where: { pembimbing_id: u.id }, transaction: t });
-          // Sisa token alur lama ikut diangkat agar pindai ulang tidak bocor data lama
+          // QR token memakai user_id untuk kedua peran; diangkat agar
+          // pemindai ulang tidak bisa memakai token lama peserta/pembimbing nonaktif
           await QrToken.destroy(w);
         }
       });
@@ -118,7 +117,6 @@ function crud(role, Profile, alias) {
         await FaceVerification.destroy(w);
         await FaceTemplate.destroy(w);
         await AbsensiPenolakan.destroy(w);
-        if (role === 'pembimbing') await TokenPembimbing.destroy({ where: { pembimbing_id: u.id }, transaction: t });
         await Profile.destroy(w);
         await u.destroy({ transaction: t });
       });
@@ -209,19 +207,9 @@ exports.resetWajah = asyncH(async (req, res) => {
   res.json({ pesan: 'Template wajah dihapus. Peserta bisa mendaftar ulang.' });
 });
 
-/* ---------- Absensi: catat izin/sakit, lihat per tanggal, koreksi ---------- */
+/* ---------- Absensi: lihat per tanggal, koreksi ---------- */
 
 const STATUS_KOREKSI = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir'];
-
-// Admin menandai Izin/Sakit untuk siapa saja
-exports.catatKet = asyncH(async (req, res) => {
-  const uid = Number(req.body.user_id);
-  const p = await User.findOne({ where: { id: uid, role: 'peserta' } });
-  if (!p) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');
-  const b = await keterangan.buat({ ...req.body, oleh: req.user.id });
-  await audit(req, `Catat ${b.status}`, `peserta#${uid}`);
-  res.status(201).json({ pesan: `${b.status} tercatat.`, data: { id: b.id, tanggal: b.tanggal, status: b.status } });
-});
 
 // Daftar semua baris absensi satu peserta pada satu tanggal (untuk form koreksi)
 exports.absensiPerTanggal = asyncH(async (req, res) => {
@@ -234,6 +222,19 @@ exports.absensiPerTanggal = asyncH(async (req, res) => {
   if (!p) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');
   const data = await Absensi.findAll({ where: { user_id: uid, tanggal }, order: [['jenis', 'ASC']] });
   res.json({ peserta: p, data });
+});
+
+// Foto wajah satu baris absensi (terenkripsi di penyimpanan; diuraikan hanya bila admin
+// membukanya, lalu diberikan sebagai JPEG ke browser). Dicatat di audit log.
+exports.fotoWajah = asyncH(async (req, res) => {
+  const a = await Absensi.findByPk(req.params.id);
+  if (!a) throw new HttpError(404, 'Baris absensi tidak ditemukan.', 'TIDAK_ADA');
+  const f = await WajahFoto.findOne({ where: { absensi_id: a.id } });
+  if (!f) {
+    throw new HttpError(404, 'Absensi ini tidak punya foto wajah (mis. metode QR tanpa wajah).', 'FOTO_ABSEN_TAK_ADA');
+  }
+  await audit(req, 'Buka foto absensi', `absensi#${a.id} pes#${a.user_id}`);
+  res.type('image/jpeg').send(dekripBait(f.data));
 });
 
 // Koreksi absensi oleh admin: alasan wajib, nilai lama dan baru dicatat di audit

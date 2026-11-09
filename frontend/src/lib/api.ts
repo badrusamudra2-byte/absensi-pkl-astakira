@@ -27,12 +27,14 @@ export class ApiError extends Error {
 interface Opsi extends RequestInit {
   /** Lewati jika body bukan JSON (mis. FormData untuk unggah foto). */
   json?: unknown;
+  /** Kirim multi bagian (FormData) — biarkan browser menatap batas (multipart) sendiri. */
+  bentuk?: FormData;
   /** Berguna untuk unduhan berkas. */
   raw?: boolean;
 }
 
 export async function api<T>(path: string, opsi: Opsi = {}): Promise<T> {
-  const { json, raw, headers, ...rest } = opsi;
+  const { json, bentuk, raw, headers, ...rest } = opsi;
   const token = dapatkanToken();
 
   const res = await fetch('/api' + path, {
@@ -42,6 +44,7 @@ export async function api<T>(path: string, opsi: Opsi = {}): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
+    ...(bentuk !== undefined ? { body: bentuk } : {}),
     ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
   });
 

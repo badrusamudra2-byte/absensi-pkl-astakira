@@ -1,42 +1,54 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
-import { Kartu, Tombol, Pemberitahuan, Label } from '../../komponen/ui';
+import { sinyalPeriksa } from '../../lib/notifikasi';
+import type { PengajuanIzin } from '../../lib/tipe';
+import { Kartu, Tombol, Pemberitahuan, Badge, Label } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { isoHariIni } from '../../komponen/umum';
 
-/** Halaman catat Izin/Sakit: pembimbing untuk bimbingannya, hari itu otomatis terkunci dari absensi. */
+/** Lihat izin/sakit: pengajuan dari peserta (dengan bukti foto); pembimbing menyetujui
+ * (hari itu terekam Izin/Sakit dan terkunci) atau menolak dengan alasan. */
 export default function Izin() {
   const toast = useToast();
-  const [peserta, ubahPeserta] = useState<{ id: number; nama: string }[]>([]);
-  const [user_id, ubahUid] = useState<number | ''>('');
-  const [tanggal, ubahTanggal] = useState(isoHariIni());
-  const [status, ubahStatus] = useState<'Izin' | 'Sakit'>('Izin');
-  const [keterangan, ubahKet] = useState('');
+  const [daftar, ubahDaftar] = useState<PengajuanIzin[]>([]);
+  const [muat, ubahMuat] = useState(true);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const [bukaTolak, ubahBukaTolak] = useState(false);
+  const [alasan, ubahAlasan] = useState('');
   const [sedang, ubahSedang] = useState(false);
 
-  useEffect(() => {
-    api<{ data: { id: number; nama: string; aktif: boolean }[] }>('/pembimbing/peserta')
+  const muatUlang = useCallback(() => {
+    ubahMuat(true);
+    api<{ data: PengajuanIzin[] }>('/pengajuan/izin')
       .then((r) => {
-        const aktif = r.data.filter((p) => p.aktif);
-        ubahPeserta(aktif.map((p) => ({ id: p.id, nama: p.nama })));
-        if (aktif.length === 1) ubahUid(aktif[0].id);
+        ubahDaftar(r.data);
+        ubahGalat(null);
       })
-      .catch(() => ubahPeserta([]));
+      .catch((err: ApiError) => {
+        ubahDaftar([]);
+        ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
+      })
+      .finally(() => ubahMuat(false));
   }, []);
 
-  const kirim = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    muatUlang();
+  }, [muatUlang]);
+
+  const putuskan = async (id: number, putusan: 'Disetujui' | 'Ditolak') => {
     ubahSedang(true);
     ubahGalat(null);
     try {
-      const r = await api<{ pesan: string }>('/pembimbing/keterangan', {
-        method: 'POST',
-        json: { user_id, tanggal, status, keterangan },
+      const r = await api<{ pesan: string }>(`/pengajuan/izin/${id}/putuskan`, {
+        method: 'PUT',
+        json: { putusan, alasan: putusan === 'Ditolak' ? alasan.trim() : undefined },
       });
       toast(r.pesan);
-      ubahKet('');
+      ubahAlasan('');
+      ubahBukaTolak(false);
+      sinyalPeriksa(); // titik merah menu langsung diperiksa ulang
+      muatUlang();
     } catch (err) {
       const e2 = err as ApiError;
       ubahGalat(teksKode(e2.kode ?? 'SERVER', e2.message));
@@ -46,73 +58,102 @@ export default function Izin() {
   };
 
   return (
-    <Kartu t="Catat izin / sakit">
-      <p className="text-mu text-sm mb-1 max-w-[560px]">
-        Hari yang tercatat Izin atau Sakit otomatis terkunci — peserta tidak perlu absen QR/wajah dan
-        tidak akan ditandai Tidak hadir.
-      </p>
-      <form onSubmit={kirim} className="max-w-[560px]">
-        <p>
-          <Label htmlFor="izin_psr">Peserta</Label>
-          <select
-            id="izin_psr"
-            required
-            value={user_id}
-            onChange={(e) => ubahUid(e.target.value ? Number(e.target.value) : '')}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-          >
-            <option value="">— pilih peserta —</option>
-            {peserta.map((p) => (
-              <option key={p.id} value={p.id}>{p.nama}</option>
-            ))}
-          </select>
+    <>
+      <Kartu t="Lihat izin / sakit">
+        <p className="text-mu text-sm mb-2 max-w-[560px]">
+          Pengajuan izin/sakit dikirim oleh peserta beserta bukti foto. Bila Anda setujui, hari itu
+          terekam sebagai Izin/Sakit dan otomatis terkunci dari absensi QR/wajah.
         </p>
-        <p>
-          <Label htmlFor="izin_tgl">Tanggal (maksimal 7 hari ke belakang)</Label>
-          <input
-            id="izin_tgl"
-            type="date"
-            required
-            max={isoHariIni()}
-            value={tanggal}
-            onChange={(e) => ubahTanggal(e.target.value)}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-          />
-        </p>
-        <fieldset className="mt-3">
-          <legend className="text-[13px] font-semibold">Status</legend>
-          <div className="flex gap-4 mt-1">
-            {(['Izin', 'Sakit'] as const).map((s) => (
-              <label key={s} className="flex items-center gap-2 text-sm font-semibold">
-                <input type="radio" name="izin_status" checked={status === s} onChange={() => ubahStatus(s)} />
-                {s}
-              </label>
-            ))}
+        {muat ? <p className="text-mu text-sm">Memuat pengajuan&hellip;</p> : null}
+        {!muat && galat ? <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /> : null}
+      </Kartu>
+
+      {!muat && !daftar.length && !galat ? (
+        <Kartu>
+          <p className="text-mu text-sm m-0">Belum ada pengajuan izin/sakit pada periode ini.</p>
+        </Kartu>
+      ) : null}
+
+      {daftar.map((p) => (
+        <Kartu key={p.id} className="!p-[14px] md:!p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <b className="text-[15px]">{p.peserta?.nama ?? `Peserta #${p.user_id}`}</b>
+            <Badge s={p.jenis} />
+            <Badge s={p.status} />
+            <span className="text-mu text-sm">{p.tanggal}</span>
+            {p.tanggal === isoHariIni() ? <Badge s="Hari ini" /> : null}
           </div>
-        </fieldset>
-        <p>
-          <Label htmlFor="izin_ket">
-            Keterangan <span className="text-r">wajib</span> (3–1000 karakter)
-          </Label>
-          <textarea
-            id="izin_ket"
-            required
-            minLength={3}
-            maxLength={1000}
-            rows={3}
-            value={keterangan}
-            onChange={(e) => ubahKet(e.target.value)}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            placeholder="Misal: Menghadiri acara keluarga di luar kota."
-          />
-        </p>
-        {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
-        <p className="mt-4">
-          <Tombol type="submit" disabled={sedang || !user_id || keterangan.trim().length < 3}>
-            Catat {status.toLowerCase()}
-          </Tombol>
-        </p>
-      </form>
-    </Kartu>
+          <p className="text-sm mt-2 max-w-[620px] whitespace-pre-line">{p.keterangan}</p>
+          <div className="mt-2">
+            <a
+              href={`/uploads/pengajuan/${p.bukti}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-pr text-sm font-semibold no-underline hover:underline"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.5-3.5L7 22" />
+              </svg>
+              Buka bukti foto
+            </a>
+          </div>
+          {p.status === 'Ditolak' && p.catatan_putusan ? (
+            <div className="mt-2">
+              <Pemberitahuan jenis="er" judul="Alasan penolakan" uraian={p.catatan_putusan} />
+            </div>
+          ) : null}
+
+          {p.status === 'Menunggu' ? (
+            <div className="mt-3 border-t border-garis pt-3">
+              <div className="flex flex-wrap gap-2">
+                <Tombol disabled={sedang} onClick={() => putuskan(p.id, 'Disetujui')}>
+                  Setujui
+                </Tombol>
+                <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(true)}>
+                  Tolak&hellip;
+                </Tombol>
+              </div>
+              {bukaTolak ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    putuskan(p.id, 'Ditolak');
+                  }}
+                  className="max-w-[560px] mt-1"
+                >
+                  <Label htmlFor={`alasan_${p.id}`}>Alasan penolakan (wajib)</Label>
+                  <textarea
+                    id={`alasan_${p.id}`}
+                    required
+                    minLength={3}
+                    maxLength={500}
+                    rows={2}
+                    value={alasan}
+                    onChange={(e) => ubahAlasan(e.target.value)}
+                    className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
+                    placeholder="Misal: Bukti foto tidak jelas, mohon unggah ulang."
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Tombol varian="dg" type="submit" disabled={sedang || alasan.trim().length < 3}>
+                      Tolak pengajuan
+                    </Tombol>
+                    <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(false)}>
+                      Batal
+                    </Tombol>
+                  </div>
+                </form>
+              ) : null}
+              {!muat && galat ? (
+                <div className="mt-2 max-w-[560px]">
+                  <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </Kartu>
+      ))}
+    </>
   );
 }

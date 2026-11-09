@@ -11,13 +11,14 @@ import DashboardPembimbing from './pages/pembimbing/Dashboard';
 import DashboardAdmin from './pages/admin/Dashboard';
 import Profil from './pages/Profil';
 import Absensi from './pages/peserta/Absensi';
-import ScanPembimbing from './pages/peserta/ScanPembimbing';
+import TayangQr from './pages/peserta/TayangQr';
 import Riwayat from './pages/peserta/Riwayat';
 import WajahDaftar from './pages/peserta/WajahDaftar';
 import WajahPeriksa from './pages/peserta/WajahPeriksa';
 import JurnalList from './pages/peserta/JurnalList';
 import JurnalForm from './pages/peserta/JurnalForm';
 import JurnalDetail from './pages/peserta/JurnalDetail';
+import PengajuanIzin from './pages/peserta/PengajuanIzin';
 import Scan from './pages/pembimbing/Scan';
 import PesertaPembimbing from './pages/pembimbing/Peserta';
 import JurnalReview from './pages/pembimbing/Jurnal';
@@ -70,7 +71,7 @@ export default function App() {
 
               {/* Fasilitas peserta */}
               <Route path="/absensi" element={<GuardPeran role="peserta"><Absensi /></GuardPeran>} />
-              <Route path="/absensi/scan" element={<GuardPeran role="peserta"><ScanPembimbing /></GuardPeran>} />
+              <Route path="/absensi/qr" element={<GuardPeran role="peserta"><TayangQr /></GuardPeran>} />
               <Route path="/riwayat" element={<GuardPeran role="peserta"><Riwayat /></GuardPeran>} />
               <Route path="/wajah/daftar" element={<GuardPeran role="peserta"><WajahDaftar /></GuardPeran>} />
               <Route path="/wajah/periksa" element={<GuardPeran role="peserta"><WajahPeriksa /></GuardPeran>} />
@@ -78,6 +79,7 @@ export default function App() {
               <Route path="/jurnal/baru" element={<GuardPeran role="peserta"><JurnalForm /></GuardPeran>} />
               <Route path="/jurnal/:id" element={<GuardPeran role="peserta"><JurnalDetail /></GuardPeran>} />
               <Route path="/jurnal/:id/edit" element={<GuardPeran role="peserta"><JurnalForm /></GuardPeran>} />
+              <Route path="/pengajuan" element={<GuardPeran role="peserta"><PengajuanIzin /></GuardPeran>} />
 
               {/* Fasilitas pembimbing */}
               <Route path="/pembimbing/scan" element={<GuardPeran role="pembimbing"><Scan /></GuardPeran>} />

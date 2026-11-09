@@ -79,17 +79,36 @@ export interface Absensi {
   keterangan?: string | null;
 }
 
-/* ---------- QR tayang pembimbing ---------- */
-/** Token tayang dari POST /absensi/qr-tayang (pembimbing). Isi QR = token ini. */
+/* ---------- Pengajuan izin/sakit ---------- */
+export type StatusPengajuan = 'Menunggu' | 'Disetujui' | 'Ditolak';
+
+export interface PengajuanIzin {
+  id: number;
+  user_id: number;
+  tanggal: string; // "2026-11-09"
+  jenis: 'Izin' | 'Sakit';
+  status: StatusPengajuan;
+  keterangan: string;
+  bukti: string; // nama berkas di uploads/pengajuan/ (URL: /uploads/pengajuan/<bukti>)
+  ditangani_oleh?: number | null;
+  catatan_putusan?: string | null;
+  dibuat_pada: string;
+  peserta?: { id: number; nama: string };
+}
+
+/* ---------- QR absensi ---------- */
+/** Token tayang dari POST /absensi/qr-saya (peserta). Isi QR = token ini. */
 export interface TayanganQr {
   token: string;
+  jenis: Jenis;
   berlaku_detik: number;
   kedaluwarsa_pada: string;
 }
 
-/** Hasil konfirmasi pindaian peserta (POST /absensi/konfirmasi-scan). */
-export interface HasilKonfirmasi {
+/** Hasil pindaian pembimbing (POST /absensi/scan; metode qr_wajah memverifikasi wajah peserta lebih dulu). */
+export interface HasilScan {
   pesan: string;
+  nama: string;
   jam: string;
   status: StatusAbsensi;
   metode: string;

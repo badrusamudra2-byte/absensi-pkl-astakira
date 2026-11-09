@@ -47,6 +47,11 @@ module.exports = {
     ttl: n('FACE_VERIFY_TTL_DETIK', 180),
     // Tantangan liveness (mode A): nonce sekali pakai + instruksi gerakan acak dari server
     tantanganTtl: n('LIVENESS_TTL_DETIK', 60),
+    // Foto wajah peserta (dibuat oleh siswa saat verifikasi, terenkripsi, terikat absensi)
+    foto: {
+      maksBait: n('FACE_FOTO_MAKS_BAIT', 300_000),
+      retensiHari: n('FACE_FOTO_RETENSI_HARI', 30),
+    },
   },
   jurnal: {
     // Peserta maksimal menulis jurnal sampai N hari ke belakang (0 = hanya hari ini)

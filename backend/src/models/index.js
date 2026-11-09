@@ -47,6 +47,9 @@ const FaceVerification = sequelize.define('FaceVerification', {
   jenis: { type: T.ENUM('masuk', 'pulang'), allowNull: false },
   kedaluwarsa_pada: { type: T.DATE, allowNull: false },
   dipakai_pada: T.DATE,
+  // Foto wajah siswa (JPEG terenkripsi AES-256-GCM) sementara menunggu dipakai absensi.
+  // Dipindahkan ke wajah_foto saat absensi tercatat lalu dikosongkan; tidak dikirim ke klien.
+  foto_ciphertext: T.TEXT('medium'),
 }, { tableName: 'face_verifications', indexes: [{ fields: ['user_id', 'jenis'] }] });
 
 const QrToken = sequelize.define('QrToken', {
@@ -59,14 +62,9 @@ const QrToken = sequelize.define('QrToken', {
   dipakai_pada: T.DATE,
 }, { tableName: 'qr_tokens', indexes: [{ fields: ['user_id', 'jenis'] }] });
 
-// QR yang ditayangkan pembimbing dan dipindai oleh peserta (diganti tiap QR_TTL_DETIK).
-// Satu token = milik satu pembimbing; hash disimpan, token mentah hanya lewat respons.
-const TokenPembimbing = sequelize.define('TokenPembimbing', {
-  pembimbing_id: { type: T.INTEGER, allowNull: false },
-  token_hash: { type: T.CHAR(64), allowNull: false, unique: true },
-  kedaluwarsa_pada: { type: T.DATE, allowNull: false },
-  dipakai_pada: T.DATE,
-}, { tableName: 'token_pembimbing', indexes: [{ fields: ['pembimbing_id', 'dipakai_pada'] }] });
+// QR ditayangkan peserta dari HP-nya dan dipindai oleh pembimbing (diganti tiap QR_TTL_DETIK).
+// Satu token = milik satu peserta untuk satu jenis absen; hash disimpan,
+// token mentah hanya lewat respons. Dipindai oleh pembimbing mana pun saat dipindai.
 
 const Absensi = sequelize.define('Absensi', {
   user_id: { type: T.INTEGER, allowNull: false },
@@ -91,6 +89,30 @@ const AbsensiPenolakan = sequelize.define('AbsensiPenolakan', {
   pembimbing_id: { type: T.INTEGER, allowNull: false },
   alasan: { type: T.TEXT, allowNull: false },
 }, { tableName: 'absensi_penolakan' });
+
+// Pengajuan izin/sakit dari peserta (dengan bukti foto dari perangkatnya).
+// 'Menunggu' sampai pembimbing memutuskan; bila Disetujui, keterangan.buat()
+// menulis baris absensi Izin/Sakit (hari terkunci dari QR/wajah).
+const PengajuanIzin = sequelize.define('PengajuanIzin', {
+  user_id: { type: T.INTEGER, allowNull: false },
+  tanggal: { type: T.DATEONLY, allowNull: false },
+  jenis: { type: T.ENUM('Izin', 'Sakit'), allowNull: false },
+  status: { type: T.ENUM('Menunggu', 'Disetujui', 'Ditolak'), allowNull: false, defaultValue: 'Menunggu' },
+  keterangan: { type: T.TEXT, allowNull: false }, // 3..1000 karakter
+  bukti: { type: T.STRING(72), allowNull: false }, // nama berkas di uploads/pengajuan/
+  ditangani_oleh: T.INTEGER, // id pembimbing yang memutuskan
+  catatan_putusan: T.TEXT, // alasan pembimbing (wajib saat Ditolak)
+}, {
+  tableName: 'pengajuan_izin',
+  indexes: [{ fields: ['user_id', 'tanggal'] }, { fields: ['status', 'tanggal'] }],
+});
+
+// Foto wajah siswa pada momen absensi (diambil HP siswa saat verifikasi, terenkripsi
+// AES-256-GCM). Hanya admin yang bisa membaca; dihapus otomatis setelah FACE_FOTO_RETENSI_HARI.
+const WajahFoto = sequelize.define('WajahFoto', {
+  absensi_id: { type: T.INTEGER, allowNull: false, unique: true },
+  data: { type: T.TEXT('medium'), allowNull: false }, // "iv.tag.ct" base64 JPEG terenkripsi
+}, { tableName: 'wajah_foto' });
 
 // Baris tunggal (id=1): metode absensi pengaturan penyelenggara.
 const PengaturanAbsensi = sequelize.define('PengaturanAbsensi', {
@@ -145,13 +167,15 @@ Peserta.belongsTo(User, { foreignKey: 'pembimbing_id', as: 'pembimbing' });
 User.hasOne(Pembimbing, { foreignKey: 'user_id', as: 'pembimbing_profil' });
 Pembimbing.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Absensi.belongsTo(User, { foreignKey: 'user_id', as: 'peserta' });
+Absensi.hasOne(WajahFoto, { foreignKey: 'absensi_id', as: 'foto' });
 QrToken.belongsTo(User, { foreignKey: 'user_id', as: 'peserta' });
+PengajuanIzin.belongsTo(User, { foreignKey: 'user_id', as: 'peserta' });
 Jurnal.belongsTo(User, { foreignKey: 'user_id', as: 'peserta' });
 Jurnal.hasMany(JurnalReview, { foreignKey: 'jurnal_id', as: 'reviews' });
 JurnalReview.belongsTo(User, { foreignKey: 'pembimbing_id', as: 'pembimbing' });
 
 module.exports = {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification,
-  QrToken, TokenPembimbing, Absensi, AbsensiPenolakan, Jurnal, JurnalReview, AuditLog,
-  PengaturanAbsensi, TantanganWajah,
+  QrToken, Absensi, AbsensiPenolakan, WajahFoto, Jurnal, JurnalReview, AuditLog,
+  PengaturanAbsensi, TantanganWajah, PengajuanIzin,
 };

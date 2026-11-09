@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { Kartu, Tombol, Galat, Label, Masukan } from '../komponen/ui';
+import { Kartu, Tombol, Galat, Label, MasukanSandi } from '../komponen/ui';
 
 /** POST /api/auth/reset-password dengan token dari email (?token=...). */
 export default function AturUlang() {
@@ -73,9 +73,9 @@ export default function AturUlang() {
               <h2 className="text-xl font-bold mb-1">Buat kata sandi baru</h2>
               <form onSubmit={kirim} noValidate>
             <Label htmlFor="rs-pw">Kata sandi baru</Label>
-            <Masukan id="rs-pw" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <MasukanSandi id="rs-pw" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <Label htmlFor="rs-pw2">Ulangi kata sandi baru</Label>
-            <Masukan id="rs-pw2" type="password" autoComplete="new-password" value={ulang} onChange={(e) => setUlang(e.target.value)} />
+            <MasukanSandi id="rs-pw2" autoComplete="new-password" value={ulang} onChange={(e) => setUlang(e.target.value)} />
             <div className="min-h-6 mt-2">
               <Galat pesan={err} />
             </div>

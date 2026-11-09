@@ -6,18 +6,19 @@ const lama = 24 * 3600 * 1000; // simpan maksimal 24 jam setelah kedaluwarsa
 let timerJob = null;
 let timerBer = null;
 
-/** Hapus token tayang QR, verifikasi wajah, dan tantangan liveness yang lama. Idempotent. */
+/** Hapus token QR, verifikasi wajah, tantangan liveness, dan foto wajah lewat retensi.
+ * Idempotent. */
 const bersihkan = async () => {
   const batas = new Date(Date.now() - lama);
-  const [tayang, wajah, tantangan, lamaQr] = await Promise.all([
-    M.TokenPembimbing.destroy({ where: { kedaluwarsa_pada: { [Op.lt]: batas } } }),
+  const retensiFoto = new Date(Date.now() - require('../config/env').face.foto.retensiHari * 86400 * 1000);
+  const [tayang, wajah, tantangan, foto] = await Promise.all([
+    M.QrToken.destroy({ where: { kedaluwarsa_pada: { [Op.lt]: batas } } }),
     M.FaceVerification.destroy({ where: { kedaluwarsa_pada: { [Op.lt]: batas } } }),
     M.TantanganWajah.destroy({ where: { kedaluwarsa_pada: { [Op.lt]: batas } } }),
-    // Sisa alur lama (qr_tokens) turut dibersihkan
-    M.QrToken.destroy({ where: { kedaluwarsa_pada: { [Op.lt]: batas } } }),
+    M.WajahFoto.destroy({ where: { dibuat_pada: { [Op.lt]: retensiFoto } } }), // kolom createdAt = dibuat_pada
   ]);
-  const hasil = { token_pembimbing: tayang, face_verifications: wajah, tantangan_wajah: tantangan, qr_tokens_lama: lamaQr };
-  if (tayang + wajah + tantangan + lamaQr > 0) console.log('Pembersih token:', JSON.stringify(hasil));
+  const hasil = { qr_tokens: tayang, face_verifications: wajah, tantangan_wajah: tantangan, wajah_foto: foto };
+  if (tayang + wajah + tantangan + foto > 0) console.log('Pembersih token:', JSON.stringify(hasil));
   return hasil;
 };
 

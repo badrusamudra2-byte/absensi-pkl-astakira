@@ -1,28 +1,67 @@
-import { Outlet } from 'react-router-dom';
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../konteks/Auth';
+import { api } from '../lib/api';
+import { ikutSinyal, sinyalPeriksa } from '../lib/notifikasi';
 import type { Role } from '../lib/tipe';
 import BannerLuring from './Offline';
 
-/** Menu mengikuti peran. */
-const MENU: Record<Role, { rote: string; label: string }[]> = {
+/** Lingkaran merah di menu 'Lihat izin/sakit' (pembimbing). Hilang segera setelah semua
+ * pengajuan hari ini diputuskan (disetujui/ditolak): pembaruan lewat sinyal putusan, saat
+ * berpindah halaman, dan polling cadangan tiap 30 detik. Tetap tampil bila ada pengajuan
+ * hari ini yang belum diputuskan. */
+function TitikBaru() {
+  const [ada, setAda] = useState(false);
+  const lokasi = useLocation();
+
+  useEffect(() => {
+    let hidup = true;
+    const periksa = async () => {
+      try {
+        const r = await api<{ ada: boolean }>('/pengajuan/notifikasi');
+        if (hidup) setAda(r.ada);
+      } catch {
+        /* notifikasi gagal: titik biarkan seperti sebelumnya */
+      }
+    };
+    periksa();
+    const t = setInterval(periksa, 30000);
+    const berhenti = ikutSinyal(periksa);
+    return () => {
+      hidup = false;
+      clearInterval(t);
+      berhenti();
+    };
+  }, []);
+
+  // Segarkan juga tiap berpindah halaman
+  useEffect(() => {
+    sinyalPeriksa();
+  }, [lokasi]);
+
+  if (!ada) return null;
+  return <span className="ml-2 inline-block size-2 rounded-full bg-r align-middle" aria-hidden="true" />;
+}
+
+/** Menu mengikuti peran. dot = lingkaran merah bila ada pengajuan baru (pembimbing). */
+const MENU: Record<Role, { rote: string; label: string; dot?: boolean }[]> = {
   peserta: [
     { rote: '/', label: 'Beranda' },
     { rote: '/absensi', label: 'Absensi' },
+    { rote: '/absensi/qr', label: 'Tayangkan QR absen' },
     { rote: '/wajah/daftar', label: 'Pendaftaran wajah' },
     { rote: '/jurnal', label: 'Jurnal kegiatan' },
-    { rote: '/absensi/scan', label: 'Scan QR pembimbing' },
+    { rote: '/pengajuan', label: 'Pengajuan izin/sakit' },
     { rote: '/riwayat', label: 'Riwayat absensi' },
     { rote: '/profil', label: 'Profil' },
   ],
   pembimbing: [
     { rote: '/', label: 'Beranda' },
-    { rote: '/pembimbing/scan', label: 'Tampilkan QR absensi' },
+    { rote: '/pembimbing/scan', label: 'Scan QR peserta' },
     { rote: '/pembimbing/peserta', label: 'Peserta bimbingan' },
     { rote: '/pembimbing/jurnal', label: 'Review jurnal' },
     { rote: '/pembimbing/rekap', label: 'Rekap periode' },
-    { rote: '/pembimbing/izin', label: 'Catat izin/sakit' },
+    { rote: '/pembimbing/izin', label: 'Lihat izin/sakit', dot: true },
     { rote: '/profil', label: 'Profil' },
   ],
   admin: [
@@ -64,6 +103,7 @@ export default function Shell() {
             }
           >
             {m.label}
+            {m.dot ? <TitikBaru /> : null}
           </NavLink>
         ))}
       </nav>

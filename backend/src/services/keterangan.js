@@ -27,7 +27,7 @@ const tanggalOk = (s) => {
  * Menempati slot absen masuk (uq_absensi_harian) sehingga QR dan absensi wajah
  * hari itu otomatis terkunci. Dipakai pembimbing (bimbingannya) dan admin (siapa saja).
  */
-const buat = async ({ user_id, tanggal, status, keterangan, oleh }) => {
+const buat = async ({ user_id, tanggal, status, keterangan, oleh }, opts = {}) => {
   const st = String(status || '').trim();
   if (!['Izin', 'Sakit'].includes(st)) {
     throw new HttpError(400, 'Status harus Izin atau Sakit.', 'VALIDASI');
@@ -39,7 +39,7 @@ const buat = async ({ user_id, tanggal, status, keterangan, oleh }) => {
   }
   const tgl = tanggalOk(String(tanggal ?? '').trim());
 
-  const ada = await Absensi.findOne({ where: { user_id, tanggal: tgl } });
+  const ada = await Absensi.findOne({ where: { user_id, tanggal: tgl }, ...opts });
   if (ada) {
     throw new HttpError(
       409,
@@ -54,7 +54,7 @@ const buat = async ({ user_id, tanggal, status, keterangan, oleh }) => {
     return await Absensi.create({
       user_id, tanggal: tgl, jenis: 'masuk', jam: bagian().jam, status: st,
       metode: st, keterangan: ket, dikonfirmasi_oleh: oleh,
-    });
+    }, opts);
   } catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
       throw new HttpError(409, 'Hari itu sudah punya catatan absensi.', 'CATATAN_ADA');

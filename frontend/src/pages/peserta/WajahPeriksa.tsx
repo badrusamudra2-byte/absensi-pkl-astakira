@@ -2,17 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
-import { ambilLandmarker, cekKondisi, hitungEmbedding, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
-import type { Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
+import { ambilLandmarker, cekKondisi, hitungEmbedding, keJpeg, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
+import type { Absensi, Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { isoHariIni } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
-
-type Genap = 'scan' | 'langsung';
 
 export default function WajahPeriksa() {
   const [cari] = useSearchParams();
   const jenis = (cari.get('jenis') === 'pulang' ? 'pulang' : 'masuk') as Jenis;
-  const genap: Genap = cari.get('genap') === 'langsung' ? 'langsung' : 'scan';
+  // genap=scan : verifikasi wajah hanya membuka QR (mode qr_wajah) — foto wajah ikut dikirim
+  // genap=langsung : absensi tercatat langsung dari halaman ini (mode wajah)
+  const scan = cari.get('genap') === 'scan';
   const navigate = useNavigate();
   const daring = useOnline();
 
@@ -25,6 +26,8 @@ export default function WajahPeriksa() {
   const [templateAda, ubahTemplateAda] = useState<boolean | null>(null);
   const [beres, ubahBeres] = useState<null | { jam: string; status: StatusAbsensi }>(null);
   const [kirim, ubahKirim] = useState(false);
+  // Absensi jenis ini hari ini sudah tercatat -> verifikasi tidak dijalankan (undefined = belum diketahui)
+  const [sudah, ubahSudah] = useState<Absensi | null | undefined>(undefined);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hentikanRef = useRef<(() => void) | null>(null);
@@ -46,7 +49,7 @@ export default function WajahPeriksa() {
     [],
   );
 
-  /** Selesai gerakan wajah -> kirim ke server menurut jalur (scan / langsung).
+  /** Selesai gerakan wajah -> kirim ke server (absensi langsung).
    * Saat liveness mati jac adalah null (tanpa nonce). */
   const kirimHasil = useCallback(
     async (jac: Tantangan | null, em: number[]) => {
@@ -59,16 +62,22 @@ export default function WajahPeriksa() {
       kirimRef.current = true;
       ubahKirim(true);
       ubahGalat(null);
+      // Foto diambil dulu dari frame kini (kamera masih menyala), lalu dikirim bersama data
+      const foto = keJpeg(videoRef.current);
       try {
-        if (genap === 'scan') {
-          // Wajah siap: bawa embedding (dan nonce bila ada) ke halaman pemindai QR pembimbing
+        if (scan) {
+          // Mode qr_wajah: verifikasi wajah (termasuk foto untuk rekap) membuka QR lama 30 detik
+          await api<{ pesan: string }>('/face/verify', {
+            method: 'POST',
+            json: { jenis, embedding: em, ...(jac ? { nonce: jac.nonce } : {}), ...(foto ? { foto } : {}) },
+          });
           hentikanRef.current?.();
-          navigate(`/absensi/scan?jenis=${jenis}`, { state: { embedding: em, nonce: jac ? jac.nonce : null } });
+          navigate(`/absensi/qr?jenis=${jenis}`);
           return;
         }
         const r = await api<{ pesan: string; jam: string; status: StatusAbsensi }>('/absensi/wajah', {
           method: 'POST',
-          json: { jenis, embedding: em, ...(jac ? { nonce: jac.nonce } : {}) },
+          json: { jenis, embedding: em, ...(jac ? { nonce: jac.nonce } : {}), ...(foto ? { foto } : {}) },
         });
         hentikanRef.current?.();
         ubahBeres({ jam: r.jam, status: r.status });
@@ -97,10 +106,11 @@ export default function WajahPeriksa() {
         lusarRef.current = [];
       }
     },
-    [genap, jenis, navigate, mintaTantangan],
+    [jenis, mintaTantangan, scan, navigate],
   );
 
-  /* Pendaftaran wajah dicek ke server lebih dulu — pengukuran lokal saja tidak cukup. */
+  /* Pendaftaran wajah dicek ke server lebih dulu — pengukuran lokal saja tidak cukup.
+     Riwayat hari ini juga dicek: bila absensi jenis ini sudah tercatat, verifikasi tidak perlu. */
   useEffect(() => {
     let hidup = true;
     api<{ terdaftar: boolean }>('/face/template')
@@ -116,6 +126,20 @@ export default function WajahPeriksa() {
         // Gagal tahu status: lanjutkan; server akan menolak saat pengiriman bila memang belum ada
         if (hidup) ubahTemplateAda(true);
       });
+    api<{ data: Absensi[] }>('/absensi/riwayat')
+      .then((r) => {
+        if (!hidup) return;
+        const cocok = r.data.find((x) => x.tanggal === isoHariIni() && x.jenis === jenis) ?? null;
+        ubahSudah(cocok);
+        if (cocok) {
+          ubahPesan('');
+          ubahGalat(null);
+        }
+      })
+      .catch(() => {
+        // Gagal diketahui: biarkan; server tetap menolak dobel saat pengiriman
+        if (hidup) ubahSudah(null);
+      });
     return () => {
       hidup = false;
     };
@@ -125,8 +149,8 @@ export default function WajahPeriksa() {
   useEffect(() => {
     let hidup = true;
     let raf = 0;
-    // Tidak ada template: kamera tidak perlu menyala, cukup pemberitahuan di atas
-    if (templateAda !== true) return undefined;
+    // Tidak ada template, atau absensi jenis ini sudah tercatat: kamera tidak perlu menyala
+    if (templateAda !== true || sudah !== null) return undefined;
 
     const mulai = async () => {
       try {
@@ -220,7 +244,7 @@ export default function WajahPeriksa() {
       hentikanRef.current?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateAda]);
+  }, [templateAda, sudah]);
 
   /* Pengaturan liveness menentukan mode verifikasi (tantangan gerakan / wajah lurus). */
   useEffect(() => {
@@ -243,7 +267,7 @@ export default function WajahPeriksa() {
     };
   }, []);
 
-  /* Tantangan pertama + mesin gerakan — hanya saat liveness aktif. */
+  /* Tantangan pertama + mesin gerakan — hanya saat liveness aktif dan absensi jenis ini belum tercatat. */
   useEffect(() => {
     let hidup = true;
     if (!daring) {
@@ -251,6 +275,7 @@ export default function WajahPeriksa() {
       ubahPesan('');
       return undefined;
     }
+    if (sudah !== null && sudah !== undefined) return undefined; // sudah absen: verifikasi ditutup
     if (livenessAktif !== true) {
       bawaan.current = { tan: null, mesin: null, terkunci: false };
       livenessRef.current = livenessAktif; // false = liveness mati, null = belum diketahui (loop menunggu)
@@ -269,13 +294,13 @@ export default function WajahPeriksa() {
     return () => {
       hidup = false;
     };
-  }, [daring, mintaTantangan, livenessAktif]);
+  }, [daring, mintaTantangan, livenessAktif, sudah]);
 
-  const langsungBeres = beres && genap === 'langsung';
+  const langsungBeres = beres !== null;
 
   return (
     <>
-      <Kartu t={genap === 'langsung' ? `Absen ${jenis} dengan wajah` : `Verifikasi wajah — absen ${jenis}`}>
+      <Kartu t={scan ? 'Verifikasi wajah untuk absen QR' : `Absen ${jenis} dengan wajah`}>
         {galat ? (
           <div className="mb-3">
             <Pemberitahuan
@@ -301,6 +326,20 @@ export default function WajahPeriksa() {
               <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
             </div>
           </div>
+        ) : sudah !== null && sudah !== undefined ? (
+          // Absensi jenis ini sudah tercatat hari ini — verifikasi & QR tidak dibuka lagi
+          <div className="text-center py-2">
+            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
+            <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} sudah tercatat</h2>
+            <p>
+              Tercatat <b aria-live="polite">{sudah.jam.slice(0, 5)}</b> &mdash; <Badge s={sudah.status} />
+            </p>
+            <p className="text-mu text-sm mt-1">Cukup sekali absen per jenis per hari.</p>
+            <div className="mt-3 flex gap-2 justify-center">
+              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+            </div>
+          </div>
         ) : templateAda === false ? null : (
           <>
             <div className="relative w-fit mx-auto">
@@ -317,6 +356,7 @@ export default function WajahPeriksa() {
             </div>
             <p className="text-xs text-mu mt-2">
               Kamera aktif hanya selama halaman ini dibuka.{livenessAktif ? ' Instruksi berubah setiap tantangan baru.' : ' Tanpa instruksi gerakan — cukup wajah lurus.'}
+              {scan ? ' Begitu verifikasi lolos, QR absensi Anda ditayangkan untuk dipindai pembimbing.' : ''}
             </p>
           </>
         )}

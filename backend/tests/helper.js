@@ -7,8 +7,9 @@ const TABEL = [
   'jurnal_review',
   'jurnal',
   'absensi_penolakan',
+  'wajah_foto',
+  'pengajuan_izin',
   'absensi',
-  'token_pembimbing',
   'qr_tokens',
   'tantangan_wajah',
   'face_verifications',
@@ -91,3 +92,4 @@ module.exports = { kosongkanDb, buatUser, isiDasar, tokenUntuk, SANDI_SEED, TABE
 afterAll(async () => {
   await require('../src/models').sequelize.close();
 });
+

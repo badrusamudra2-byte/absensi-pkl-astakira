@@ -3,7 +3,6 @@ const { sequelize, Peserta, User, Absensi, Jurnal, JurnalReview } = require('../
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian, rentang } = require('../utils/waktu');
 const audit = require('../utils/audit');
-const keterangan = require('../services/keterangan');
 
 const idBimbingan = async (pid) => (await Peserta.findAll({ where: { pembimbing_id: pid }, attributes: ['user_id'] })).map((p) => p.user_id);
 
@@ -86,18 +85,6 @@ exports.review = asyncH(async (req, res) => {
   });
   await audit(req, `${baru === 'Disetujui' ? 'Setujui' : 'Minta revisi'} jurnal`, `jurnal#${j.id}`);
   res.json({ pesan: baru === 'Disetujui' ? 'Jurnal disetujui.' : 'Permintaan revisi dikirim ke peserta.', status: baru });
-});
-
-// Catat Izin/Sakit untuk peserta bimbingan (slot hari itu terkunci untuk absensi)
-exports.catatKet = asyncH(async (req, res) => {
-  const ids = await idBimbingan(req.user.id);
-  const uid = Number(req.body.user_id);
-  if (!ids.includes(uid)) {
-    throw new HttpError(403, 'Peserta ini tidak berada di bawah bimbingan Anda.', 'BUKAN_BIMBINGAN');
-  }
-  const b = await keterangan.buat({ ...req.body, user_id: uid, oleh: req.user.id });
-  await audit(req, `Catat ${b.status}`, `peserta#${uid}`);
-  res.status(201).json({ pesan: `${b.status} tercatat.`, data: { id: b.id, tanggal: b.tanggal, status: b.status } });
 });
 
 exports.rekap = asyncH(async (req, res) => {

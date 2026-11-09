@@ -7,9 +7,9 @@ import { Kartu, Tombol, Pemberitahuan, Tabel } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 
 const SESUAI: { metode: MetodeAbsensi; label: string; uraian: string }[] = [
-  { metode: 'qr_wajah', label: 'QR + wajah', uraian: 'Peserta memverifikasi wajah lalu menunjukkan QR ke pembimbing. Perilaku fase sebelumnya.' },
-  { metode: 'qr', label: 'QR saja', uraian: 'Tanpa verifikasi wajah; QR langsung terbit.' },
-  { metode: 'wajah', label: 'Wajah saja', uraian: 'Absensi tercatat otomatis setelah wajah cocok dan liveness lolos — tanpa QR dan tanpa tombol pembimbing.' },
+  { metode: 'qr_wajah', label: 'QR + wajah', uraian: 'Peserta memverifikasi wajahnya sendiri di HP-nya (foto wajah saat absensi tersimpan terenkripsi untuk rekap), lalu menayangkan QR; pembimbing cukup memindai QR-nya.' },
+  { metode: 'qr', label: 'QR saja', uraian: 'Peserta menayangkan QR-nya; pembimbing memindai — tanpa verifikasi wajah.' },
+  { metode: 'wajah', label: 'Wajah saja', uraian: 'Peserta absen langsung dari HP-nya: wajah cocok dan liveness lolos, absensi (beserta foto) tercatat — tanpa QR.' },
 ];
 
 type BarisPsrt = { id: number; nama: string; email: string };

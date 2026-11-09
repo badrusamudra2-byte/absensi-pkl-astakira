@@ -196,45 +196,112 @@ describe('verifikasi tanpa liveness (liveness_aktif=false)...', () => {
   });
 });
 
+/* ---------- Foto wajah pada verifikasi (/face/verify) ---------- */
+describe('foto wajah pada verifikasi (/face/verify)', () => {
+  /** JPEG sah palsu (magic bytes FFD8FF + isi acak). */
+  const JPEG_B64 = Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff]),
+    require('crypto').randomBytes(24),
+  ]).toString('base64');
+
+  test('verifikasi dengan foto JPEG -> tersimpan terenkripsi pada verifikasi', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const r = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce, foto: JPEG_B64 });
+    expect(r.status).toBe(200);
+    const fV = await M.FaceVerification.findOne({ where: { user_id: peserta.id } });
+    expect(fV).not.toBeNull();
+    // 3 bagian base64 dipisah titik (iv.tag.ct) — bukan base64 JPEG polos
+    expect(fV.foto_ciphertext).toMatch(/^[A-Za-z0-9+/]+=*\.[A-Za-z0-9+/]+=*\.[A-Za-z0-9+/]+=*$/);
+  });
+
+  test('verifikasi tanpa foto -> foto_ciphertext null (sah)', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const r = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(200);
+    const fV = await M.FaceVerification.findOne();
+    expect(fV.foto_ciphertext).toBeNull();
+  });
+
+  test('foto bukan JPEG -> 422 FOTO_BUKAN_JPEG', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const r = await verifikasi(authz, {
+      jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce,
+      foto: Buffer.from('PNG bukan JPEG').toString('base64'),
+    });
+    expect(r.status).toBe(422);
+    expect(r.body).toMatchObject({ kode: 'FOTO_BUKAN_JPEG' });
+    expect(await M.FaceVerification.count()).toBe(0); // wajah cocok tapi foto ditolak
+  });
+
+  test('foto terlalu besar -> 422 FOTO_TERLALU_BESAR', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const gemuk = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), require('crypto').randomBytes(env.face.foto.maksBait + 100)]).toString('base64');
+    const r = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce, foto: gemuk });
+    expect(r.status).toBe(422);
+    expect(r.body).toMatchObject({ kode: 'FOTO_TERLALU_BESAR' });
+  });
+});
+
+/* ---------- Tantangan hanya milik peserta ---------- */
+describe('tantangan liveness khusus peserta (/face/tantangan)', () => {
+  test('pembimbing tidak diperbolehkan meminta tantangan -> 403 DILARANG', async () => {
+    const { pembimbing } = await isiDasar();
+    const r = await request(app).post('/api/face/tantangan')
+      .set('Authorization', await tokenUntuk(pembimbing.email))
+      .send({ peserta_id: 1 });
+    expect(r.status).toBe(403);
+    expect(r.body).toMatchObject({ kode: 'DILARANG' });
+  });
+});
+
 /* ---------- Tiga mode absensi ---------- */
 describe('mode absensi (pengaturan_absensi)', () => {
-  test('mode qr: konfirmasi-scan tanpa verifikasi wajah -> 200, tercatat metode QR', async () => {
+  test('mode qr: scan tanpa verifikasi wajah -> 200, tercatat metode QR', async () => {
     const { admin, peserta, pembimbing } = await isiDasar();
     const authzAdmin = await tokenUntuk(admin.email);
-    const authz = await tokenUntuk(peserta.email);
     await kerjakanHari();
     await setMode(authzAdmin, 'qr');
 
     const tayang = await request(app)
-      .post('/api/absensi/qr-tayang')
-      .set('Authorization', await tokenUntuk(pembimbing.email));
+      .post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email))
+      .send({ jenis: 'masuk' });
     expect(tayang.status).toBe(201);
     const r = await request(app)
-      .post('/api/absensi/konfirmasi-scan')
-      .set('Authorization', authz)
-      .send({ token: tayang.body.token, jenis: 'masuk' });
+      .post('/api/absensi/scan')
+      .set('Authorization', await tokenUntuk(pembimbing.email))
+      .send({ token: tayang.body.token });
     expect(r.status).toBe(200);
     const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
     expect(baris.metode).toBe('QR');
     expect(baris.dikonfirmasi_oleh).toBe(pembimbing.id);
   });
 
-  test('mode qr_wajah: scan tanpa template wajah -> 412 TEMPLATE_BELUM', async () => {
-    const { peserta, pembimbing } = await isiDasar();
+  test('mode qr_wajah: peserta belum verifikasi wajah -> QR tak bisa dibuat -> 422 WAJAH_BELUM_VERIF', async () => {
+    const { peserta } = await isiDasar();
     await kerjakanHari();
-    const authz = await tokenUntuk(peserta.email);
-    const tayang = await request(app)
-      .post('/api/absensi/qr-tayang')
-      .set('Authorization', await tokenUntuk(pembimbing.email));
-    const r = await request(app)
-      .post('/api/absensi/konfirmasi-scan')
-      .set('Authorization', authz)
-      .send({ token: tayang.body.token, jenis: 'masuk' });
-    expect(r.status).toBe(412);
-    expect(r.body).toMatchObject({ kode: 'TEMPLATE_BELUM' });
+    const minta = await request(app)
+      .post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email))
+      .send({ jenis: 'masuk' });
+    expect(minta.status).toBe(422);
+    expect(minta.body).toMatchObject({ kode: 'WAJAH_BELUM_VERIF' });
+    expect(await M.QrToken.count()).toBe(0);
   });
 
-  test('mode wajah: konfirmasi-scan -> 409 MODE_QR_NONAKTIF; /absensi/wajah tercatat metode Wajah', async () => {
+  test('mode wajah: scan & qr-saya ditolak -> 409 MODE_QR_NONAKTIF; /absensi/wajah tercatat metode Wajah', async () => {
     const { admin, peserta, pembimbing } = await isiDasar();
     const authzAdmin = await tokenUntuk(admin.email);
     const authz = await tokenUntuk(peserta.email);
@@ -242,13 +309,17 @@ describe('mode absensi (pengaturan_absensi)', () => {
     await setMode(authzAdmin, 'wajah');
     await daftarWajah(authz);
 
+    // QR tak bisa dibuat di mode wajah...
     const tayang = await request(app)
-      .post('/api/absensi/qr-tayang')
-      .set('Authorization', await tokenUntuk(pembimbing.email));
-    const qr = await request(app)
-      .post('/api/absensi/konfirmasi-scan')
+      .post('/api/absensi/qr-saya')
       .set('Authorization', authz)
-      .send({ token: tayang.body.token, jenis: 'masuk' });
+      .send({ jenis: 'masuk' });
+    expect(tayang.status).toBe(409);
+    // ...dan pindaian apa pun ditolak sebelum mencocokkan token
+    const qr = await request(app)
+      .post('/api/absensi/scan')
+      .set('Authorization', await tokenUntuk(pembimbing.email))
+      .send({ token: 'XXXXXXXXadeb123456' });
     expect(qr.status).toBe(409);
     expect(qr.body).toMatchObject({ kode: 'MODE_QR_NONAKTIF' });
 

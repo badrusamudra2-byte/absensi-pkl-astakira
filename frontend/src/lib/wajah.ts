@@ -50,6 +50,21 @@ export function kecerahan(video: HTMLVideoElement): number {
   return total / (d.length / 4) / 255;
 }
 
+/** Captura bingkai kini sebagai JPEG data URL (dipakai pada foto absensi wajah).
+ * Maks lebar 640 px agar muat batas ukuran server; bila video belum siap -> null. */
+export function keJpeg(video: HTMLVideoElement | null): string | null {
+  if (!video || video.readyState < 2 || !video.videoWidth) return null;
+  const lebar = Math.min(video.videoWidth, 640);
+  const skala = lebar / video.videoWidth;
+  const kanvas = document.createElement('canvas');
+  kanvas.width = lebar;
+  kanvas.height = Math.round(video.videoHeight * skala);
+  const k = kanvas.getContext('2d');
+  if (!k) return null;
+  k.drawImage(video, 0, 0, kanvas.width, kanvas.height);
+  return kanvas.toDataURL('image/jpeg', 0.8);
+}
+
 /* ---------- Embedding (harus konsisten dengan kalibrasi pendaftaran) ---------- */
 
 /** Indeks 64 titik tersebar dari 468 landmark -> 64*2 = 128 angka (FACE_DIM backend). */

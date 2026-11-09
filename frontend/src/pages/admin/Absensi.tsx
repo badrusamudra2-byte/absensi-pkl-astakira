@@ -6,9 +6,37 @@ import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { isoHariIni } from '../../komponen/umum';
 
+/** Modal foto wajah absensi: gambar diunduh mentah (blob JWT) lalu ditampilkan. */
+function ModalFoto({ url, tutup }: { url: string; tutup: () => void }) {
+  useEffect(() => {
+    const kbd = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') tutup();
+    };
+    window.addEventListener('keydown', kbd);
+    return () => window.removeEventListener('keydown', kbd);
+  }, [tutup]);
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={tutup}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Foto wajah saat absensi"
+        className="bg-kartu rounded-xl p-3 max-w-[92vw] max-h-[92vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img src={url} alt="Foto wajah peserta saat absensi dicatat" className="max-w-full max-h-[70vh] rounded-lg" />
+        <p className="text-center mt-2">
+          <Tombol varian="gh" onClick={tutup}>Tutup</Tombol>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const STATUS: StatusAbsensi[] = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir'];
 
-/** Absensi per tanggal: koreksi (alasan wajib) dan catat izin/sakit oleh admin. */
+/** Absensi per tanggal: koreksi baris (alasan wajib). Izin/Sakit kini hanya datang
+ * dari pengajuan peserta yang disetujui pembimbing. */
 export default function AbsensiAdmin() {
   const toast = useToast();
   const [peserta, ubahPeserta] = useState<{ id: number; nama: string }[]>([]);
@@ -26,12 +54,33 @@ export default function AbsensiAdmin() {
   const [fAlasan, ubahFAlasan] = useState('');
   const [sedang, ubahSedang] = useState(false);
 
-  // Form izin/sakit
-  const [izinStatus, ubahIzinStatus] = useState<'Izin' | 'Sakit'>('Izin');
-  const [izinKet, ubahIzinKet] = useState('');
+  // Foto wajah absensi (dipakai untuk rekap pembuktian kehadiran)
+  const [fotoUrl, ubahFotoUrl] = useState<string | null>(null);
+  const [fotoMuat, ubahFotoMuat] = useState<number | null>(null); // id absensi yang sedang diunduh
+
+  const tutupFoto = () => {
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+    ubahFotoUrl(null);
+  };
+
+  const lihatFoto = async (a: Absensi) => {
+    ubahFotoMuat(a.id);
+    ubahGalat(null);
+    try {
+      const res = await api<Response>(`/admin/absensi/${a.id}/foto`, { raw: true });
+      const blob = await res.blob();
+      if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+      ubahFotoUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      const e2 = err as ApiError;
+      ubahGalat(teksKode(e2.kode ?? 'SERVER', e2.message));
+    } finally {
+      ubahFotoMuat(null);
+    }
+  };
 
   // Daftar peserta: galat tidak boleh ditelan senyap — dropdown kosong membuat
-  // tombol "Tampilkan"/"Catat izin" mati tanpa penjelasan.
+  // tombol "Tampilkan" mati tanpa penjelasan.
   useEffect(() => {
     api<{ data: { id: number; nama: string; aktif: boolean }[] }>('/admin/peserta')
       .then((r) => ubahPeserta(r.data.map((p) => ({ id: p.id, nama: p.nama }))))
@@ -83,26 +132,6 @@ export default function AbsensiAdmin() {
     }
   };
 
-  const catatIzin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    ubahSedang(true);
-    ubahGalat(null);
-    try {
-      const r = await api<{ pesan: string }>('/admin/absensi/keterangan', {
-        method: 'POST',
-        json: { user_id: uid, tanggal, status: izinStatus, keterangan: izinKet },
-      });
-      toast(r.pesan);
-      ubahIzinKet('');
-      await muat();
-    } catch (err) {
-      const e2 = err as ApiError;
-      ubahGalat(teksKode(e2.kode ?? 'SERVER', e2.message));
-    } finally {
-      ubahSedang(false);
-    }
-  };
-
   return (
     <>
       <Kartu t="Absensi per tanggal">
@@ -132,7 +161,8 @@ export default function AbsensiAdmin() {
         ) : null}
 
         {rows !== null && rows.length ? (
-          <ul className="mt-4 flex flex-col gap-2">
+          <>
+            <ul className="mt-4 flex flex-col gap-2">
             {rows.map((a) => (
               <li key={a.id} className="border border-garis rounded-xl p-3">
                 {editId === a.id ? (
@@ -180,50 +210,30 @@ export default function AbsensiAdmin() {
                     <Badge s={a.status} />
                     <span className="text-mu">{a.metode}</span>
                     {a.keterangan ? <span className="text-mu w-full">“{a.keterangan}”</span> : null}
-                    <button onClick={() => bukaEdit(a)} className="text-pr underline cursor-pointer bg-transparent border-0 p-0 text-sm">
-                      Koreksi…
-                    </button>
+                    <span className="flex gap-3">
+                      {a.metode.includes('Wajah') ? (
+                        <button
+                          onClick={() => void lihatFoto(a)}
+                          disabled={fotoMuat !== null}
+                          className="text-pr underline cursor-pointer bg-transparent border-0 p-0 text-sm"
+                        >
+                          {fotoMuat === a.id ? 'Memuat foto…' : 'Lihat foto…'}
+                        </button>
+                      ) : null}
+                      <button onClick={() => bukaEdit(a)} className="text-pr underline cursor-pointer bg-transparent border-0 p-0 text-sm">
+                        Koreksi…
+                      </button>
+                    </span>
                   </p>
                 )}
               </li>
             ))}
-          </ul>
+            </ul>
+            {fotoUrl ? <ModalFoto url={fotoUrl} tutup={tutupFoto} /> : null}
+          </>
         ) : rows !== null ? (
           <p className="text-mu text-sm mt-4">Tidak ada catatan absensi peserta ini pada tanggal tersebut.</p>
         ) : null}
-      </Kartu>
-
-      <Kartu t="Catat izin / sakit (untuk peserta mana saja)">
-        <form onSubmit={catatIzin} className="max-w-[560px]">
-          <p className="text-mu text-sm mb-2">
-            Memakai peserta dan tanggal di atas. Hari yang tercatat Izin/Sakit otomatis terkunci dari absensi.
-          </p>
-          <fieldset disabled={!uid}>
-            <div className="flex gap-4 mt-1">
-              {(['Izin', 'Sakit'] as const).map((s) => (
-                <label key={s} className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="radio" name="adm_izin_st" checked={izinStatus === s} onChange={() => ubahIzinStatus(s)} />
-                  {s}
-                </label>
-              ))}
-            </div>
-            <Label htmlFor="adm_izin_ket">Keterangan (wajib)</Label>
-            <textarea
-              id="adm_izin_ket"
-              required
-              minLength={3}
-              maxLength={1000}
-              rows={3}
-              value={izinKet}
-              onChange={(e) => ubahIzinKet(e.target.value)}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-              placeholder="Misal: Izin kerja bakti sekolah."
-            />
-            <p className="mt-3">
-              <Tombol type="submit" disabled={sedang || !uid || izinKet.trim().length < 3}>Catat {izinStatus.toLowerCase()}</Tombol>
-            </p>
-          </fieldset>
-        </form>
       </Kartu>
     </>
   );

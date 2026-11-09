@@ -33,27 +33,44 @@ Content-Type: application/json
 GET {{host}}/workshift
 Authorization: Bearer {{tokenPeserta}}
 
-### Pembimbing: tayangkan QR (peserta memindai QR ini dengan HP-nya)
-# @name tayangQr
-POST {{host}}/absensi/qr-tayang
-Authorization: Bearer {{tokenPembimbing}}
-
-###
-@tokenTayang = {{tayangQr.response.body.token}}
-
-### Peserta: konfirmasi hasil pindaian (mode qr — tanpa wajah)
-POST {{host}}/absensi/konfirmasi-scan
+### Peserta: menayangkan QR absensi (pembimbing memindai QR ini dengan HP-nya)
+# Bila ditayangkan ulang, QR lama otomatis dipadamkan. Token berlaku selama QR_TTL_DETIK.
+# @name qrSaya
+POST {{host}}/absensi/qr-saya
 Authorization: Bearer {{tokenPeserta}}
 Content-Type: application/json
 
-{ "token": "{{tokenTayang}}", "jenis": "masuk" }
+{ "jenis": "masuk" }
 
-### Peserta: konfirmasi hasil pindaian (mode qr_wajah — dengan embedding + nonce)
-# POST {{host}}/absensi/konfirmasi-scan
+###
+@tokenQrSaya = {{qrSaya.response.body.token}}
+
+### Peserta: verifikasi wajah + foto (wajib sebelum QR tayang pada mode qr_wajah).
+# Ganti embedding menjadi 128 angka dan foto menjadi base64 JPEG besar dari kamera.
+# @name verifikasiWajah
+POST {{host}}/face/verify
+Authorization: Bearer {{tokenPeserta}}
+Content-Type: application/json
+
+{ "jenis": "masuk", "embedding": [0.1, -0.1], "nonce": "{{tantangan.response.body.nonce}}", "foto": "data:image/jpeg;base64,/9j/4AAQ..." }
+
+###
+@berlakuWajah = {{verifikasiWajah.response.body.berlaku_detik}}
+
+### Pembimbing: pindai QR peserta (hanya isi token QR; absensi QR+Wajah hanya tercatat
+# bila peserta baru saja lolos /face/verify untuk jenis yang sama)
+POST {{host}}/absensi/scan
+Authorization: Bearer {{tokenPembimbing}}
+Content-Type: application/json
+
+{ "token": "{{tokenQrSaya}}" }
+
+### Pembimbing: pulangi peserta — minta QR jenis pulang lebih dulu
+# POST {{host}}/absensi/qr-saya
 # Authorization: Bearer {{tokenPeserta}}
 # Content-Type: application/json
 #
-# { "token": "{{tokenTayang}}", "jenis": "masuk", "embedding": [0.1, -0.1, 0.1], "nonce": "NONCE-DARI-FACE-TANTANGAN" }
+# { "jenis": "pulang" }
 
 ### Tulis jurnal dan langsung kirim
 POST {{host}}/jurnal
@@ -79,3 +96,54 @@ Authorization: Bearer {{tokenAdmin}}
 ### Audit log
 GET {{host}}/admin/audit
 Authorization: Bearer {{tokenAdmin}}
+
+### Admin: buka foto wajah salah satu baris absensi (balas gambar JPEG)
+# GET {{host}}/admin/absensi/1/foto
+# Authorization: Bearer {{tokenAdmin}}
+
+### Peserta: kirim pengajuan izin/sakit (bukti foto wajib, maks 5 MB JPG/PNG/WebP)
+# Pilih berkas lewat UI; contoh di bawah memakai berkas di folder yang sama
+POST {{host}}/pengajuan/izin
+Authorization: Bearer {{tokenPeserta}}
+Content-Type: multipart/form-data; boundary=----pengajuan
+
+------pengajuan
+Content-Disposition: form-data; name="jenis"
+
+Izin
+------pengajuan
+Content-Disposition: form-data; name="keterangan"
+
+Menghadiri acara keluarga.
+------pengajuan
+Content-Disposition: form-data; name="bukti"; filename="bukti.jpg"
+Content-Type: image/jpeg
+
+< ./contoh-bukti.jpg
+------pengajuan--
+
+### Peserta: daftar pengajuan izin/sakit miliknya
+GET {{host}}/pengajuan/izin
+Authorization: Bearer {{tokenPeserta}}
+
+### Pembimbing: daftar pengajuan bimbingan + notifikasi latang merah
+GET {{host}}/pengajuan/izin
+Authorization: Bearer {{tokenPembimbing}}
+
+###
+GET {{host}}/pengajuan/notifikasi
+Authorization: Bearer {{tokenPembimbing}}
+
+### Pembimbing: setujui pengajuan (menulis baris absensi Izin/Sakit hari itu)
+PUT {{host}}/pengajuan/izin/1/putuskan
+Authorization: Bearer {{tokenPembimbing}}
+Content-Type: application/json
+
+{ "putusan": "Disetujui" }
+
+### Pembimbing: tolak pengajuan (alasan wajib)
+PUT {{host}}/pengajuan/izin/2/putuskan
+Authorization: Bearer {{tokenPembimbing}}
+Content-Type: application/json
+
+{ "putusan": "Ditolak", "alasan": "Bukti foto tidak jelas." }

@@ -45,7 +45,7 @@ export default function Dashboard() {
             { to: '/pembimbing/peserta', label: 'Peserta bimbingan', uraian: 'Daftar peserta dan rekap singkat 30 hari terakhir.' },
             { to: '/pembimbing/jurnal', label: 'Review jurnal', uraian: 'Setujui atau minta revisi jurnal peserta.' },
             { to: '/pembimbing/rekap', label: 'Rekap periode', uraian: 'Absensi dan jurnal dalam rentang tanggal.' },
-            { to: '/pembimbing/izin', label: 'Catat izin/sakit', uraian: 'Tandai hari libur peserta agar tidak perlu absen.' },
+            { to: '/pembimbing/izin', label: 'Lihat izin/sakit', uraian: 'Setujui atau tolak pengajuan izin/sakit peserta beserta buktinya.' },
           ].map((t) => (
             <li key={t.to}>
               <Link to={t.to} className="block h-full rounded-xl border-2 border-garis p-4 no-underline text-inherit hover:border-pr bg-kartu">

@@ -2,6 +2,7 @@ const { FaceTemplate, FaceVerification, sequelize } = require('../models');
 const env = require('../config/env');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { enc, dec } = require('../utils/crypto');
+const siapkanFoto = require('../utils/foto');
 const audit = require('../utils/audit');
 const liveness = require('../services/liveness');
 const pengaturan = require('../services/pengaturan');
@@ -30,6 +31,8 @@ exports.cekTemplate = asyncH(async (req, res) => {
   res.json({ terdaftar: !!(await FaceTemplate.findOne({ where: { user_id: req.user.id } })) });
 });
 
+// Tantangan hanya untuk peserta memverifikasi wajahnya sendiri di HP-nya. Wajah yang
+// dibandingkan, foto, dan pesan absensi milik peserta terkait.
 exports.tantangan = asyncH(async (req, res) => {
   if (!(await FaceTemplate.findOne({ where: { user_id: req.user.id } }))) {
     throw new HttpError(412, 'Template wajah belum terdaftar.', 'TEMPLATE_BELUM');
@@ -44,11 +47,15 @@ exports.tantangan = asyncH(async (req, res) => {
   });
 });
 
-/** Ubahan peserta: { jenis, embedding, nonce? }.
+/** Ubahan peserta: { jenis, embedding, nonce?, foto? }.
  * Bila liveness_aktif: nonce wajib, sekali pakai, dan kedaluwarsa (mode A).
- * Bila liveness mati: verifikasi wajah berjalan tanpa tantangan. */
+ * Bila liveness mati: verifikasi wajah berjalan tanpa tantangan.
+ * Bila foto disertakan: JPEG (base64/data URL) divalidasi, dienkripsi, dan disimpan
+ * pada verifikasi — dipindahkan ke absensi saat pembimbing memindai QR peserta
+ * (atau langsung saat absensi wajah). Tidak pernah dikirim balik ke klien. */
+
 exports.verify = asyncH(async (req, res) => {
-  const { embedding, jenis, nonce } = req.body;
+  const { embedding, jenis, nonce, foto } = req.body;
   if (!['masuk', 'pulang'].includes(jenis)) throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
   const cfg = await pengaturan.dapatkan();
   const tpl = await FaceTemplate.findOne({ where: { user_id: req.user.id } });
@@ -63,10 +70,15 @@ exports.verify = asyncH(async (req, res) => {
     throw new HttpError(422, 'Wajah tidak cocok dengan template yang terdaftar.', 'WAJAH_TIDAK_COCOK');
   }
 
+  const fotoCt = siapkanFoto(foto);
+
   await sequelize.transaction(async (t) => {
     if (cfg.liveness_aktif) await liveness.periksa(req.user.id, nonce, t);
     await FaceVerification.create(
-      { user_id: req.user.id, jenis, kedaluwarsa_pada: new Date(Date.now() + env.face.ttl * 1000) },
+      {
+        user_id: req.user.id, jenis, kedaluwarsa_pada: new Date(Date.now() + env.face.ttl * 1000),
+        foto_ciphertext: fotoCt,
+      },
       { transaction: t },
     );
   });

@@ -37,9 +37,9 @@ npm test
 - Tes memakai database terpisah lewat `DB_NAME_TEST` (default `absensi_pkl_test`),
   dibuat otomatis beserta migrasinya oleh `tests/global-setup.js`.
 - Lingkup saat ini: login (berhasil/salah sandi/akun nonaktif), lupa & reset kata sandi, penjaga peran
-  (peserta/pembimbing memanggil endpoint admin harus 403), absensi QR dua arah (menayangkan QR
-  pembimbing, pindaian peserta: hari libur, kedaluwarsa, dipakai ulang, dua pindaian bersamaan,
-  bukan bimbingan, wajah+liveness), wajah & liveness (kecocokan, tantangan
+  (peserta/pembimbing memanggil endpoint admin harus 403), absensi QR (peserta menayangkan QR-nya,
+  pembimbing memindai: hari libur, kedaluwarsa, dipakai ulang, dua pindaian bersamaan, QR tiap siswa
+  berbeda, wajah+liveness), wajah & liveness (kecocokan, tantangan
   kedaluwarsa/dipakai ulang/milik user lain, tiga metode absensi, pembersihan data wajah saat akun
   dinonaktifkan), dan jurnal (siklus Draft/Dikirim/Revisi/Disetujui, transisi tidak valid, akses
   jurnal milik orang lain, validasi tanggal dan batas teks, batas unik harian).
@@ -52,40 +52,54 @@ Pengaturan metode absensi ada di tabel `pengaturan_absensi` (baris tunggal, diub
 `GET/PUT /api/pengaturan/absensi`, masuk audit log): `metode` = `qr_wajah` (bawaan) | `qr` | `wajah`,
 dan `liveness_aktif` (tantangan gerakan kedip/tengok/buka mulut dari server).
 
-Arah QR: **pembimbing menayangkan QR berotasi 30 detik di HP/laptopnya, peserta memindainya dengan
-HP-nya sendiri** (`POST /api/absensi/qr-tayang` untuk pembimbing, `POST /api/absensi/konfirmasi-scan`
-untuk peserta). Isi QR adalah token acak (disimpan sebagai hash SHA-256, tabel `token_pembimbing`);
-menayangkan QR baru otomatis memadamkan token sebelumnya. Peserta memilih sendiri jenis absen
-(masuk/pulang). Server yang menentukan waktu, status, dan `dikonfirmasi_oleh` (id pembimbing pemberi
-QR) saat pindaian diterima — bukan dari klien. Peserta hanya boleh memindai QR pembimbing
-pembimbingnya sendiri (`BUKAN_BIMBINGAN`).
+Arah QR: **peserta menayangkan QR berotasi 30 detik dari HP-nya sendiri, pembimbing memindainya**
+(`POST /api/absensi/qr-saya` untuk peserta, `POST /api/absensi/scan` untuk pembimbing). Isi QR adalah
+token acak (disimpan sebagai hash SHA-256, tabel `qr_tokens`, satu token milik satu peserta untuk satu
+jenis absen) sehingga QR tiap siswa selalu berbeda satu sama lain; menayangkan QR baru otomatis
+memadamkan token sebelumnya untuk jenis itu. Jenis absen (masuk/pulang) mengikuti token, bukan isi
+body. Server yang menentukan waktu, status, dan `dikonfirmasi_oleh` (id pembimbing pemindai) saat
+pindaian diterima — bukan dari klien. Pembimbing mana pun aktif boleh memindai; QR milik peserta
+nonaktif ditolak.
 
 ### Mode qr_wajah (bawaan)
-1. `POST /api/absensi/qr-tayang` (pembimbing) — menayangkan QR; token berlaku `QR_TTL_DETIK` (30 detik).
-2. Peserta memindai QR di halaman scan (`/absensi/scan`).
-3. `POST /api/face/tantangan` (peserta) — nonce sekali pakai + instruksi gerakan acak (`LIVENESS_TTL_DETIK`, 60 detik). Dilewati bila `liveness_aktif=false`.
-4. `POST /api/absensi/konfirmasi-scan` (peserta) `{ token, jenis, embedding, nonce? }` — embedding dibandingkan dengan template terenkripsi; bila cocok (dan liveness lolos), absensi langsung tercatat dengan metode `QR+Wajah`.
+Wajah diverifikasi **oleh siswa sendiri di HP siswa**; pembimbing hanya memindai QR.
+1. Peserta daftar wajah dahulu bila belum (`POST /api/face/enroll`).
+2. `POST /api/face/tantangan` (peserta) — nonce sekali pakai + instruksi gerakan acak (`LIVENESS_TTL_DETIK`, 60 detik). Dilewati bila `liveness_aktif=false`.
+3. `POST /api/face/verify` (peserta) `{ jenis, embedding, nonce?, foto? }` — embedding dibandingkan template terenkripsi miliknya; bila cocok, verifikasi tercatat berlaku `FACE_VERIFY_TTL_DETIK` (180 detik). Foto wajah (JPEG base64 ≤ `FACE_FOTO_MAKS_BAIT`) bila dikirim: divalidasi, dienkripsi AES-256-GCM, disimpan pada verifikasi.
+4. `POST /api/absensi/qr-saya` (peserta) `{ jenis }` — menayangkan QR; token berlaku `QR_TTL_DETIK` (30 detik).
+5. `POST /api/absensi/scan` (pembimbing) `{ token }` — absensi tercatat metode `QR+Wajah` bila peserta punya verifikasi wajah yang masih berlaku untuk jenis yang sama (sekali pakai). Foto ikut dipindahkan ke absensi (tabel `wajah_foto`) dan bisa dilihat admin lewat `GET /api/admin/absensi/:id/foto` (dibuka balik sebagai JPEG, masuk audit log, dihapus otomatis setelah `FACE_FOTO_RETENSI_HARI`).
 
 ### Mode qr
-Langkah 3 dilewati; `konfirmasi-scan` cukup `{ token, jenis }`, metode tersimpan `QR`.
+Langkah 2–3 dilewati; `scan` cukup `{ token }`, metode tersimpan `QR`.
 
 ### Mode wajah
-Tanpa QR: `POST /api/absensi/wajah` `{ jenis, embedding, nonce? }` menulis absensi langsung setelah
+Tanpa QR: `POST /api/absensi/wajah` `{ jenis, embedding, nonce?, foto? }` menulis absensi langsung setelah
 embedding cocok dan (bila liveness aktif) tantangan terpenuhi. Metode absensi tersimpan `Wajah`;
-waktu tetap ditentukan server. Dalam mode ini `konfirmasi-scan` ditolak (`MODE_QR_NONAKTIF`).
+foto wajah bila disertakan juga terikat ke absensi. Waktu tetap ditentukan server. Dalam mode ini
+`qr-saya` dan `scan` ditolak (`MODE_QR_NONAKTIF`).
 
-Jam dan status (Hadir/Terlambat) dihitung server dari momen `konfirmasi-scan` diterima (mode
-qr/qr_wajah) atau saat panggilan `/absensi/wajah`, memakai zona `TZ_APLIKASI`.
+Jam dan status (Hadir/Terlambat) dihitung server dari momen `scan` diterima (mode qr/qr_wajah) atau
+saat panggilan `/absensi/wajah`, memakai zona `TZ_APLIKASI`. Baik absen masuk maupun pulang dilakukan
+lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen masuk terlebih dulu.
 
 ## Izin, sakit, dan penutup hari
 
-- **Izin/Sakit** (`POST /api/pembimbing/keterangan` untuk bimbingan, `POST /api/admin/absensi/keterangan`
-  untuk siapa saja): `{ user_id, tanggal, status: "Izin"|"Sakit", keterangan }`. Keterangan wajib
-  (3â€“1000 karakter), tanggal maksimal `JURNAL_MAKS_HARI_BELAKANG` hari ke belakang, tidak boleh masa depan.
-- Desain memakai batas unik yang sudah ada (`uq_absensi_harian`: user+tanggal+jenis): catatan Izin/Sakit
-  ditulis sebagai baris `jenis='masuk'` berstatus Izin/Sakit (metode = statusnya). Satu slot masuk per hari
-  berarti catatan mencegah QR maupun absensi wajah di hari itu (`HARI_TERCATAT`), dan dua catatan untuk
-  tanggal sama terlarang database (`CATATAN_ADA`).
+- **Pengajuan Izin/Sakit kini diberikan oleh peserta** (`POST /api/pengajuan/izin`, multipart):
+  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini; tidak boleh masa depan,
+  maksimal `JURNAL_MAKS_HARI_BELAKANG` hari ke belakang), `keterangan` (3â€“1000 karakter) dan
+  `bukti` (foto JPG/PNG/WebP maks 5 MB, disimpan acak di `uploads/pengajuan/`).
+- Pembimbing melihat pengajuan bimbingannya (`GET /api/pengajuan/izin`), memutuskan lewat
+  `PUT /api/pengajuan/izin/:id/putuskan` (`{ putusan: "Disetujui"|"Ditolak", alasan }` â€” alasan
+  wajib saat Ditolak). Bila Disetujui, baris absensi Izin/Sakit dibuat di transaksi yang sama
+  (slot masuk hari itu terkunci, QR/wajah menolak dengan `HARI_TERCATAT`).
+- Peserta mengambil daftar miliknya lewat `GET /api/pengajuan/izin`; pembimbing cek
+  `GET /api/pengajuan/notifikasi` (ada pengajuan Menunggu hari ini -> `{ ada: true }`,
+  dipakai untuk lingkaran merah di menu).
+- Desain memakai batas unik yang sudah ada (`uq_absensi_harian`: user+tanggal+jenis): Izin/Sakit
+  ditulis sebagai baris `jenis='masuk'` berstatus Izin/Sakit (metode = statusnya). Satu slot masuk
+  per hari berarti catatan mencegah QR maupun absensi wajah di hari itu (`HARI_TERCATAT`), dan dua
+  catatan untuk tanggal sama terlarang database (`CATATAN_ADA`). Pengajuan ganda (tanggal sama,
+  status bukan Ditolak) ditolak juga dengan `CATATAN_ADA`.
 - **Penutup hari** (`src/services/tutup-hari.js`, job tiap 5 menit via `src/services/jobs.js`, manual
   `npm run tutup-hari [tanggal]`): pada hari kerja, setelah `jam_pulang + TUTUP_HARI_MENIT` (default 60),
   peserta aktif tanpa catatan absensi apa pun hari itu diberi baris `Tidak hadir` (metode `Otomatis`).
@@ -110,9 +124,12 @@ qr/qr_wajah) atau saat panggilan `/absensi/wajah`, memakai zona `TZ_APLIKASI`.
 | QR_KEDALUWARSA | 410 | QR kedaluwarsa |
 | QR_SUDAH_DIPAKAI | 409 | QR sudah dipakai |
 | SUDAH_ABSEN | 409 | Sudah absen hari ini |
-| BUKAN_BIMBINGAN | 403 | Bukan peserta bimbingan |
 | WAJAH_TIDAK_TERBACA | 422 | Wajah tidak terbaca |
 | WAJAH_TIDAK_COCOK | 422 | Wajah tidak cocok |
+| WAJAH_BELUM_VERIF | 422 | Peserta belum verifikasi wajah (atau verifikasi kedaluwarsa/terpakai) |
+| FOTO_BUKAN_JPEG | 422 | Foto wajah bukan JPEG |
+| FOTO_TERLALU_BESAR | 422 | Foto wajah melebihi batas ukuran |
+| FOTO_ABSEN_TAK_ADA | 404 | Absensi tidak punya foto wajah |
 | PERSETUJUAN_WAJIB | 422 | Persetujuan penggunaan data wajah dibutuhkan |
 | TEMPLATE_ADA | 409 | Template wajah sudah terdaftar |
 | TEMPLATE_BELUM | 412 | Template wajah belum terdaftar |
@@ -125,11 +142,14 @@ qr/qr_wajah) atau saat panggilan `/absensi/wajah`, memakai zona `TZ_APLIKASI`.
 | JURNAL_ADA | 409 | Sudah ada jurnal untuk tanggal itu |
 | STATUS_TIDAK_VALID | 409 | Jurnal berstatus Dikirim/Disetujui tidak bisa diubah |
 | BELUM_ABSEN_MASUK | 422 | Belum absen masuk |
-| PULANG_WAJAH | 422 | Absen pulang lewat verifikasi wajah, tanpa QR |
 | PULANG_BELUM_WAKTUNYA | 422 | Absen pulang dibuka 5 menit sebelum jam pulang |
 | HARI_LIBUR | 422 | Hari ini bukan hari kerja |
 | HARI_TERCATAT | 409 | Hari ini tercatat Izin/Sakit â€” absensi tidak diperlukan |
 | CATATAN_ADA | 409 | Catatan izin/sakit untuk tanggal itu sudah ada |
+| BUKTI_WAJIB | 400 | Lampirkan bukti pengajuan izin/sakit terlebih dulu |
+| UPLOAD | 400 | Format bukti/foto tidak didukung (JPG, PNG, atau WebP) |
+| TIDAK_ADA | 404 | Data tidak ditemukan / sudah diputuskan |
+| BUKAN_BIMBINGAN | 403 | Pengajuan bukan dari peserta bimbingan Anda |
 | ALASAN_WAJIB | 400 | Tulis alasan koreksi |
 | PUNYA_RIWAYAT | 409 | Data punya riwayat, hanya bisa dinonaktifkan |
 
@@ -139,7 +159,10 @@ Semua error berbentuk `{ "pesan": "...", "kode": "..." }`. Semua endpoint ada di
 
 - Server menerima embedding wajah (vektor 128 angka, dihitung browser lewat MediaPipe Face Landmarker â€”
   model & wasm disajikan dari `frontend/public/wajah/`, bukan CDN) dan membandingkan jaraknya dengan
-  template terenkripsi (AES-256-GCM). Foto tidak disimpan; template dihapus saat akun dinonaktifkan.
+  template terenkripsi (AES-256-GCM). Pada alur scan QR, verifikasi dilakukan siswa sendiri; foto absensi
+  (JPEG, terenkripsi AES-256-GCM, tabel `wajah_foto`, retensi `FACE_FOTO_RETENSI_HARI`) hanya bisa dibuka
+  admin lewat `GET /api/admin/absensi/:id/foto` dan tidak pernah dikirim ke klien lain. Template dihapus
+  saat akun dinonaktifkan.
 - **Batasan liveness (mode A):** tantangan (nonce sekali pakai + instruksi gerakan) hanya memastikan
   klien menjalankan pengukuran, bukan gerakan nyata. Orang yang memanggil API langsung bisa mengirim
   payload palsu, dan kamera virtual dapat memutar rekaman. Mitigasi terbatas: nonce terikat `user_id`,

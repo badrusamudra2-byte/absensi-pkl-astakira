@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 export function Kartu({ t, children, className = '' }: { t?: string; children: ReactNode; className?: string }) {
   return (
@@ -58,6 +58,43 @@ export function Masukan(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+/** Kolom kata sandi dengan tombol lihatmacam/kunci (ikon mata).
+ * Default terkunci; saklar hanya memindah jenis kolom, isi tidak berubah. */
+export function MasukanSandi(props: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [tampil, ubahTampil] = useState(false);
+  return (
+    <div className="relative mt-1">
+      <input
+        type={tampil ? 'text' : 'password'}
+        className="block w-full px-[11px] py-[9px] pr-14 border border-garis rounded-lg bg-bg text-teks font-normal"
+        {...props}
+      />
+      <button
+        type="button"
+        onClick={() => ubahTampil(!tampil)}
+        aria-pressed={tampil}
+        aria-label={tampil ? 'Kunci kata sandi kembali' : 'Lihat kata sandi'}
+        title={tampil ? 'Kunci kata sandi kembali' : 'Lihat kata sandi'}
+        className="absolute right-1 bottom-[2px] h-9 w-9 grid place-items-center text-mu hover:text-teks cursor-pointer bg-transparent border-0 p-0"
+      >
+        {tampil ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+            <path d="m1 1 22 22" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
 /** Peringatan blok di dalam kartu (info biru / peringatan kuning / galat merah). */
 export function Pemberitahuan({ jenis = 'info', judul, uraian, aksi }: { jenis?: 'info' | 'warn' | 'er'; judul: string; uraian?: string; aksi?: ReactNode }) {
   const warna =
@@ -82,6 +119,7 @@ export function Badge({ s }: { s: string }) {
     Izin: 'text-pr bg-pl',
     Sakit: 'text-o bg-[#c2410c20]',
     Diterima: 'text-g bg-[#15803d20]',
+    Disetujui: 'text-g bg-[#15803d20]',
     Ditolak: 'text-r bg-[#b91c1c20]',
     Menunggu: 'text-s bg-[#47556920]',
     Diperiksa: 'text-pr bg-pl',

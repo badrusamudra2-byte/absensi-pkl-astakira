@@ -1,14 +1,15 @@
 const { Op } = require('sequelize');
 const env = require('../config/env');
 const {
-  sequelize, TokenPembimbing, Absensi, FaceTemplate, Peserta, Pembimbing, User, Workshift,
+  sequelize, QrToken, Absensi, FaceTemplate, FaceVerification, WajahFoto, User, Workshift,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
-const { sha256, acak, dec } = require('../utils/crypto');
+const { sha256, acak, dec, enkripBait } = require('../utils/crypto');
 const { bagian, hitungStatus, rentang, menitDariJam } = require('../utils/waktu');
 const audit = require('../utils/audit');
 const pengaturan = require('../services/pengaturan');
 const liveness = require('../services/liveness');
+const siapkanFoto = require('../utils/foto');
 
 const jenisOk = (j) => {
   if (!['masuk', 'pulang'].includes(j)) throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
@@ -43,32 +44,70 @@ const cekWaktuPulang = (jen, ws, w) => {
 
 /* ---------- Peserta ---------- */
 
-// Pembimbing menayangkan QR berotasi 30 detik; peserta yang memindai lalu kirim
-// hasil wajahnya. Server yang menentukan waktu dan status (lihat konfirmasiScan).
-exports.tayangkanQr = asyncH(async (req, res) => {
+// Peserta menayangkan QR dari HP-nya; QR berotasi tiap QR_TTL_DETIK dan satu token
+// = milik satu peserta untuk satu jenis absen. Hash disimpan, token mentah hanya lewat
+// respons, sehingga QR tiap siswa selalu berbeda satu sama lain. Waktu dan status tetap
+// ditentukan server saat pembimbing memindai (lihat scanPeserta).
+exports.qrSaya = asyncH(async (req, res) => {
+  const jen = jenisOk(req.body.jenis);
+  const uid = req.user.id;
+  const cfg = await pengaturan.dapatkan();
+  if (cfg.metode === 'wajah') {
+    throw new HttpError(409, 'Metode absensi saat ini tidak memakai QR. Gunakan verifikasi wajah.', 'MODE_QR_NONAKTIF');
+  }
+  // qr_wajah: QR hanya boleh dibuat bila verifikasi wajah peserta (jenis sama)
+  // masih aktif — belum kedaluwarsa dan belum pernah dipakai. Ditentukan server,
+  // bukan dari UI klien, sehingga QR tak mungkin tayang tanpa verifikasi.
+  // Slot jenis sama sudah terisi absensi nyata (bukan baris izin/sakit — hari itu
+  // memang tak boleh absen dan barisnya dikunci lewat cekTerkunci saat pemindaian).
+  if (await Absensi.findOne({
+    where: {
+      user_id: uid, tanggal: bagian().tanggal, jenis: jen,
+      status: { [Op.notIn]: ['Izin', 'Sakit'] },
+    },
+  })) {
+    throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat — cukup sekali per jenis.`, 'SUDAH_ABSEN');
+  }
+  if (cfg.metode === 'qr_wajah') {
+    const fV = await FaceVerification.findOne({
+      where: { user_id: uid, jenis: jen, dipakai_pada: null },
+      order: [['id', 'DESC']],
+    });
+    if (!fV || new Date(fV.kedaluwarsa_pada).getTime() <= Date.now()) {
+      await audit(req, 'QR diminta tanpa verifikasi wajah aktif', `pes#${uid} jenis${jen}`);
+      throw new HttpError(
+        422,
+        'Verifikasi wajah belum dilakukan atau sudah kedaluwarsa. Jalankan verifikasi wajah dahulu, lalu QR baru tayang.',
+        'WAJAH_BELUM_VERIF',
+      );
+    }
+  }
+
   const now = new Date();
-  await TokenPembimbing.update(
+  await QrToken.update(
     { kedaluwarsa_pada: now },
-    { where: { pembimbing_id: req.user.id, dipakai_pada: null, kedaluwarsa_pada: { [Op.gt]: now } } },
+    { where: { user_id: uid, jenis: jen, dipakai_pada: null, kedaluwarsa_pada: { [Op.gt]: now } } },
   );
   const mentah = acak();
   const kedaluwarsa = new Date(now.getTime() + env.qrTtl * 1000);
-  await TokenPembimbing.create({
-    token_hash: sha256(mentah), pembimbing_id: req.user.id, kedaluwarsa_pada: kedaluwarsa,
+  await QrToken.create({
+    token_hash: sha256(mentah), user_id: uid, jenis: jen, kedaluwarsa_pada: kedaluwarsa,
   });
-  res.status(201).json({ token: mentah, berlaku_detik: env.qrTtl, kedaluwarsa_pada: kedaluwarsa });
+  res.status(201).json({ token: mentah, jenis: jen, berlaku_detik: env.qrTtl, kedaluwarsa_pada: kedaluwarsa });
 });
 
 // Metode wajah: absensi langsung tanpa QR, setelah embedding cocok dan liveness lolos.
 // Server yang menentukan waktu (bagian()), status, dan jenis — klien hanya mengirim embedding.
+// Foto (bila ada) tersimpan terenkripsi dan terikat absensi ini untuk koreksi admin.
 exports.wajah = asyncH(async (req, res) => {
-  const { embedding, jenis, nonce } = req.body;
+  const { embedding, jenis, nonce, foto } = req.body;
   const uid = req.user.id;
   const jen = jenisOk(jenis);
   const cfg = await pengaturan.dapatkan();
 
-  // Absen pulang lewat wajah (tanpa QR) apapun metode globalnya; cek mode hanya untuk masuk.
-  if (cfg.metode !== 'wajah' && jen !== 'pulang') {
+  // Alur wajah langsung hanya untuk metode global 'wajah'. Bila metode qr/qr_wajah,
+  // kedua jenis absen dicatat lewat scan QR peserta oleh pembimbing (lihat scanPeserta).
+  if (cfg.metode !== 'wajah') {
     throw new HttpError(409, 'Metode absensi saat ini tidak memakai verifikasi wajah langsung.', 'MODE_WAJAH_NONAKTIF');
   }
 
@@ -91,20 +130,22 @@ exports.wajah = asyncH(async (req, res) => {
     throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
   }
 
-  const jarakWajah = jarak(embedding, dec(tpl.embedding)); // jarak saja yang dicatat, bukanembedding
+  const jarakWajah = jarak(embedding, dec(tpl.embedding)); // jarak saja yang dicatat, bukan embedding
   if (jarakWajah > env.face.threshold) {
     await audit(req, 'Absensi wajah gagal', jen, { jarak: Number(jarakWajah.toFixed(4)), ambang: env.face.threshold });
     throw new HttpError(422, 'Wajah tidak cocok dengan template yang terdaftar.', 'WAJAH_TIDAK_COCOK');
   }
 
+  const fotoCt = siapkanFoto(foto); // dilempar sebagai 422 bila foto dikirim tapi tidak sah
   const status = hitungStatus(jen, ws, w);
   try {
     await sequelize.transaction(async (t) => {
       if (cfg.liveness_aktif) await liveness.periksa(uid, nonce, t);
-      await Absensi.create({
+      const a = await Absensi.create({
         user_id: uid, tanggal: w.tanggal, jenis: jen, jam: w.jam, status,
         metode: 'Wajah',
       }, { transaction: t });
+      if (fotoCt) await WajahFoto.create({ absensi_id: a.id, data: fotoCt }, { transaction: t });
     });
   } catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
@@ -116,12 +157,13 @@ exports.wajah = asyncH(async (req, res) => {
   res.json({ pesan: 'Absensi tercatat.', jam: w.jam, status });
 });
 
-// Metode qr/qr_wajah: peserta memindai QR pembimbing lalu mengirim hasil wajah
-// (qr_wajah) atau langsung (qr). Waktu dan status dihitung server dari momen ini.
-exports.konfirmasiScan = asyncH(async (req, res) => {
-  const { token, embedding, nonce } = req.body;
-  const jen = jenisOk(req.body.jenis);
-  const uid = req.user.id;
+// Metode qr/qr_wajah: pembimbing memindai QR yang ditayangkan peserta. Waktu, status,
+// jenis, dan siapa yang memindai ditentukan server dari momen ini — bukan dari HP klien.
+// Untuk metode qr_wajah, absensi hanya tercatat bila peserta telah memverifikasi wajah
+// sendiri dari HP-nya (/face/verify, masih berlaku dan belum dipakai); foto wajah yang
+// dilampirkan saat verifikasi ikut dipindahkan ke absensi (terenkripsi, admin saja yang membaca).
+exports.scanPeserta = asyncH(async (req, res) => {
+  const { token } = req.body;
   const cfg = await pengaturan.dapatkan();
 
   if (cfg.metode === 'wajah') {
@@ -130,56 +172,50 @@ exports.konfirmasiScan = asyncH(async (req, res) => {
 
   const tidakValid = () => new HttpError(404, 'Kode ini bukan QR absensi Astakira Media.', 'QR_TIDAK_VALID');
   if (typeof token !== 'string' || token.length < 10 || token.length > 100) throw tidakValid();
-  const tok = await TokenPembimbing.findOne({ where: { token_hash: sha256(token) } });
+  const tok = await QrToken.findOne({
+    where: { token_hash: sha256(token) },
+    include: [{ model: User, as: 'peserta' }],
+  });
   if (!tok) throw tidakValid();
-  if (tok.dipakai_pada) throw new HttpError(409, 'QR ini sudah dipakai. Minta pembimbing menayangkan QR baru.', 'QR_SUDAH_DIPAKAI');
+  if (tok.dipakai_pada) throw new HttpError(409, 'QR ini sudah dipakai. Minta peserta menayangkan QR baru.', 'QR_SUDAH_DIPAKAI');
   if (new Date(tok.kedaluwarsa_pada).getTime() <= Date.now()) {
-    throw new HttpError(410, 'QR kedaluwarsa. Minta pembimbing menayangkan QR baru.', 'QR_KEDALUWARSA');
+    throw new HttpError(410, 'QR kedaluwarsa. Minta peserta menayangkan QR baru.', 'QR_KEDALUWARSA');
   }
-  const pmb = await Pembimbing.findOne({ where: { user_id: tok.pembimbing_id }, include: [{ model: User, as: 'user' }] });
-  if (!pmb || !pmb.user.aktif) throw tidakValid();
-
-  const prof = await Peserta.findOne({ where: { user_id: uid } });
-  if (prof && prof.pembimbing_id && prof.pembimbing_id !== tok.pembimbing_id) {
-    throw new HttpError(403, 'Peserta ini tidak berada di bawah bimbingan pembimbing pemberi QR.', 'BUKAN_BIMBINGAN');
-  }
+  const uid = tok.user_id;
+  // Token hanya dibuat endpoint milik peserta, tetap dipastikan akun pemilik aktif.
+  if (!tok.peserta || !tok.peserta.aktif || tok.peserta.role !== 'peserta') throw tidakValid();
+  // Jenis absen mengikuti token milik peserta, bukan dikirim klien.
+  const jen = tok.jenis;
+  const nama = tok.peserta.nama;
 
   const w = bagian();
   // Cek hari tercatat lebih dulu: peserta yang hari tertulis Izin/Sakit harus
-  // menerima HARI_TERCATAT, bukan penjelasan teknis PULANG_WAJAH/HARI_LIBUR.
+  // menerima HARI_TERCATAT, bukan penjelasan teknis HARI_LIBUR.
   await cekTerkunci(uid, w.tanggal);
-  // Absen pulang selalu lewat wajah tanpa QR (lihat exports.wajah).
-  if (jen === 'pulang') {
-    throw new HttpError(422, 'Absen pulang dilakukan dengan verifikasi wajah, tanpa QR. Buka menu absensi lalu pilih Absen pulang.', 'PULANG_WAJAH');
-  }
   const ws = await jadwalHari(w.hari);
+  cekWaktuPulang(jen, ws, w);
   if (await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal, jenis: jen } })) {
-    throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
+    throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
   }
   if (jen === 'pulang' && !(await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal, jenis: 'masuk' } }))) {
-    throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
+    throw new HttpError(422, 'Peserta belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
   }
 
-  let cocok = false;
-  let jarakWajah = null;
+  // qr_wajah: verifikasi wajah dilakukan peserta di HP-nya sendiri sebelum QR tayang.
+  // Server hanya menerima baris verifikasi terbaru peserta (belum dipakai dan belum kedaluwarsa).
+  let fV = null;
   if (cfg.metode === 'qr_wajah') {
-    const tpl = await FaceTemplate.findOne({ where: { user_id: uid } });
-    if (!tpl) throw new HttpError(412, 'Template wajah belum terdaftar.', 'TEMPLATE_BELUM');
-    const valid = (a) => Array.isArray(a) && a.length === env.face.dim && a.every(Number.isFinite);
-    const jarak = (a, b) => Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
-    if (!valid(embedding)) {
-      throw new HttpError(422, 'Wajah tidak terbaca. Hadap lurus ke kamera dan cari cahaya yang cukup.', 'WAJAH_TIDAK_TERBACA');
-    }
-    const hitung = jarak(embedding, dec(tpl.embedding));
-    jarakWajah = hitung;
-    cocok = hitung <= env.face.threshold;
-    if (!cocok) {
-      // Jarak kegagalan dicatat (angka tunggal, bukan data biometrik) sebagai dasar
-      // penyetelan FACE_THRESHOLD dengan wajah nyata.
-      await audit(req, 'Absensi scan wajah gagal', jen, {
-        jarak: Number(jarakWajah.toFixed(4)), ambang: env.face.threshold,
-      });
-      throw new HttpError(422, 'Wajah tidak cocok dengan template yang terdaftar.', 'WAJAH_TIDAK_COCOK');
+    fV = await FaceVerification.findOne({
+      where: { user_id: uid, jenis: jen, dipakai_pada: null },
+      order: [['id', 'DESC']],
+    });
+    if (!fV || new Date(fV.kedaluwarsa_pada).getTime() <= Date.now()) {
+      await audit(req, 'Absensi scan tanpa verifikasi wajah aktif', `pes#${uid} jenis${jen}`);
+      throw new HttpError(
+        422,
+        'Peserta belum memverifikasi wajah di HP-nya (atau verifikasi sudah kedaluwarsa). Minta peserta verifikasi wajah dulu, lalu scan ulang QR.',
+        'WAJAH_BELUM_VERIF',
+      );
     }
   }
 
@@ -187,25 +223,43 @@ exports.konfirmasiScan = asyncH(async (req, res) => {
   const metode = cfg.metode === 'qr_wajah' ? 'QR+Wajah' : 'QR';
   try {
     await sequelize.transaction(async (t) => {
-      const [n] = await TokenPembimbing.update(
-        { dipakai_pada: new Date() }, { where: { id: tok.id, dipakai_pada: null }, transaction: t },
+      const [n] = await QrToken.update(
+        { dipakai_pada: new Date(), dipindai_oleh: req.user.id, dipindai_pada: new Date() },
+        { where: { id: tok.id, dipakai_pada: null }, transaction: t },
       );
-      if (!n) throw new HttpError(409, 'QR ini sudah dipakai. Minta pembimbing menayangkan QR baru.', 'QR_SUDAH_DIPAKAI'); // dua scan bersamaan
-      if (cfg.metode === 'qr_wajah' && cfg.liveness_aktif) await liveness.periksa(uid, nonce, t);
-      await Absensi.create({
+      if (!n) throw new HttpError(409, 'QR ini sudah dipakai. Minta peserta menayangkan QR baru.', 'QR_SUDAH_DIPAKAI'); // dua scan bersamaan
+      const a = await Absensi.create({
         user_id: uid, tanggal: w.tanggal, jenis: jen, jam: w.jam, status,
-        metode, token_id: tok.id, dikonfirmasi_oleh: tok.pembimbing_id,
+        metode, token_id: tok.id, dikonfirmasi_oleh: req.user.id,
       }, { transaction: t });
+      // Konsumsi verifikasi wajah (atomik) lalu pindahkan foto ke absensi bila ada
+      if (fV) {
+        const [m] = await FaceVerification.update(
+          { dipakai_pada: new Date(), foto_ciphertext: null },
+          { where: { id: fV.id, dipakai_pada: null }, transaction: t },
+        );
+        if (!m) {
+          // Verifikasi dipakai pindaian lain yang bersamaan
+          throw new HttpError(
+            422,
+            'Peserta belum memverifikasi wajah di HP-nya (atau verifikasi sudah kedaluwarsa). Minta peserta verifikasi wajah dulu, lalu scan ulang QR.',
+            'WAJAH_BELUM_VERIF',
+          );
+        }
+        if (fV.foto_ciphertext) {
+          await WajahFoto.create({ absensi_id: a.id, data: fV.foto_ciphertext }, { transaction: t });
+        }
+      }
     });
   } catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
-      throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
+      throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
     }
     throw e;
   }
-  await audit(req, `Absensi scan pembimbing ${jen}`, `${status} | pemb#${tok.pembimbing_id}`,
-    cocok ? { jarak: Number(jarakWajah.toFixed(4)), ambang: env.face.threshold } : null);
-  res.json({ pesan: 'Absensi tercatat.', jam: w.jam, status, metode });
+  await audit(req, `Absensi scan peserta ${jen}`, `${status} | pes#${uid} | oleh#${req.user.id}`,
+    fV ? 'verifikasi wajah dari HP peserta' : null);
+  res.json({ pesan: 'Absensi tercatat.', nama, jam: w.jam, status, metode });
 });
 
 exports.riwayat = asyncH(async (req, res) => {

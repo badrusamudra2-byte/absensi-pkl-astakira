@@ -44,7 +44,8 @@ app.use(
 app.use(cors({ origin: env.corsOrigin }));
 // Morgan hanya mencatat baris permintaan (method, URL, status, durasi) — bukan header/token isi
 app.use(morgan(env.prod ? 'combined' : 'dev'));
-app.use(express.json({ limit: '100kb' }));
+// 1mb: menampung foto wajah JPEG (maks FACE_FOTO_MAKS_BAIT, diperluas base64) pada /face/verify
+app.use(express.json({ limit: '1mb' }));
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
 app.use('/api', routes);
