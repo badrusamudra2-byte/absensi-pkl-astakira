@@ -198,3 +198,55 @@ describe('Jadwal kerja (workshift)', () => {
     expect(r.status).toBe(400);
   });
 });
+
+describe('Absensi per tanggal (admin) — validasi masukan', () => {
+  test('user_id bukan angka ditolak 400 VALIDASI', async () => {
+    const tgl = require('../src/utils/waktu').bagian().tanggal;
+    const r = await request(app)
+      .get(`/api/admin/absensi?user_id=abc&tanggal=${tgl}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+
+  test('tanpa user_id ditolak 400 VALIDASI', async () => {
+    const tgl = require('../src/utils/waktu').bagian().tanggal;
+    const r = await request(app)
+      .get(`/api/admin/absensi?tanggal=${tgl}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+
+  test('user_id peserta sah mengembalikan baris absensinya', async () => {
+    const M = require('../src/models');
+    const tgl = require('../src/utils/waktu').bagian().tanggal;
+    await M.Absensi.create({
+      user_id: dasar.peserta.id, tanggal: tgl, jenis: 'masuk', jam: '08:00:00', status: 'Hadir', metode: 'QR+Wajah',
+    });
+    const r = await request(app)
+      .get(`/api/admin/absensi?user_id=${dasar.peserta.id}&tanggal=${tgl}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(200);
+    expect(r.body.peserta.id).toBe(dasar.peserta.id);
+    expect(r.body.data).toHaveLength(1);
+  });
+});
+
+describe('Reset template wajah (admin) — target harus peserta', () => {
+  test('id pembimbing ditolak 404 TIDAK_ADA (bukan merusak data)', async () => {
+    const r = await request(app)
+      .delete(`/api/admin/face/${dasar.pembimbing.id}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(404);
+    expect(r.body.kode).toBe('TIDAK_ADA');
+  });
+
+  test('id peserta tanpa template tetap 404 TIDAK_ADA', async () => {
+    const r = await request(app)
+      .delete(`/api/admin/face/${dasar.peserta.id}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(404);
+    expect(r.body.kode).toBe('TIDAK_ADA');
+  });
+});

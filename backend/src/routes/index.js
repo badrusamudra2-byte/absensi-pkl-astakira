@@ -58,6 +58,7 @@ router.put('/jurnal/:id', ...PESERTA, C.jurnal.update);
 // Pengajuan izin/sakit: peserta kirim + bukti, pembimbing lihat & putuskan
 router.post('/pengajuan/izin', ...PESERTA, batas(15, 10), uploadBukti, C.pengajuan.kirim);
 router.get('/pengajuan/izin', auth, C.pengajuan.daftar);
+router.get('/pengajuan/bukti/:berkas', auth, C.pengajuan.bukti);
 router.get('/pengajuan/notifikasi', ...PEMBIMBING, C.pengajuan.notifikasi);
 router.put('/pengajuan/izin/:id/putuskan', ...PEMBIMBING, C.pengajuan.putuskan);
 

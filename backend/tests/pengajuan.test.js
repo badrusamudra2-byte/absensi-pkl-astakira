@@ -313,3 +313,90 @@ describe('Putusan pembimbing', () => {
     expect(r.body.ada).toBe(false);
   });
 });
+
+describe('Keputusan pengajuan yang telat diputuskan (lewatiBatas)', () => {
+  test('pengajuan tanggal >7 hari silam tetap bisa disetujui lewat putuskan', async () => {
+    const telat = await M.PengajuanIzin.create({
+      user_id: dasar.peserta.id, tanggal: TGL_LAMBUAT, jenis: 'Izin', keterangan: 'Keperluan keluarga di luar kota.', bukti: 'h.jpg',
+    });
+    const r = await request(app)
+      .put(`/api/pengajuan/izin/${telat.id}/putuskan`)
+      .set('Authorization', tokPmb)
+      .send({ putusan: 'Disetujui' });
+    expect(r.status).toBe(200);
+    expect(r.body.data.status).toBe('Disetujui');
+    const b = await M.Absensi.findOne({ where: { user_id: dasar.peserta.id, tanggal: TGL_LAMBUAT } });
+    expect(b).not.toBeNull();
+    expect(b.status).toBe('Izin');
+  });
+
+  test('pengajuan BARU untuk tanggal 8+ hari silam tetap ditolak (400 VALIDASI)', async () => {
+    const r = await kirim(tokPeserta, { jenis: 'Izin', tanggal: TGL_LAMBUAT, keterangan: 'Ajukan baru ke belakang.' });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+
+  test('tanggal masa depan tetap ditolak lewat putuskan', async () => {
+    const telat = await M.PengajuanIzin.create({
+      user_id: dasar.peserta.id, tanggal: TGL_LAMBUAT, jenis: 'Izin', keterangan: 'Keperluan keluarga di luar kota.', bukti: 'i.jpg',
+    });
+    // Lewatinya hanya batas maksBuka; kalender dan masa depan tetap diberlakukan
+    await telat.update({ tanggal: TGL_DEPAN });
+    const r = await request(app)
+      .put(`/api/pengajuan/izin/${telat.id}/putuskan`)
+      .set('Authorization', tokPmb)
+      .send({ putusan: 'Disetujui' });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+});
+
+describe('Bukti pengajuan via API (gerbang akses)', () => {
+  test('pemilik pengajuan bisa membuka buktinya (200 gambar)', async () => {
+    const k = await kirim(tokPeserta, { jenis: 'Sakit', tanggal: TGL_KINI, keterangan: 'Demam dua hari, surat menyusul.' });
+    expect(k.status).toBe(201);
+    const p = await M.PengajuanIzin.findByPk(k.body.data.id);
+    const r = await request(app).get(`/api/pengajuan/bukti/${p.bukti}`).set('Authorization', tokPeserta);
+    expect(r.status).toBe(200);
+    expect(r.headers['content-type']).toMatch(/image\/(jpeg|png|webp)/);
+  });
+
+  test('tanpa login ditolak 401 BELUM_LOGIN', async () => {
+    const r = await request(app).get('/api/pengajuan/bukti/0418b7de73973407dc79ae0720753dc8.jpg');
+    expect(r.status).toBe(401);
+    expect(r.body.kode).toBe('BELUM_LOGIN');
+  });
+
+  test('peserta lain tidak bisa membuka bukti pengajuan orang (403 DILARANG)', async () => {
+    const k = await kirim(tokPeserta, { jenis: 'Izin', tanggal: TGL_KINI, keterangan: 'Keperluan keluarga penting.' });
+    const p = await M.PengajuanIzin.findByPk(k.body.data.id);
+    // buat peserta kedua yang bukan pemilik maupun bimbingan pembimbeda
+    const psr2 = await buatUser({ nama: 'Farhan Udin', username: 'farhan', email: 'farhan@astakira.id', role: 'peserta' });
+    await M.Peserta.create({ user_id: psr2.id, divisi: 'Web', pembimbing_id: dasar.pembimbing.id });
+    const tokFarhan = await tokenUntuk('farhan@astakira.id');
+    const r = await request(app).get(`/api/pengajuan/bukti/${p.bukti}`).set('Authorization', tokFarhan);
+    expect(r.status).toBe(403);
+    expect(r.body.kode).toBe('DILARANG');
+  });
+
+  test('nama berkas tidak sah (potensi path traversal) 404 TIDAK_ADA', async () => {
+    const r = await request(app).get('/api/pengajuan/bukti/..%2Fusers.sql').set('Authorization', tokPeserta);
+    expect(r.status).toBe(404);
+    expect(r.body.kode).toBe('TIDAK_ADA');
+  });
+
+  test('jalur statis /uploads/pengajuan ditutup, foto profil tetap terbuka', async () => {
+    const blok = await request(app).get('/uploads/pengajuan/0418b7de73973407dc79ae0720753dc8.jpg');
+    expect(blok.status).toBe(404);
+    expect(blok.body.kode).toBe('TIDAK_ADA');
+  });
+
+  test('pembimbing bimbingan bisa buka bukti pesertanya', async () => {
+    const k = await kirim(tokPeserta, { jenis: 'Izin', tanggal: TGL_KINI, keterangan: 'Keperluan keluarga sekitar.' });
+    const p = await M.PengajuanIzin.findByPk(k.body.data.id);
+    const r = await request(app)
+      .get(`/api/pengajuan/bukti/${p.bukti}`)
+      .set('Authorization', tokPmb);
+    expect(r.status).toBe(200);
+  });
+});

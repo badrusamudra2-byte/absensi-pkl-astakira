@@ -87,12 +87,12 @@ export default function Jadwal() {
                     </td>
                     <td className="px-[10px] py-2 border-b border-garis">
                       <input type="time" step={60} value={w.jam_masuk.slice(0, 5)} disabled={!w.hari_kerja}
-                        onChange={(e) => ubah(i, 'jam_masuk', e.target.value + ':00')}
+                        onChange={(e) => ubah(i, 'jam_masuk', e.target.value ? e.target.value + ':00' : '')}
                         className="px-2 py-1 border border-garis rounded-lg bg-bg disabled:opacity-50" />
                     </td>
                     <td className="px-[10px] py-2 border-b border-garis">
                       <input type="time" step={60} value={w.jam_pulang.slice(0, 5)} disabled={!w.hari_kerja}
-                        onChange={(e) => ubah(i, 'jam_pulang', e.target.value + ':00')}
+                        onChange={(e) => ubah(i, 'jam_pulang', e.target.value ? e.target.value + ':00' : '')}
                         className="px-2 py-1 border border-garis rounded-lg bg-bg disabled:opacity-50" />
                     </td>
                     <td className="px-[10px] py-2 border-b border-garis">

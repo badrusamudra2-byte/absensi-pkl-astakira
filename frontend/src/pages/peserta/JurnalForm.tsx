@@ -6,11 +6,13 @@ import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Masukan, Galat } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { useOnline } from '../../komponen/Offline';
+import { isoHariSilam } from '../../komponen/umum';
 
 const MAKS_BELAKANG = 7; // sejajar env JURNAL_MAKS_HARI_BELAKANG backend
 const MAKS_TEKS = 5000;
 
-const hariBatas = (geser: number) => new Date(Date.now() - geser * 86400000).toISOString().slice(0, 10);
+// Selalu WIB (Asia/Jakarta), sama seperti server — bukan tanggal UTC mesin.
+const hariBatas = isoHariSilam;
 
 interface Isian { tanggal: string; judul: string; uraian: string; hasil: string; kendala: string; rencana: string; }
 const KOSONG: Isian = { tanggal: hariBatas(0), judul: '', uraian: '', hasil: '', kendala: '', rencana: '' };

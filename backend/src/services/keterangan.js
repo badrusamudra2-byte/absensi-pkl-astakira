@@ -3,8 +3,10 @@ const { HttpError } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
 const env = require('../config/env');
 
-// Tanggal YYYY-MM-DD: kalender sah, tidak boleh masa depan, maksimal maksBuka hari ke belakang
-const tanggalOk = (s) => {
+// Tanggal YYYY-MM-DD: kalender sah, tidak boleh masa depan. Batas maksBuka hari ke
+// belakang bisa dilewati (lewatiBatas) untuk pencatatan yang sudah tervalidasi saat
+// dibuat — mis. persetujuan pengajuan izin yang diputuskan telat oleh pembimbing.
+const tanggalOk = (s, lewatiBatas = false) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
   }
@@ -15,9 +17,11 @@ const tanggalOk = (s) => {
   const kini = new Date(`${bagian().tanggal}T00:00:00Z`);
   const hari = new Date(Date.UTC(y, m - 1, h));
   if (hari > kini) throw new HttpError(400, 'Tanggal catatan tidak boleh di masa depan.', 'VALIDASI');
-  const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
-  if (hari < batas) {
-    throw new HttpError(400, `Catatan maksimal untuk ${env.jurnal.maksBuka} hari ke belakang.`, 'VALIDASI');
+  if (!lewatiBatas) {
+    const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
+    if (hari < batas) {
+      throw new HttpError(400, `Catatan maksimal untuk ${env.jurnal.maksBuka} hari ke belakang.`, 'VALIDASI');
+    }
   }
   return s;
 };
@@ -37,7 +41,7 @@ const buat = async ({ user_id, tanggal, status, keterangan, oleh }, opts = {}) =
   if (ket.length > 1000) {
     throw new HttpError(400, 'Keterangan maksimal 1000 karakter.', 'VALIDASI');
   }
-  const tgl = tanggalOk(String(tanggal ?? '').trim());
+  const tgl = tanggalOk(String(tanggal ?? '').trim(), Boolean(opts.lewatiBatas));
 
   const ada = await Absensi.findOne({ where: { user_id, tanggal: tgl }, ...opts });
   if (ada) {

@@ -25,7 +25,6 @@ const isi = [
   'FACE_VERIFY_TTL_DETIK=180',
   '',
   'QR_TTL_DETIK=30',
-  'SCAN_KONFIRMASI_DETIK=120',
   '',
   'CORS_ORIGIN=http://localhost:3000',
   'FRONTEND_URL=http://localhost:3000',

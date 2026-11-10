@@ -14,10 +14,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <!-- Pustaka render QR (dipakai halaman QR absensi) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <!-- Pustaka render QR (dipakai halaman QR absensi) — dibundel lokal agar PWA luring tetap bisa absen -->
+    <script src="/vendor/qrcode.min.js"></script>
     <!-- Pustaka pembaca QR (fallback bila BarcodeDetector tidak tersedia) -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="/vendor/jsQR.min.js"></script>
   </head>
   <body>
     <div id="app"></div>

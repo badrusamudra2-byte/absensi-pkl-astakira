@@ -100,7 +100,7 @@ Server membuat tantangan sekali pakai: nonce + instruksi gerakan acak (`kedip`, 
 ### 3.5 Anti Penyalahgunaan Lain
 - Rate limit per endpoint (contoh: login 10/15 mnt, absensi wajah 10/mnt, QR tayang 60/mnt; dimatikan saat test).
 - `express.json` limit 100 KB; upload foto max 2 MB dengan validasi magic bytes (JPEG/PNG/WebP), nama file acak.
-- Helmet: CSP penuh (mengizinkan `wasm-unsafe-eval` bagi MediaPipe dan CDN QR), HSTS saat produksi, `frame-ancestors: 'none'`.
+- Helmet: CSP penuh (mengizinkan `wasm-unsafe-eval` bagi MediaPipe; pustaka QR dibundel lokal), HSTS saat produksi, `frame-ancestors: 'none'`.
 - CSV ekspor diberi BOM UTF-8 + mitigasi *formula injection* (awalan `='` untuk sel diawali `=+-@`).
 - Kegagalan penulisan audit tidak menggagalkan request utama.
 
@@ -118,8 +118,7 @@ Semua model didefinisikan di `backend/src/models/index.js`; struktur tabel dibua
 | `workshift` | Jadwal kerja 7 hari | `hari` (Senin…Minggu, unik), `hari_kerja` bool, `jam_masuk`, `jam_pulang`, `toleransi_menit` (bawaan 15) |
 | `face_templates` | Embedding wajah terenkripsi | `user_id` (unik), `embedding` (AES-256-GCM), `disetujui_pada` |
 | `face_verifications` | Sesi verifikasi wajah | `jenis` (masuk/pulang), TTL `FACE_VERIFY_TTL_DETIK` (180 dtk), `dipakai_pada` |
-| `qr_tokens` | Token hasil pemindaian QR peserta | `token_hash` SHA-256 saja, `jenis`, kedaluwarsa; terikat jenis absen |
-| `token_pembimbing` | QR tayangan pembimbing | `pembimbing_id`, `token_hash`, kedaluwarsa; diganti tiap `QR_TTL_DETIK` (30 dtk) |
+| `qr_tokens` | QR tayangan peserta yang dipindai pembimbing | `token_hash` SHA-256 saja, `jenis`, kedaluwarsa; terikat jenis absen; diganti tiap `QR_TTL_DETIK` (30 dtk) |
 | `absensi` | Catatan kehadiran | `user_id`, `tanggal`, `jenis` (masuk/pulang), `jam`, `status` (**Hadir, Terlambat, Izin, Sakit, Tidak hadir**), `metode` (`QR+Wajah`, `QR`, `Wajah`, `Otomatis`, atau `Izin`/`Sakit`), `keterangan`, `token_id`, `dikonfirmasi_oleh`. **Batas unik DB `uq_absensi_harian` (user_id, tanggal, jenis)** — menjaga maksimal 1 baris jenis masuk dan 1 pulang per hari |
 | `absensi_penolakan` | Sisa alur QR lama | token ditolak/nolak; dipertahankan untuk histori |
 | `pengaturan_absensi` | Baris tunggal id=1 | `metode` (`qr_wajah` bawaan, `qr`, `wajah`), `liveness_aktif` (bool); dibaca lewat cache 5 dtk |
@@ -144,10 +143,10 @@ Semua model didefinisikan di `backend/src/models/index.js`; struktur tabel dibua
 ### 5.3 Tiga Mode Absensi (Pengaturan Admin)
 Mode disimpan di `pengaturan_absensi` (`qr_wajah` bawaan / `qr` / `wajah`) dan dibaca server saat verifikasi; jika mode tidak cocok → `MODE_QR_NONAKTIF` / `MODE_WAJAH_NONAKTIF`.
 
-**A. QR + Wajah (bawaan, untuk absen masuk):**
-1. Pembimbing menayangkan QR tayangan (`POST /api/absensi/qr-tayang`) yang berotasi tiap 30 detik.
-2. Peserta memindai QR dari HP-nya → token sementara di server (hash, TTL `SCAN_KONFIRMASI_DETIK` = 120 dtk).
-3. Peserta mengonfirmasi dengan wajah (`POST /api/absensi/konfirmasi-scan`): tantangan liveness + verifikasi embedding → token dipakai; server menulis absensi dalam **transaksi atomik** (penandaan token dipakai + cek liveness atomik; dua pemindaian bersamaan gagal dengan 409 `QR_SUDAH_DIPAKAI`).
+**A. QR + Wajah (bawaan, untuk absen masuk/pulang):**
+1. Peserta menayangkan QR di layarnya (`POST /api/absensi/qr-saya`); token tayangan berotasi tiap `QR_TTL_DETIK` (30 dtk) dan dibuat server.
+2. Pembimbing memindai QR dari HP-nya (`POST /api/absensi/scan`): jenis absensi mengikuti token milik peserta, bukan dikirim klien.
+3. Server menulis absensi dan menandai token dipakai — dua pemindaian bersamaan gagal dengan 409 `QR_SUDAH_DIPAKAI` (penandaan token atomik).
 
 **B. Langsung wajah (tanpa QR):** Peserta menekan tombol absen → `POST /api/absensi/wajah`: tantangan liveness + verifikasi embedding → absen ditulis. **Absen pulang selalu memakai jalur ini, tanpa QR** (`PULANG_WAJAH`).
 
@@ -258,7 +257,7 @@ Dari `backend/.env.example` (divalidasi ketat di `config/env.js`; wajib terisi: 
 | `JWT_SECRET`, `JWT_EXPIRES` | — / `8h` | rahasia tanda tangan token |
 | `FACE_KEY`, `FACE_THRESHOLD`, `FACE_DIM` | — / 0,5 / 128 | kunci enc AES-256-GCM, ambang pembandingan wajah, dimensi embedding |
 | `FACE_VERIFY_TTL_DETIK`, `LIVENESS_TTL_DETIK` | 180 / 60 | masa berlaku sesi verifikasi & tantangan |
-| `QR_TTL_DETIK`, `SCAN_KONFIRMASI_DETIK` | 30 / 120 | rotasi QR tayangan & masa token hasil pemindaian |
+| `QR_TTL_DETIK` | 30 | rotasi QR tayangan peserta |
 | `CORS_ORIGIN`, `FRONTEND_URL` | — | daftar origin (dipisah koma) |
 | `SMTP_*`, `MAIL_FROM` | — | Nodemailer; tanpa host → jsonTransport |
 | `TUTUP_HARI_MENIT` | 60 | jeda setelah jam pulang untuk menandai Tidak hadir |

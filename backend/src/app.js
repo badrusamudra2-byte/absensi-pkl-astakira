@@ -11,12 +11,13 @@ const app = express();
 if (env.trustProxy) app.set('trust proxy', 1); // wajib bila di belakang Nginx agar IP asli terbaca
 
 // CSP aktif hanya bila frontend dilayani dari origin ini (SERVE_FRONTEND=true).
-// Mesin pembanding wajah (MediaPipe) membutuhkan wasm-unsafe-eval; pustaka QR tetap memberisi CDN.
+// Mesin pembanding wajah (MediaPipe) membutuhkan wasm-unsafe-eval; pustaka QR
+// kini dibundel lokal (public/vendor) sehingga skrip tidak ada pihak ketiganya.
 const CSP = env.serveFrontend && {
   useDefaults: false,
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net', "'wasm-unsafe-eval'"],
+    scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
     scriptSrcAttr: ["'none'"],
     styleSrc: ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'blob:'],
@@ -47,7 +48,19 @@ app.use(morgan(env.prod ? 'combined' : 'dev'));
 // 1mb: menampung foto wajah JPEG (maks FACE_FOTO_MAKS_BAIT, diperluas base64) pada /face/verify
 app.use(express.json({ limit: '1mb' }));
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
+// Bukti pengajuan (foto surat dokter dsb.) tidak dibentangkan statis: bisa
+// berisi data pribadi. Akses hanya lewat GET /api/pengajuan/bukti/:berkas yang
+// memeriksa login dan kepemilikan. Foto profil memang disengaja publik
+// (dipakai lintas origin saat pengembangan).
+app.use('/uploads', (req, res, next) => {
+  if (req.path.toLowerCase().startsWith('/pengajuan')) {
+    return res.status(404).json({
+      pesan: 'Bekas bukti pengajuan hanya bisa dibuka lewat API yang memeriksa izin akses.',
+      kode: 'TIDAK_ADA',
+    });
+  }
+  next();
+}, express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
 app.use('/api', routes);
 
 // Produksi: sajikan build frontend (CSP pasangan dengan index.html) + SPA fallback

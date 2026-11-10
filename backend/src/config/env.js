@@ -39,7 +39,6 @@ module.exports = {
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map((s) => s.trim()),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   qrTtl: n('QR_TTL_DETIK', 30),
-  scanTtl: n('SCAN_KONFIRMASI_DETIK', 120),
   face: {
     key: Buffer.from(process.env.FACE_KEY, 'hex'),
     threshold: n('FACE_THRESHOLD', 0.5),
