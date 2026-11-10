@@ -201,9 +201,12 @@ exports.audit = asyncH(async (req, res) => {
 });
 
 exports.resetWajah = asyncH(async (req, res) => {
-  const n = await FaceTemplate.destroy({ where: { user_id: req.params.id } });
+  // Hanya template milik peserta sah yang boleh di-reset.
+  const u = await User.findOne({ where: { id: req.params.id, role: 'peserta' }, attributes: ['id'] });
+  if (!u) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');
+  const n = await FaceTemplate.destroy({ where: { user_id: u.id } });
   if (!n) throw new HttpError(404, 'Peserta belum punya template wajah.', 'TIDAK_ADA');
-  await audit(req, 'Reset template wajah', `user#${req.params.id}`);
+  await audit(req, 'Reset template wajah', `user#${u.id}`);
   res.json({ pesan: 'Template wajah dihapus. Peserta bisa mendaftar ulang.' });
 });
 
@@ -213,10 +216,14 @@ const STATUS_KOREKSI = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir'];
 
 // Daftar semua baris absensi satu peserta pada satu tanggal (untuk form koreksi)
 exports.absensiPerTanggal = asyncH(async (req, res) => {
-  const uid = Number(req.query.user_id);
+  const uidRaw = String(req.query.user_id || '').trim();
+  const uid = Number(uidRaw);
   const tanggal = String(req.query.tanggal || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) {
     throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
+  }
+  if (!/^\d+$/.test(uidRaw)) {
+    throw new HttpError(400, 'Pilih peserta terlebih dahulu.', 'VALIDASI');
   }
   const p = await User.findOne({ where: { id: uid, role: 'peserta' }, attributes: ['id', 'nama'] });
   if (!p) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');

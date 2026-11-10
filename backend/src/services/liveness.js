@@ -44,8 +44,10 @@ exports.buat = async function buatTantangan(user_id) {
   return { nonce: mentah, kode_gerakan: kode, kedaluwarsa_pada: kedaluwarsa, berlaku_detik: env.face.tantanganTtl };
 };
 
-/** Tandai nonce terpakai. Melempar bila nonce hilang, sudah dipakai, atau kedaluwarsa.
- * Difilter per user agar nonce milik orang lain tidak dapat dimanfaatkan. */
+/** Tandai nonce terpakai (atomik). Melempar bila nonce hilang, sudah dipakai, atau kedaluwarsa.
+ * Difilter per user agar nonce milik orang lain tidak dapat dimanfaatkan.
+ * Pemakaian dijamin atomik: UPDATE dengan WHERE dipakai_pada IS NULL, sehingga dua
+ * permintaan paralel dengan nonce sama hanya satu yang lolos (mencegah absensi ganda). */
 exports.periksa = async function periksaTantangan(user_id, nonce, transaksi) {
   if (typeof nonce !== 'string' || nonce.length < 10 || nonce.length > 100) {
     throw new HttpError(422, 'Hasil tantangan liveness belum dikirim.', 'TANTANGAN_WAJIB');
@@ -53,12 +55,16 @@ exports.periksa = async function periksaTantangan(user_id, nonce, transaksi) {
   const hash = crypto.createHash('sha256').update(nonce).digest('hex');
   const t = await TantanganWajah.findOne({ where: { user_id, nonce_hash: hash }, transaction: transaksi });
   if (!t) throw new HttpError(404, 'Tantangan tidak dikenali.', 'TANTANGAN_TAK_ADA');
-  if (t.dipakai_pada) {
-    throw new HttpError(409, 'Tantangan sudah dipakai. Minta tantangan baru.', 'TANTANGAN_SUDAH');
-  }
   if (new Date(t.kedaluwarsa_pada).getTime() <= Date.now()) {
     throw new HttpError(410, 'Tantangan kedaluwarsa. Minta tantangan baru.', 'TANTANGAN_KEDALUWARSA');
   }
-  await t.update({ dipakai_pada: new Date() }, { transaction: transaksi });
+  const [dipakai] = await TantanganWajah.update(
+    { dipakai_pada: new Date() },
+    { where: { id: t.id, dipakai_pada: null }, transaction: transaksi },
+  );
+  if (!dipakai) {
+    throw new HttpError(409, 'Tantangan sudah dipakai. Minta tantangan baru.', 'TANTANGAN_SUDAH');
+  }
+  await t.reload({ transaction: transaksi });
   return t;
 };

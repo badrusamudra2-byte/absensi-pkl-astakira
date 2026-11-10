@@ -14,9 +14,27 @@ export default function Izin() {
   const [daftar, ubahDaftar] = useState<PengajuanIzin[]>([]);
   const [muat, ubahMuat] = useState(true);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
-  const [bukaTolak, ubahBukaTolak] = useState(false);
+  // id pengajuan yang form tolaknya sedang terbuka (null = tertutup) — per kartu,
+  // bukan flag tunggal yang menampilkan form di semua kartu Menunggu sekaligus.
+  const [bukaTolak, ubahBukaTolak] = useState<number | null>(null);
   const [alasan, ubahAlasan] = useState('');
   const [sedang, ubahSedang] = useState(false);
+
+  // Bukti hanya bisa diunduh lewat API (token disertakan) — dibuka di tab baru.
+  const bukaBukti = async (p: PengajuanIzin) => {
+    try {
+      const r = await api<Response>(`/pengajuan/bukti/${p.bukti}`, { raw: true });
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'noopener');
+      // URL objek dilepas 5 menit kemudian — cukup untuk dilihat/disimpan di tab baru
+      setTimeout(() => { URL.revokeObjectURL(url); }, 300000);
+      if (!w) ubahGalat(['Pop-up diblokir', 'Izinkan pop-up untuk situs ini agar bukti foto bisa dibuka.']);
+    } catch (e) {
+      const err = e as ApiError;
+      ubahGalat(teksKode(err.kode ?? 'SERVER', err.message) as [string, string]);
+    }
+  };
 
   const muatUlang = useCallback(() => {
     ubahMuat(true);
@@ -46,7 +64,7 @@ export default function Izin() {
       });
       toast(r.pesan);
       ubahAlasan('');
-      ubahBukaTolak(false);
+      ubahBukaTolak(null);
       sinyalPeriksa(); // titik merah menu langsung diperiksa ulang
       muatUlang();
     } catch (err) {
@@ -85,10 +103,9 @@ export default function Izin() {
           </div>
           <p className="text-sm mt-2 max-w-[620px] whitespace-pre-line">{p.keterangan}</p>
           <div className="mt-2">
-            <a
-              href={`/uploads/pengajuan/${p.bukti}`}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => { void bukaBukti(p); }}
               className="inline-flex items-center gap-1.5 text-pr text-sm font-semibold no-underline hover:underline"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -97,7 +114,7 @@ export default function Izin() {
                 <path d="m21 15-3.5-3.5L7 22" />
               </svg>
               Buka bukti foto
-            </a>
+            </button>
           </div>
           {p.status === 'Ditolak' && p.catatan_putusan ? (
             <div className="mt-2">
@@ -111,11 +128,11 @@ export default function Izin() {
                 <Tombol disabled={sedang} onClick={() => putuskan(p.id, 'Disetujui')}>
                   Setujui
                 </Tombol>
-                <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(true)}>
+                <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(p.id)}>
                   Tolak&hellip;
                 </Tombol>
               </div>
-              {bukaTolak ? (
+              {bukaTolak === p.id ? (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -139,7 +156,7 @@ export default function Izin() {
                     <Tombol varian="dg" type="submit" disabled={sedang || alasan.trim().length < 3}>
                       Tolak pengajuan
                     </Tombol>
-                    <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(false)}>
+                    <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaTolak(null)}>
                       Batal
                     </Tombol>
                   </div>

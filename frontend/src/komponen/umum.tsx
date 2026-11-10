@@ -10,6 +10,10 @@ export const tglPendek = (s: string) => s.slice(8, 10) + '/' + s.slice(5, 7);
 
 export const isoHariIni = () => new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date()).slice(0, 10);
 
+/** Tanggal WIB "geser" hari silam: "2026-11-10" (geser 0), "2026-11-03" (geser 7). */
+export const isoHariSilam = (geser: number) =>
+  new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date(Date.now() - geser * 86400000)).slice(0, 10);
+
 export function FilterTanggal({
   dari, sampai, ubahDari, ubahSampai, aksi, sedang,
 }: {

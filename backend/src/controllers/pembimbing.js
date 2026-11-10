@@ -10,7 +10,9 @@ exports.ringkasan = asyncH(async (req, res) => {
   const ids = await idBimbingan(req.user.id);
   const w = bagian();
   const [hadir, review] = await Promise.all([
-    Absensi.count({ where: { user_id: ids, tanggal: w.tanggal, jenis: 'masuk' } }),
+    // Baris jenis 'masuk' termasuk Tidak hadir/Izin/Sakit dari job penutup hari —
+    // "hadir hari ini" hanya Hadir dan Terlambat.
+    Absensi.count({ where: { user_id: ids, tanggal: w.tanggal, jenis: 'masuk', status: { [Op.in]: ['Hadir', 'Terlambat'] } } }),
     Jurnal.count({ where: { user_id: ids, status: 'Dikirim' } }),
   ]);
   res.json({ jumlah_peserta: ids.length, hadir_hari_ini: hadir, perlu_review: review });
@@ -57,7 +59,10 @@ exports.detailJurnal = asyncH(async (req, res) => {
     where: { id: req.params.id, user_id: ids, status: { [Op.ne]: 'Draft' } },
     include: [
       { model: User, as: 'peserta', attributes: ['id', 'nama'] },
-      { model: JurnalReview, as: 'reviews' },
+      {
+        model: JurnalReview, as: 'reviews',
+        include: [{ model: User, as: 'pembimbing', attributes: ['id', 'nama'] }], // nama peninjau di riwayat tinjauan
+      },
     ],
   });
   if (!j) throw new HttpError(404, 'Jurnal tidak ditemukan.', 'TIDAK_ADA');

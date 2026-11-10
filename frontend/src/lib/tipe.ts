@@ -89,7 +89,7 @@ export interface PengajuanIzin {
   jenis: 'Izin' | 'Sakit';
   status: StatusPengajuan;
   keterangan: string;
-  bukti: string; // nama berkas di uploads/pengajuan/ (URL: /uploads/pengajuan/<bukti>)
+  bukti: string; // nama berkas bukti di uploads/pengajuan/ (akses: GET /api/pengajuan/bukti/<bukti>)
   ditangani_oleh?: number | null;
   catatan_putusan?: string | null;
   dibuat_pada: string;

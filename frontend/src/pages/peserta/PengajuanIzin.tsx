@@ -35,6 +35,20 @@ export default function PengajuanIzin() {
   const [sedang, ubahSedang] = useState(false);
   const unggahRef = useRef<HTMLInputElement>(null);
 
+  /** Bukti hanya tersedia lewat API (token disertakan); buka di tab baru lewat blob URL. */
+  const bukaBukti = async (p: PengajuanIzin) => {
+    try {
+      const r = await api<Response>(`/pengajuan/bukti/${p.bukti}`, { raw: true });
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => { URL.revokeObjectURL(url); }, 300000);
+    } catch (e) {
+      const err = e as ApiError;
+      ubahGalat(teksKode(err.kode ?? 'SERVER', err.message) as [string, string]);
+    }
+  };
+
   const muatUlang = useCallback(() => {
     api<{ data: PengajuanIzin[] }>('/pengajuan/izin')
       .then((r) => ubahDaftar(r.data))
@@ -180,14 +194,13 @@ export default function PengajuanIzin() {
                   <Badge s={p.status} />
                 </div>
                 <p className="text-sm mt-1.5 mb-1 whitespace-pre-line">{p.keterangan}</p>
-                <a
-                  href={`/uploads/pengajuan/${p.bukti}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => { void bukaBukti(p); }}
                   className="text-pr text-sm font-semibold no-underline hover:underline"
                 >
                   Lihat bukti foto
-                </a>
+                </button>
                 {p.status === 'Ditolak' && p.catatan_putusan ? (
                   <div className="mt-2">
                     <Pemberitahuan jenis="er" judul="Ditolak oleh pembimbing" uraian={p.catatan_putusan} />

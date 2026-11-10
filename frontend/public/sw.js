@@ -4,8 +4,12 @@
  * - Aset statis sama origin: cache-first (bernama hash, aman untuk versi baru).
  * - /api dan /uploads: SELALU jaringan, tidak pernah disinggahi (data harus segar).
  */
-const CACHE = 'astakira-absensi-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/ikon/ikon-192.png', '/ikon/ikon-512.png'];
+const CACHE = 'astakira-absensi-v2';
+// Pustaka QR disertakan precache: fitur absensi luring (tayang + pemindai) wajib tetap jalan.
+const SHELL = [
+  '/', '/manifest.webmanifest', '/ikon/ikon-192.png', '/ikon/ikon-512.png',
+  '/vendor/qrcode.min.js', '/vendor/jsQR.min.js',
+];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -35,11 +39,14 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Navigasi halaman: jaringan dulu, jatuh ke shell cache saat luring
+  // Navigasi halaman: jaringan dulu, jatuh ke shell cache saat luring.
+  // Hanya respons OK yang boleh menimpa cache shell — halaman galat (500 dst) tidak
+  // boleh menjadi shell luring berikutnya.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)
         .then((res) => {
+          if (!res.ok) return res;
           void caches.open(CACHE).then((c) => c.put('/', res.clone()));
           return res;
         })

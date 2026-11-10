@@ -153,6 +153,8 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | BUKAN_BIMBINGAN | 403 | Pengajuan bukan dari peserta bimbingan Anda |
 | ALASAN_WAJIB | 400 | Tulis alasan koreksi |
 | PUNYA_RIWAYAT | 409 | Data punya riwayat, hanya bisa dinonaktifkan |
+| TOKEN_RESET | 400/404 | Tautan atur ulang kata sandi tidak valid/kedaluwarsa |
+| RATE_LIMIT | 429 | Terlalu banyak percobaan. Coba lagi beberapa saat lagi |
 
 Semua error berbentuk `{ "pesan": "...", "kode": "..." }`. Semua endpoint ada di `src/routes/index.js`.
 
@@ -178,7 +180,8 @@ Semua error berbentuk `{ "pesan": "...", "kode": "..." }`. Semua endpoint ada di
 
 Set `.env` produksi: `NODE_ENV=production`, `DB_SYNC=false`, `SERVE_FRONTEND=true` (backend
 menyajikan `frontend/dist` dari origin yang sama; Helmet memasang CSP penuh termasuk
-`wasm-unsafe-eval` untuk MediaPipe dan mengizinkan CDN pustaka QR). Di belakang reverse proxy
+`wasm-unsafe-eval` untuk MediaPipe; pustaka QR dibundel lokal sehingga CSP tidak
+memuat pihak ketiga). Di belakang reverse proxy
 (Nginx dsb.) set `TRUST_PROXY=true` dan akhiri TLS di proxy. Email sungguhan: isi `SMTP_*`;
 tanpa `SMTP_HOST`, email disimulasikan (penerima & subjek dicatat, isi tak pernah di-log). Unload foto tetap 2 MB dan divalidasi magic bytes di `src/middleware/upload.js`.
 
@@ -188,11 +191,15 @@ Backup MySQL (simpan hasilnya di luar server):
 mysqldump --single-transaction --routines -u root -p absensi_pkl > backup-absensi.sql
 ```
 
-Pemulihan: buat ulang database kosong, jalankan `npm run db:migrate`, lalu:
+Pemulihan: satu perintah membentuk ulang database dev/test lalu mengimpor dump
+(mulai ulang `mysql` CLI terebut dari dump; kredensial diambil dari `.env`, tidak dicetak):
 
 ```bash
 node scripts/pulihkan-db.js backup-absensi.sql
 ```
+
+Tanpa argumen berkas, script hanya membentuk ulang database kosong (schema dibuat
+oleh `npm run db:migrate`).
 
 Catatan audit dependensi: `sprintf-js` (rantai dev-only Jest/istanbul) belum punya rilis perbaikan
 dari upstream, jadi risikonya diterima. Nodemailer telah dinaikkan ke 10.x.

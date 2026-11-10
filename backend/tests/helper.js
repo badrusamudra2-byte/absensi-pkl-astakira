@@ -80,8 +80,15 @@ function tokenUntuk(identifier, password = SANDI_SEED) {
   return request(app)
     .post('/api/auth/login')
     .send({ identifier, password })
-    .then((r) => {
-      if (r.status !== 200) throw new Error('Login gagal saat menyiapkan tes: ' + JSON.stringify(r.body));
+    .then(async (r) => {
+      if (r.status !== 200) {
+        // Diagnostik kegagalan login persiapan tes (kadang terjadi tanpa sebab jelas):
+        // cetak isi tabel users agar penyebabnya terlihat saat berulang.
+        const M = require('../src/models');
+        const [rows] = await M.sequelize.query('SELECT id, username, email, role FROM users');
+        console.error('Diagnostik: isi tabel users saat login gagal (' + identifier + '):', JSON.stringify(rows));
+        throw new Error('Login gagal saat menyiapkan tes: ' + JSON.stringify(r.body));
+      }
       return 'Bearer ' + r.body.token;
     });
 }

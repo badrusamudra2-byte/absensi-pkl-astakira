@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../konteks/Auth';
 import { api, ApiError } from '../lib/api';
 import { useToast } from '../komponen/Toast';
-import { Kartu, Tombol, Galat, Label, Masukan } from '../komponen/ui';
+import { Kartu, Tombol, Galat, Label, MasukanSandi } from '../komponen/ui';
 import type { ProfilPeserta, ProfilPembimbing, User } from '../lib/tipe';
 
 const PERAN: Record<string, string> = { peserta: 'Peserta PKL', pembimbing: 'Pembimbing', admin: 'Admin' };
@@ -142,11 +142,11 @@ export default function Profil() {
 
       <Kartu t="Ubah kata sandi">
         <Label htmlFor="pf-p0">Kata sandi saat ini</Label>
-        <Masukan id="pf-p0" type="password" autoComplete="current-password" value={p0} onChange={(e) => setP0(e.target.value)} />
+        <MasukanSandi id="pf-p0" autoComplete="current-password" value={p0} onChange={(e) => setP0(e.target.value)} />
         <Label htmlFor="pf-p1">Kata sandi baru</Label>
-        <Masukan id="pf-p1" type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} />
+        <MasukanSandi id="pf-p1" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} />
         <Label htmlFor="pf-p2">Ulangi kata sandi baru</Label>
-        <Masukan id="pf-p2" type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} />
+        <MasukanSandi id="pf-p2" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} />
         <div className="min-h-6 mt-2">
           <Galat pesan={errPw} />
         </div>

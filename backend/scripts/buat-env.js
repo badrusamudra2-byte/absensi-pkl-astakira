@@ -25,8 +25,11 @@ const isi = [
   'FACE_VERIFY_TTL_DETIK=180',
   '',
   'QR_TTL_DETIK=30',
+<<<<<<< HEAD
   'SCAN_KONFIRMASI_DETIK=120',
   'PENGAJUAN_MAKS_HARI_MAJU=1',
+=======
+>>>>>>> 610f4ad8e620d3d2482b44e609dbb33b005ac660
   '',
   'CORS_ORIGIN=http://localhost:3000',
   'FRONTEND_URL=http://localhost:3000',

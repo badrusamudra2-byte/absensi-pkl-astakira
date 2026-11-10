@@ -5,6 +5,7 @@ const { bagian } = require('../utils/waktu');
 const audit = require('../utils/audit');
 const keteranganBuat = require('../services/keterangan').buat;
 const env = require('../config/env');
+const path = require('path');
 
 // Peserta.pembimbing_id menyimpan user id pembimbing
 const idBimbingan = async (pid) => (await Peserta.findAll({
@@ -85,6 +86,27 @@ exports.kirim = asyncH(async (req, res) => {
   res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
 });
 
+/** Buka berkas bukti pengajuan (foto): hanya pemilik pengajuan, pembimbing
+ * bimbingannya, atau admin. Nama berkas divalidasi ketat untuk mencegah
+ * path traversal; berkas dilayani dari uploads/pengajuan. */
+exports.bukti = asyncH(async (req, res) => {
+  const nama = String(req.params.berkas || '');
+  if (!/^[0-9a-f]{32}\.(jpe?g|png|webp)$/i.test(nama)) {
+    throw new HttpError(404, 'Berkas bukti tidak ditemukan.', 'TIDAK_ADA');
+  }
+  const p = await PengajuanIzin.findOne({ where: { bukti: nama }, attributes: ['id', 'user_id'] });
+  if (!p) throw new HttpError(404, 'Berkas bukti tidak ditemukan.', 'TIDAK_ADA');
+
+  let boleh = req.user.role === 'admin' || p.user_id === req.user.id;
+  if (!boleh && req.user.role === 'pembimbing') {
+    const ids = await idBimbingan(req.user.id);
+    boleh = ids.includes(p.user_id);
+  }
+  if (!boleh) throw new HttpError(403, 'Bukti ini bukan pengajuan Anda atau bimbingan Anda.', 'DILARANG');
+
+  res.sendFile(path.join(__dirname, '../../uploads/pengajuan', nama));
+});
+
 /** Daftar pengajuan: peserta melihat miliknya; pembimbing melihat bimbingannya. */
 exports.daftar = asyncH(async (req, res) => {
   let where;
@@ -138,11 +160,13 @@ exports.putuskan = asyncH(async (req, res) => {
     }
 
     if (putusan === 'Disetujui') {
-      // Tulis baris absensi izin/sakit (hari terkunci dari QR/wajah); peserta lain tak sempat absen
+      // Tulis baris absensi izin/sakit (hari terkunci dari QR/wajah); peserta lain tak sempat absen.
+      // Batas 7-hari dilewati: tanggalnya sudah tervalidasi saat pengajuan dikirim, jadi
+      // keputusan yang diajukan telat tetap bisa disetujui (tidak macet Menunggu).
       await keteranganBuat({
         user_id: p.user_id, tanggal: p.tanggal, status: p.jenis,
         keterangan: p.keterangan, oleh: pid,
-      }, { transaction: t });
+      }, { transaction: t, lewatiBatas: true });
     }
     await p.update({
       status: putusan, ditangani_oleh: pid,

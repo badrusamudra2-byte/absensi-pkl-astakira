@@ -124,7 +124,7 @@ export default function Pengaturan() {
               <select
                 id="pil_psr"
                 value={pilih ?? ''}
-                onChange={(e) => ubahPilih(Number(e.target.value))}
+                onChange={(e) => ubahPilih(e.target.value ? Number(e.target.value) : null)}
                 className="px-[11px] py-2 border border-garis rounded-lg bg-bg"
               >
                 <option value="">— pilih —</option>

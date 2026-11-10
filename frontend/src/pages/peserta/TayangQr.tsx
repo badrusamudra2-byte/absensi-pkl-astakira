@@ -40,6 +40,9 @@ export default function TayangQr() {
   const [sedang, ubahSedang] = useState(false);
   const [sisa, ubahSisa] = useState(0);
   const [beres, ubahBeres] = useState<null | { jam: string; status: Absensi['status'] }>(null);
+  // Guard antre: bila POST qr-saya sedang berjalan, tick interval tidak menembak
+  // permintaan baru (mencegah POST ganda dan respons lama menimpa QR baru).
+  const sedangRef = useRef(false);
   const kunciTampil = useRef<{
     release: () => Promise<void>;
     addEventListener: (t: string, f: () => void) => void;
@@ -50,6 +53,8 @@ export default function TayangQr() {
       ubahGalat(['Tidak ada koneksi internet', 'Sambungkan Wi-Fi atau data seluler lalu tayangkan ulang QR.']);
       return;
     }
+    if (sedangRef.current) return; // permintaan rotasi sebelumnya masih berjalan
+    sedangRef.current = true;
     ubahSedang(true);
     ubahGalat(null);
     try {
@@ -66,6 +71,7 @@ export default function TayangQr() {
       );
       setQr(null);
     } finally {
+      sedangRef.current = false;
       ubahSedang(false);
     }
   }, [jenis]);
@@ -130,7 +136,7 @@ export default function TayangQr() {
     const id = setInterval(() => {
       const s = Math.max(0, Math.ceil((akhir - Date.now()) / 1000));
       ubahSisa(s);
-      if (s === 0) void tayangkan();
+      if (s === 0 && !sedangRef.current) void tayangkan();
     }, 500);
     return () => clearInterval(id);
   }, [qr, beres, tayangkan]);
