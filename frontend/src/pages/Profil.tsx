@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../konteks/Auth';
 import { api, ApiError } from '../lib/api';
 import { useToast } from '../komponen/Toast';
@@ -6,6 +6,35 @@ import { Kartu, Tombol, Galat, Label, Masukan } from '../komponen/ui';
 import type { ProfilPeserta, ProfilPembimbing, User } from '../lib/tipe';
 
 const PERAN: Record<string, string> = { peserta: 'Peserta PKL', pembimbing: 'Pembimbing', admin: 'Admin' };
+
+/** Modal tampilan foto profil besar, ditutup lewat latar, tombol, atau Esc. */
+function ModalFoto({ url, nama, tutup }: { url: string; nama: string; tutup: () => void }) {
+  useEffect(() => {
+    const kbd = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') tutup();
+    };
+    window.addEventListener('keydown', kbd);
+    return () => window.removeEventListener('keydown', kbd);
+  }, [tutup]);
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={tutup}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Foto profil diperbesar"
+        className="bg-kartu rounded-xl p-3 max-w-[92vw] max-h-[92vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img src={url} alt={`Foto profil ${nama}`} className="max-w-full max-h-[74vh] rounded-lg" />
+        <p className="text-center mt-2">
+          <Tombol varian="gh" onClick={tutup}>
+            Tutup
+          </Tombol>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Profil() {
   const { user, profil, perbaruiUser } = useAuth();
@@ -17,6 +46,7 @@ export default function Profil() {
   const [p2, setP2] = useState('');
   const [errPw, setErrPw] = useState('');
   const [memrosesPw, setMemrosesPw] = useState(false);
+  const [lihatFoto, ubahLihatFoto] = useState(false);
 
   const potong = user?.nama?.[0] ?? '?';
 
@@ -76,9 +106,20 @@ export default function Profil() {
     <>
       <Kartu t="Detail akun">
         <div className="flex items-center gap-4">
-          <div className="w-[72px] h-[72px] rounded-full bg-pr text-white text-3xl font-extrabold grid place-items-center overflow-hidden">
-            {user?.foto_url ? <img src={user.foto_url} alt="Foto profil" className="w-full h-full object-cover" /> : potong}
-          </div>
+          {user?.foto_url ? (
+            <button
+              type="button"
+              onClick={() => ubahLihatFoto(true)}
+              aria-label="Lihat foto profil lebih besar"
+              className="w-[72px] h-[72px] rounded-full overflow-hidden bg-pr text-white text-3xl font-extrabold grid place-items-center cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-pr shrink-0"
+            >
+              <img src={user.foto_url} alt="Foto profil" className="w-full h-full object-cover" />
+            </button>
+          ) : (
+            <div className="w-[72px] h-[72px] rounded-full bg-pr text-white text-3xl font-extrabold grid place-items-center overflow-hidden shrink-0">
+              {potong}
+            </div>
+          )}
           <div>
             <b className="block">{user?.nama}</b>
             <p className="text-mu text-sm">
@@ -113,6 +154,10 @@ export default function Profil() {
           {memrosesPw ? 'Menyimpan…' : 'Simpan kata sandi'}
         </Tombol>
       </Kartu>
+
+      {lihatFoto && user?.foto_url && (
+        <ModalFoto url={user.foto_url} nama={user.nama ?? ''} tutup={() => ubahLihatFoto(false)} />
+      )}
     </>
   );
 }

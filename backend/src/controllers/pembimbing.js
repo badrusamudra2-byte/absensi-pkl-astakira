@@ -30,13 +30,14 @@ exports.peserta = asyncH(async (req, res) => {
         group: ['user_id', 'status'], raw: true,
       })
     : [];
-  res.json({
-    data: list.map((p) => {
+  const data = list
+    .filter((p) => p.user) // baris peserta dengan user yang sudah terhapus dilewati agar halaman tetap tampil
+    .map((p) => {
       const rekap = {};
       agg.filter((a) => a.user_id === p.user_id).forEach((a) => { rekap[a.status] = Number(a.n); });
       return { id: p.user_id, nama: p.user.nama, email: p.user.email, aktif: p.user.aktif, divisi: p.divisi, rekap_30_hari: rekap };
-    }),
-  });
+    });
+  res.json({ data });
 });
 
 exports.jurnal = asyncH(async (req, res) => {
