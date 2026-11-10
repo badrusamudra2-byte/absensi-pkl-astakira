@@ -5,7 +5,7 @@ const {
   QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, AuditLog,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
-const { wajib, jam, email, kuat } = require('../utils/validasi');
+const { wajib, jam, email, kuat, pesanSandi } = require('../utils/validasi');
 const { acak, dekripBait } = require('../utils/crypto');
 const { HARI, bagian, rentang } = require('../utils/waktu');
 const mail = require('../utils/mailer');
@@ -54,7 +54,7 @@ function crud(role, Profile, alias) {
       // Plain text tidak pernah disimpan maupun diulang di respons — hanya hash di database.
       const adminIsiSandi = b.password !== undefined && b.password !== null && String(b.password) !== '';
       if (adminIsiSandi && !kuat(b.password)) {
-        throw new HttpError(400, 'Kata sandi awal minimal 8 karakter (maksimal 72).', 'VALIDASI');
+        throw new HttpError(400, `Kata sandi awal: ${pesanSandi.toLowerCase()} (maksimal 72).`, 'VALIDASI');
       }
       const sementara = adminIsiSandi ? b.password : acak(9);
       const profil = await dataProfil(b);

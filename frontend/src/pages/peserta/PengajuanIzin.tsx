@@ -8,11 +8,18 @@ import { isoHariIni, tglIndo } from '../../komponen/umum';
 
 const BUKTI_MAKS = 5 * 1024 * 1024;
 const BATAS_HARI = 7; // JURNAL_MAKS_HARI_BELAKANG di backend
+const MAKS_MAJU = 1; // PENGAJUAN_MAKS_HARI_MAJU di backend
 
 /** Tanggal ISO paling awal yang boleh diajukan (BATAS_HARI ke belakang). */
 const isoBatas = () =>
   new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' })
     .format(new Date(Date.now() - BATAS_HARI * 86400000))
+    .slice(0, 10);
+
+/** Tanggal ISO terjauh yang boleh diajukan (MAKS_MAJU ke depan). */
+const isoMaju = () =>
+  new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' })
+    .format(new Date(Date.now() + MAKS_MAJU * 86400000))
     .slice(0, 10);
 
 /** Halaman pengajuan izin/sakit peserta: kirim beserta bukti foto, lalu pantau statusnya.
@@ -102,12 +109,14 @@ export default function PengajuanIzin() {
             </div>
           </fieldset>
           <p>
-            <Label htmlFor="pj_tgl">Tanggal (maksimal {BATAS_HARI} hari ke belakang)</Label>
+            <Label htmlFor="pj_tgl">
+              Tanggal (boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang)
+            </Label>
             <input
               id="pj_tgl"
               type="date"
               required
-              max={isoHariIni()}
+              max={isoMaju()}
               min={isoBatas()}
               value={tanggal}
               onChange={(e) => ubahTanggal(e.target.value)}

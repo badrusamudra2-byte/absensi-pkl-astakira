@@ -73,9 +73,17 @@ describe('lupa dan reset kata sandi', () => {
 
   test('token reset yang salah -> 400 TOKEN_RESET', async () => {
     await isiDasar();
-    const r = await request(app).post('/api/auth/reset-password').send({ token: 'x'.repeat(32), password: 'sandi-pemulihan' });
+    const r = await request(app).post('/api/auth/reset-password').send({ token: 'x'.repeat(32), password: 'sandi-pemulihan-2026' });
     expect(r.status).toBe(400);
     expect(r.body).toMatchObject({ kode: 'TOKEN_RESET' });
+  });
+
+  test('sandi reset lemah (tanpa angka) -> 400 VALIDASI dengan aturan kebijakan', async () => {
+    await isiDasar();
+    const r = await request(app).post('/api/auth/reset-password').send({ token: 'x'.repeat(32), password: 'sanditanpaangka' });
+    expect(r.status).toBe(400);
+    expect(r.body).toMatchObject({ kode: 'VALIDASI' });
+    expect(r.body.pesan).toContain('angka');
   });
 
   test('lupa-password untuk email tak terdaftar tetap 200 (tidak membocorkan email)', async () => {

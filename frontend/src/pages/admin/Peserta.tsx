@@ -126,7 +126,7 @@ export default function Peserta() {
                   value={form.password} onChange={(e) => ubahForm({ ...form, password: e.target.value })}
                   className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
                 />
-                <small className="text-mu text-xs">Minimal 8 karakter. Peserta sebaiknya menggantinya setelah login pertama.</small>
+                <small className="text-mu text-xs">Minimal 8 karakter, mengandung huruf dan angka. Peserta sebaiknya menggantinya setelah login pertama.</small>
               </>
             )}
             <Label htmlFor="psr_divisi">Divisi</Label>

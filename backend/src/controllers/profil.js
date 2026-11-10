@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { User } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
-const { kuat } = require('../utils/validasi');
+const { kuat, pesanSandi } = require('../utils/validasi');
 const audit = require('../utils/audit');
 
 exports.password = asyncH(async (req, res) => {
@@ -12,7 +12,7 @@ exports.password = asyncH(async (req, res) => {
   if (!(typeof lama === 'string' && (await bcrypt.compare(lama, u.password_hash)))) {
     throw new HttpError(400, 'Kata sandi saat ini salah.', 'KREDENSIAL');
   }
-  if (!kuat(baru)) throw new HttpError(400, 'Kata sandi baru minimal 8 karakter.', 'VALIDASI');
+  if (!kuat(baru)) throw new HttpError(400, pesanSandi, 'VALIDASI');
   await u.update({ password_hash: await bcrypt.hash(baru, 12) });
   await audit(req, 'Ubah kata sandi');
   res.json({ pesan: 'Kata sandi diubah.' });

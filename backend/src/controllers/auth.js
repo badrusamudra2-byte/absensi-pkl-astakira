@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const env = require('../config/env');
 const { User, Peserta, Pembimbing } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
-const { kuat } = require('../utils/validasi');
+const { kuat, pesanSandi } = require('../utils/validasi');
 const { sha256, acak } = require('../utils/crypto');
 const mail = require('../utils/mailer');
 const audit = require('../utils/audit');
@@ -62,7 +62,7 @@ exports.lupa = asyncH(async (req, res) => {
 exports.reset = asyncH(async (req, res) => {
   const { token, password } = req.body;
   if (typeof token !== 'string' || !kuat(password)) {
-    throw new HttpError(400, 'Token wajib ada dan kata sandi minimal 8 karakter.', 'VALIDASI');
+    throw new HttpError(400, `Token wajib ada, dan ${pesanSandi.toLowerCase()}.`, 'VALIDASI');
   }
   const u = await User.unscoped().findOne({
     where: { reset_token_hash: sha256(token), reset_expires: { [Op.gt]: new Date() } },

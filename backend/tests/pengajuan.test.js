@@ -8,6 +8,7 @@ const M = require('../src/models');
 const TGL_KINI = bagian().tanggal;
 const TGL_LAMPAU = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 const TGL_DEPAN = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+const TGL_DEPAN2 = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) + 2 * 86400000).toISOString().slice(0, 10);
 const TGL_LAMBUAT = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) - 8 * 86400000).toISOString().slice(0, 10);
 
 // Byte kepala JPEG dan PNG sah (magic bytes yang diperiksa middleware)
@@ -82,9 +83,16 @@ describe('Kirim pengajuan izin/sakit (peserta)', () => {
     expect(r.body.kode).toBe('VALIDASI');
   });
 
-  test('tanggal masa depan ditolak', async () => {
+  test('pengajuan izin untuk besok (H+1) diterima', async () => {
     const r = await kirim(tokPeserta, { jenis: 'Izin', tanggal: TGL_DEPAN, keterangan: 'Mengajukan izin duluan.' });
+    expect(r.status).toBe(201);
+    expect(r.body.data.status).toBe('Menunggu');
+  });
+
+  test('pengajuan lebih dari 1 hari ke depan (H+2) ditolak', async () => {
+    const r = await kirim(tokPeserta, { jenis: 'Izin', tanggal: TGL_DEPAN2, keterangan: 'Terlalu jauh ke depan.' });
     expect(r.status).toBe(400);
+    expect(r.body.pesan).toContain('hari ke depan');
   });
 
   test('tanggal lebih dari 7 hari ke belakang ditolak', async () => {

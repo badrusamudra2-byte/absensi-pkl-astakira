@@ -57,6 +57,10 @@ module.exports = {
     // Peserta maksimal menulis jurnal sampai N hari ke belakang (0 = hanya hari ini)
     maksBuka: n('JURNAL_MAKS_HARI_BELAKANG', 7),
   },
+  pengajuan: {
+    // Pengajuan izin/sakit boleh mengajukan sampai N hari ke depan (default: besok)
+    maksMaju: n('PENGAJUAN_MAKS_HARI_MAJU', 1),
+  },
   tutupHari: {
     // Job penutup hari menandai Tidak hadir dari jam_pulang + selisih menit ini
     menit: n('TUTUP_HARI_MENIT', 60),

@@ -75,8 +75,8 @@ export default function Profil() {
 
   const ubahPw = async () => {
     setErrPw('');
-    if (p1.length < 8) {
-      setErrPw('Kata sandi baru minimal 8 karakter.');
+    if (!/^(?=.*[a-zA-Z])(?=.*\d).{8,72}$/.test(p1)) {
+      setErrPw('Kata sandi baru minimal 8 karakter dan mengandung huruf serta angka.');
       return;
     }
     if (p1 !== p2) {

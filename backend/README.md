@@ -85,8 +85,9 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 ## Izin, sakit, dan penutup hari
 
 - **Pengajuan Izin/Sakit kini diberikan oleh peserta** (`POST /api/pengajuan/izin`, multipart):
-  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini; tidak boleh masa depan,
-  maksimal `JURNAL_MAKS_HARI_BELAKANG` hari ke belakang), `keterangan` (3â€“1000 karakter) dan
+  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini; boleh
+  `PENGAJUAN_MAKS_HARI_MAJU` hari ke depan (default 1 = besok), maksimal
+  `JURNAL_MAKS_HARI_BELAKANG` hari ke belakang), `keterangan` (3â€“1000 karakter) dan
   `bukti` (foto JPG/PNG/WebP maks 5 MB, disimpan acak di `uploads/pengajuan/`).
 - Pembimbing melihat pengajuan bimbingannya (`GET /api/pengajuan/izin`), memutuskan lewat
   `PUT /api/pengajuan/izin/:id/putuskan` (`{ putusan: "Disetujui"|"Ditolak", alasan }` â€” alasan

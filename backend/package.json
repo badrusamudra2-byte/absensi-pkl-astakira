@@ -11,7 +11,8 @@
     "tutup-hari": "node scripts/tutup-hari.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo:all",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:cakup": "jest --runInBand tests/auth.test.js"
   },
   "engines": {
     "node": ">=18"

@@ -1,6 +1,9 @@
 const { HttpError } = require('./httpError');
 
-exports.kuat = (p) => typeof p === 'string' && p.length >= 8 && p.length <= 72; // batas bcrypt 72 byte
+// Kebijakan sandi: 8-72 karakter (batas bcrypt 72 byte), huruf + angka wajib.
+exports.pesanSandi = 'Kata sandi minimal 8 karakter dan mengandung huruf serta angka.';
+exports.kuat = (p) =>
+  typeof p === 'string' && p.length >= 8 && p.length <= 72 && /[a-zA-Z]/.test(p) && /\d/.test(p);
 
 exports.wajib = (v, maks, nama = 'Nama') => {
   const s = String(v ?? '').trim();

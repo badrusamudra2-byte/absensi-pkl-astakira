@@ -26,6 +26,7 @@ const isi = [
   '',
   'QR_TTL_DETIK=30',
   'SCAN_KONFIRMASI_DETIK=120',
+  'PENGAJUAN_MAKS_HARI_MAJU=1',
   '',
   'CORS_ORIGIN=http://localhost:3000',
   'FRONTEND_URL=http://localhost:3000',

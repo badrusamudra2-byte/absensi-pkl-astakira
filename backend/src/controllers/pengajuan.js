@@ -16,7 +16,8 @@ const jenisOk = (j) => {
   return j;
 };
 
-// Tanggal YYYY-MM-DD: kalender sah, tak boleh masa depan, maksimal JURNAL_MAKS_HARI_BELAKANG
+// Tanggal YYYY-MM-DD: kalender sah, mengaju sampai PENGAJUAN_MAKS_HARI_MAJU,
+// mundur maksimal JURNAL_MAKS_HARI_BELAKANG
 const tanggalOk = (s) => {
   const t = String(s ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
@@ -26,7 +27,14 @@ const tanggalOk = (s) => {
   if (!sah) throw new HttpError(400, 'Tanggal tidak valid.', 'VALIDASI');
   const kini = new Date(`${bagian().tanggal}T00:00:00Z`);
   const hari = new Date(Date.UTC(y, m - 1, h));
-  if (hari > kini) throw new HttpError(400, 'Tanggal pengajuan tidak boleh di masa depan.', 'VALIDASI');
+  const batasMaju = new Date(kini.getTime() + env.pengajuan.maksMaju * 86400000);
+  if (hari > batasMaju) {
+    throw new HttpError(
+      400,
+      `Pengajuan maksimal untuk ${env.pengajuan.maksMaju} hari ke depan.`,
+      'VALIDASI',
+    );
+  }
   const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
   if (hari < batas) {
     throw new HttpError(

@@ -17,8 +17,8 @@ export default function AturUlang() {
   const kirim = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr('');
-    if (pw.length < 8) {
-      setErr('Kata sandi baru minimal 8 karakter.');
+    if (!/^(?=.*[a-zA-Z])(?=.*\d).{8,72}$/.test(pw)) {
+      setErr('Kata sandi minimal 8 karakter dan mengandung huruf serta angka.');
       return;
     }
     if (pw !== ulang) {

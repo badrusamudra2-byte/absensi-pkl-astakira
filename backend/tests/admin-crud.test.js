@@ -53,11 +53,21 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect(r.body.kode).toBe('VALIDASI');
   });
 
+  test('kata sandi awal tanpa angka ditolak (400 VALIDASI, kebijakan huruf+angka)', async () => {
+    const r = await request(app)
+      .post('/api/admin/peserta')
+      .set('Authorization', tokAdmin)
+      .send({ nama: 'BilangAngka?', email: 'tanpa-angka@astakira.id', password: 'sanditanpaangka' });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+    expect(r.body.pesan).toContain('angka');
+  });
+
   test('kata sandi awal berlaku juga untuk pembimbing; kosong kembali ke sandi sementara otomatis', async () => {
     const pmb = await request(app)
       .post('/api/admin/pembimbing')
       .set('Authorization', tokAdmin)
-      .send({ nama: 'Pembimbing Sandi', email: 'pmb-sandi@astakira.id', password: 'sandi-pembimbing', divisi: 'Web' });
+      .send({ nama: 'Pembimbing Sandi', email: 'pmb-sandi@astakira.id', password: 'sandi-pembimbing-9', divisi: 'Web' });
     expect(pmb.status).toBe(201);
 
     const kosong = await request(app)
