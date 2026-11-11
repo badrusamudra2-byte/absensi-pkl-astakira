@@ -2,7 +2,6 @@ const request = require('supertest');
 jest.mock('../src/utils/mailer', () => ({ kirim: jest.fn().mockResolvedValue({}) }));
 const app = require('../src/app');
 const mail = require('../src/utils/mailer');
-const { sha256 } = require('../src/utils/crypto');
 const { kosongkanDb, isiDasar, SANDI_SEED } = require('./helper');
 
 // Lima percobaan login + 1 lupa + 2 reset + 1 login = di bawah batas rate limit route.

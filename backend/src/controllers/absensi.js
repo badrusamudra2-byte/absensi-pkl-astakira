@@ -4,7 +4,7 @@ const {
   sequelize, QrToken, Absensi, FaceTemplate, FaceVerification, WajahFoto, User, Workshift,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
-const { sha256, acak, dec, enkripBait } = require('../utils/crypto');
+const { sha256, acak, dec } = require('../utils/crypto');
 const { bagian, hitungStatus, rentang, menitDariJam } = require('../utils/waktu');
 const audit = require('../utils/audit');
 const pengaturan = require('../services/pengaturan');

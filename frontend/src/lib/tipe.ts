@@ -124,6 +124,12 @@ export interface BarisJurnal {
   status: StatusJurnal;
 }
 
+/** Baris daftar jurnal peserta: gabungan tanggal absensi dan jurnal.
+ * id null = baris dari tanggal absensi yang jurnalnya belum diisi. */
+export interface BarisJurnalAbsensi extends BarisJurnal {
+  absensi?: { masuk: string; status: string } | null;
+}
+
 export interface ReviewJurnal {
   id: number;
   jurnal_id: number;

@@ -2,7 +2,6 @@ const request = require('supertest');
 const app = require('../src/app');
 const { bagian } = require('../src/utils/waktu');
 const { kosongkanDb, isiDasar, buatUser, tokenUntuk } = require('./helper');
-const { enc } = require('../src/utils/crypto');
 const M = require('../src/models');
 
 const TGL_KINI = bagian().tanggal;
@@ -11,9 +10,8 @@ const TGL_DEPAN = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) + 86400000).toISO
 const TGL_DEPAN2 = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) + 2 * 86400000).toISOString().slice(0, 10);
 const TGL_LAMBUAT = new Date(Date.parse(`${TGL_KINI}T00:00:00Z`) - 8 * 86400000).toISOString().slice(0, 10);
 
-// Byte kepala JPEG dan PNG sah (magic bytes yang diperiksa middleware)
+// Byte kepala JPEG sah (magic bytes yang diperiksa middleware)
 const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 let dasar, tokPmb, tokPeserta, tokPmbLain;
 

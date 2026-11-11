@@ -81,6 +81,36 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect(u.password_hash.startsWith('$2')).toBe(true);
   });
 
+  test('username sama dengan email pengguna lain ditolak (409 DUPLIKAT)', async () => {
+    // dasar.pembimbing: rizal@astakira.id — username "rizal@astakira.id" akan ambigu saat login
+    const r = await request(app)
+      .post('/api/admin/peserta')
+      .set('Authorization', tokAdmin)
+      .send({ nama: 'Cek Bentrok', email: 'bentrok@astakira.id', username: 'RIZAL@astakira.id' });
+    expect(r.status).toBe(409);
+    expect(r.body.kode).toBe('DUPLIKAT');
+    expect(await require('../src/models').User.count({ where: { email: 'bentrok@astakira.id' } })).toBe(0);
+  });
+
+  test('email sama dengan username pengguna lain ditolak (409 DUPLIKAT)', async () => {
+    const M = require('../src/models');
+    // Username berformat email sah bila tidak menabrak email siapa pun
+    const buat = await request(app)
+      .post('/api/admin/peserta')
+      .set('Authorization', tokAdmin)
+      .send({ nama: 'Nadia Dua', email: 'nadiadua@astakira.id', username: 'nad@astakira.id' });
+    expect(buat.status).toBe(201);
+    // User lain tidak boleh memakai 'nad@astakira.id' sebagai email — login jadi ambigu
+    const r = await request(app)
+      .put(`/api/admin/peserta/${dasar.peserta.id}`)
+      .set('Authorization', tokAdmin)
+      .send({ email: 'nad@astakira.id' });
+    expect(r.status).toBe(409);
+    expect(r.body.kode).toBe('DUPLIKAT');
+    const kini = await M.User.findByPk(dasar.peserta.id);
+    expect(kini.email).toBe('alya@astakira.id');
+  });
+
   test('edit peserta: ganti nama, divisi, dan pembimbing', async () => {
     const pmbLain = await request(app)
       .post('/api/admin/pembimbing')

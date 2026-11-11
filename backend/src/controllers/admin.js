@@ -35,6 +35,20 @@ function crud(role, Profile, alias) {
     if (!u) throw new HttpError(404, 'Data tidak ditemukan.', 'TIDAK_ADA');
     return u;
   };
+  // Bentrok kredensial dua arah: username sama dengan email pengguna lain (atau
+  // sebaliknya) membuat login ambigu — identifier bisa mengarah ke dua akun.
+  // MySQL membandingkan teks tak peka huruf besar/kecil secara bawaan.
+  const cekBentrokLogin = async (usernameBaru, emailBaru, kecualiId, t) => {
+    const lain = { id: { [Op.ne]: kecualiId ?? 0 } };
+    if (usernameBaru) {
+      const x = await User.findOne({ where: { email: usernameBaru, ...lain }, transaction: t });
+      if (x) throw new HttpError(409, 'Username tidak boleh sama dengan email pengguna lain.', 'DUPLIKAT');
+    }
+    if (emailBaru) {
+      const x = await User.findOne({ where: { username: emailBaru, ...lain }, transaction: t });
+      if (x) throw new HttpError(409, 'Email tidak boleh sama dengan username pengguna lain.', 'DUPLIKAT');
+    }
+  };
 
   return {
     list: asyncH(async (req, res) => {
@@ -61,6 +75,7 @@ function crud(role, Profile, alias) {
       const sementara = adminIsiSandi ? b.password : acak(9);
       const profil = await dataProfil(b);
       const u = await sequelize.transaction(async (t) => {
+        await cekBentrokLogin(username, mail_, null, t);
         const baru = await User.create(
           { nama, email: mail_, username, role, password_hash: await bcrypt.hash(sementara, 12) }, { transaction: t },
         );
@@ -92,6 +107,7 @@ function crud(role, Profile, alias) {
       }
       const profil = await dataProfil(b);
       await sequelize.transaction(async (t) => {
+        if (f.email) await cekBentrokLogin(null, f.email, u.id, t);
         await u.update(f, { transaction: t });
         if (Object.keys(profil).length) await Profile.update(profil, { where: { user_id: u.id }, transaction: t });
         // Akun dinonaktifkan: template dan verifikasi wajah dihapus agar

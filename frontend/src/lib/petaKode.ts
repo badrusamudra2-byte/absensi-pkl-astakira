@@ -34,6 +34,7 @@ export const PETA: Record<string, [string, string]> = {
 
   // Galat baku (README backend)
   JURNAL_ADA: ['Jurnal sudah ada', 'Anda sudah punya jurnal untuk tanggal ini. Pilih tanggal lain atau ubah jurnal tersebut.'],
+  JURNAL_BUTUH_ABSEN: ['Tanggal tidak punya absensi', 'Jurnal hanya bisa ditulis untuk tanggal Anda absen masuk (Hadir/Terlambat).'],
   STATUS_TIDAK_VALID: ['Jurnal tidak bisa diubah', 'Jurnal yang sudah dikirim atau disetujui tidak bisa diubah.'],
   VALIDASI: ['Data tidak valid', 'Periksa kembali isian lalu coba lagi.'],
   BELUM_LOGIN: ['Belum masuk', 'Silakan login terlebih dahulu.'],

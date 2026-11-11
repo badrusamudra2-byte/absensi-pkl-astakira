@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import type { BarisJurnal, StatusJurnal } from '../../lib/tipe';
+import type { BarisJurnalAbsensi, StatusJurnal } from '../../lib/tipe';
 import { Kartu, Tabel, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { gunakanTerbaru } from '../../komponen/umum';
 
@@ -14,7 +14,7 @@ export default function JurnalList() {
   const [status, cuaStatus] = useState('');
   const [dari, cuDari] = useState('');
   const [sampai, cuSampai] = useState('');
-  const [data, cuData] = useState<BarisJurnal[] | null>(null);
+  const [data, cuData] = useState<BarisJurnalAbsensi[] | null>(null);
   const [menmuat, cuMuat] = useState(true);
   const [galat, cuGalat] = useState<string | null>(null);
   const terbaru = gunakanTerbaru();
@@ -28,7 +28,7 @@ export default function JurnalList() {
     if (dari) cari.set('dari', dari);
     if (sampai) cari.set('sampai', sampai);
     const q = cari.toString();
-    api<{ data: BarisJurnal[] }>('/jurnal' + (q ? `?${q}` : ''))
+    api<{ data: BarisJurnalAbsensi[] }>('/jurnal' + (q ? `?${q}` : ''))
       .then((r) => { if (sah(true)) cuData(r.data); })
       .catch(() => { if (sah(true)) cuGalat('Jurnal belum bisa dimuat. Pastikan server aktif lalu coba lagi.'); })
       .finally(() => { if (sah(true)) cuMuat(false); });
@@ -72,24 +72,41 @@ export default function JurnalList() {
 
       {galat ? <Pemberitahuan jenis="warn" judul="Belum bisa dimuat" uraian={galat} /> : null}
       <Kartu t="Daftar jurnal">
+        <p className="text-mu text-sm mb-2">
+          Daftar mengikuti absensi Anda: setiap tanggal yang Anda absen masuk muncul di sini.
+          Tekan ikon pensil untuk mengisi jurnalnya.
+        </p>
         {menmuat ? (
           <p className="text-mu text-sm">Memuat…</p>
         ) : (
           <Tabel
-            h={['Tanggal', 'Judul', 'Status', '']}
+            h={['Tanggal', 'Absensi', 'Judul', 'Status', '']}
             rows={(data ?? []).map((j) => [
               j.tanggal,
-              <b key="j" className="font-semibold">{j.judul}</b>,
-              <Badge key="s" s={j.status} />,
-              <Link key="d" to={`/jurnal/${j.id}`} className="text-pr underline no-underline">Buka</Link>,
+              j.absensi ? (
+                <span key="a" className="whitespace-nowrap">
+                  <span className="text-g font-semibold">{j.absensi.masuk.slice(0, 5)}</span>{' '}
+                  <Badge s={j.absensi.status} />
+                </span>
+              ) : <span key="a" className="text-mu">—</span>,
+              j.judul
+                ? <b key="j" className="font-semibold">{j.judul}</b>
+                : <span key="j" className="text-mu">Belum diisi</span>,
+              j.status ? <Badge key="s" s={j.status} /> : <span key="s" className="text-mu">—</span>,
+              j.id ? (
+                <Link key="d" to={`/jurnal/${j.id}`} className="text-pr underline no-underline" aria-label={`Buka jurnal ${j.tanggal}`}>
+                  ✎ Buka
+                </Link>
+              ) : (
+                <Link key="d" to={`/jurnal/baru?tanggal=${j.tanggal}`} className="text-pr underline no-underline" aria-label={`Isi jurnal untuk ${j.tanggal}`}>
+                  ✎ Isi
+                </Link>
+              ),
             ])}
-            em="Belum ada jurnal pada saringan ini. Tulis jurnal pertama Anda lewat tombol + Jurnal baru."
+            em="Belum ada tanggal absensi pada saringan ini. Absen masuk dulu, lalu jurnal tanggalnya akan muncul di sini."
           />
         )}
       </Kartu>
-      <Link to="/jurnal/baru" className="no-underline">
-        <Tombol>+ Jurnal baru</Tombol>
-      </Link>
     </>
   );
 }

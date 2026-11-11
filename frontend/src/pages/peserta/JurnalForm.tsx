@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
@@ -8,7 +8,6 @@ import { useToast } from '../../komponen/Toast';
 import { useOnline } from '../../komponen/Offline';
 import { isoHariSilam } from '../../komponen/umum';
 
-const MAKS_BELAKANG = 7; // sejajar env JURNAL_MAKS_HARI_BELAKANG backend
 const MAKS_TEKS = 5000;
 
 // Selalu WIB (Asia/Jakarta), sama seperti server — bukan tanggal UTC mesin.
@@ -30,9 +29,14 @@ export default function JurnalForm() {
   const { id } = useParams(); // ada -> mode edit
   const editMode = id !== undefined;
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  // Dibuka dari daftar jurnal (?tanggal=): tanggal terkunci sesuai absensi —
+  // peserta mengisi jurnal untuk hari itu, bukan memilih tanggal bebas.
+  const kunci = sp.get('tanggal');
+  const tanggalTerkunci = kunci && /^\d{4}-\d{2}-\d{2}$/.test(kunci) ? kunci : null;
   const toast = useToast();
   const daring = useOnline();
-  const [isi, ubahIsi] = useState<Isian>(kosong);
+  const [isi, ubahIsi] = useState<Isian>(() => ({ ...kosong(), tanggal: tanggalTerkunci ?? hariBatas(0) }));
   const [judulErr, ubahJudulErr] = useState('');
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
   const [sedang, ubahSedang] = useState(false);
@@ -65,8 +69,8 @@ export default function JurnalForm() {
   const sah = (kirim: boolean): boolean => {
     let bener = true;
     ubahJudulErr('');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(isi.tanggal) || isi.tanggal > hariBatas(0) || isi.tanggal < hariBatas(MAKS_BELAKANG)) {
-      ubahGalat(['Tanggal tidak sesuai', `Pilih tanggal antara ${hariBatas(MAKS_BELAKANG)} dan ${hariBatas(0)}.`]);
+    if (!tanggalTerkunci && (!/^\d{4}-\d{2}-\d{2}$/.test(isi.tanggal) || isi.tanggal > hariBatas(0))) {
+      ubahGalat(['Tanggal tidak sesuai', 'Tanggal jurnal tidak boleh di masa depan.']);
       bener = false;
     }
     if (!isi.judul.trim() || !isi.uraian.trim()) {
@@ -128,11 +132,16 @@ export default function JurnalForm() {
           <label htmlFor="tgl" className="block text-[13px] font-semibold mt-3">Tanggal kegiatan</label>
           <input
             id="tgl" type="date" value={isi.tanggal}
-            min={hariBatas(MAKS_BELAKANG)} max={hariBatas(0)}
+            disabled={!!tanggalTerkunci}
+            max={hariBatas(0)}
             onChange={(e) => ubahIsi({ ...isi, tanggal: e.target.value })}
-            className="block mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
+            className="block mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg disabled:text-mu disabled:cursor-not-allowed"
           />
-          <small className="text-mu text-xs">Hingga {MAKS_BELAKANG} hari ke belakang, tanpa masa depan.</small>
+          <small className="text-mu text-xs">
+            {tanggalTerkunci
+              ? 'Tanggal terkunci sesuai absensi Anda — isi jurnal untuk hari itu.'
+              : 'Tanpa masa depan. Hanya tanggal yang Anda absen masuk yang bisa diisi.'}
+          </small>
         </p>
         <p>
           <label htmlFor="jdl" className="block text-[13px] font-semibold mt-3">Judul kegiatan</label>

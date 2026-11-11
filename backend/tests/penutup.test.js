@@ -1,4 +1,4 @@
-const { bagian, HARI, menitDariJam } = require('../src/utils/waktu');
+const { bagian, HARI } = require('../src/utils/waktu');
 const tutupHari = require('../src/services/tutup-hari');
 const { kosongkanDb, isiDasar, buatUser } = require('./helper');
 const M = require('../src/models');

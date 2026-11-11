@@ -202,7 +202,7 @@ describe('pembimbing memindai QR peserta (/absensi/scan)', () => {
   });
 
   test('mode wajah: scan ditolak -> 409 MODE_QR_NONAKTIF', async () => {
-    const { admin, peserta, pembimbing } = await isiDasar();
+    const { admin, pembimbing } = await isiDasar();
     await kerjakanHari();
     await setMode(await tokenUntuk(admin.email), 'wajah');
     const authzPmb = await tokenUntuk(pembimbing.email);

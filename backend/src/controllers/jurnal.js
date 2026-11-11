@@ -1,8 +1,7 @@
 const { Op } = require('sequelize');
-const { Jurnal, JurnalReview, User } = require('../models');
+const { Jurnal, JurnalReview, User, Absensi } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
-const env = require('../config/env');
 
 const STATUS = ['Draft', 'Dikirim', 'Revisi', 'Disetujui'];
 
@@ -17,7 +16,8 @@ const ambil = (b) => {
   return o;
 };
 
-/** Tanggal YYYY-MM-DD: kalender sah, tidak boleh masa depan, maksimal maksBuka hari ke belakang. */
+/** Tanggal YYYY-MM-DD: kalender sah dan tidak boleh masa depan. Batas mundur lepas:
+ * jurnal mengikuti kehadiran — tanggal ber-absensi tetap boleh diisi kapan pun. */
 const tanggalOk = (b) => {
   const s = String(b.tanggal ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
@@ -34,13 +34,20 @@ const tanggalOk = (b) => {
   if (hari > kini) {
     throw new HttpError(400, 'Tanggal jurnal tidak boleh di masa depan.', 'VALIDASI');
   }
-  const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
-  if (hari < batas) {
-    throw new HttpError(
-      400, `Jurnal maksimal untuk ${env.jurnal.maksBuka} hari ke belakang.`, 'VALIDASI',
-    );
-  }
   return s;
+};
+
+/** Jurnal baru hanya untuk tanggal yang punya absen masuk nyata (Hadir/Terlambat) —
+ * peserta yang tidak masuk (izin/sakit/tidak hadir) tidak bisa membuat jurnal.
+ * Jurnal lama yang tanggalnya tak punya absensi tetap boleh diedit tanpa pindah tanggal. */
+const absenAda = async (user_id, tanggal) => {
+  const a = await Absensi.findOne({
+    where: { user_id, tanggal, jenis: 'masuk', status: { [Op.in]: ['Hadir', 'Terlambat'] } },
+    attributes: ['id'],
+  });
+  if (!a) {
+    throw new HttpError(422, 'Jurnal hanya bisa ditulis untuk tanggal Anda absen masuk.', 'JURNAL_BUTUH_ABSEN');
+  }
 };
 
 const milik = async (req) => {
@@ -58,24 +65,64 @@ const bentrok = (e) => {
 };
 
 exports.list = asyncH(async (req, res) => {
-  const where = { user_id: req.user.id };
-  if (STATUS.includes(req.query.status)) where.status = req.query.status;
+  // Daftar dibentuk dari tanggal absen masuk milik peserta (dulu, hari itu "ada"),
+  // digabung jurnal yang sudah ditulis. Tanpa filter status, tanggal ber-absensi
+  // tanpa jurnal ikut tampil — peserta langsung melihat mana yang belum diisi.
+  const status = STATUS.includes(req.query.status) ? req.query.status : null;
   const a = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.dari ?? '')) ? req.query.dari : null;
   const b = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.sampai ?? '')) ? req.query.sampai : null;
-  if (a && b) where.tanggal = { [Op.between]: [a, b] };
-  else if (a) where.tanggal = { [Op.gte]: a };
-  else if (b) where.tanggal = { [Op.lte]: b };
-  res.json({
-    data: await Jurnal.findAll({
-      where, order: [['tanggal', 'DESC'], ['id', 'DESC']], limit: 200,
-      attributes: ['id', 'tanggal', 'judul', 'status'],
-    }),
+  const rentang = () => {
+    if (a && b) return { [Op.between]: [a, b] };
+    if (a) return { [Op.gte]: a };
+    if (b) return { [Op.lte]: b };
+    return undefined;
+  };
+
+  const wa = {
+    user_id: req.user.id, jenis: 'masuk',
+    status: { [Op.in]: ['Hadir', 'Terlambat'] },
+  };
+  const r = rentang();
+  if (r) wa.tanggal = r;
+  const absen = await Absensi.findAll({
+    where: wa, order: [['tanggal', 'DESC']],
+    attributes: ['tanggal', 'jam', 'status'],
   });
+
+  const wj = { user_id: req.user.id };
+  if (status) wj.status = status;
+  if (r) wj.tanggal = r;
+  const jurnal = await Jurnal.findAll({
+    where: wj, order: [['tanggal', 'DESC'], ['id', 'DESC']], limit: 200,
+    attributes: ['id', 'tanggal', 'judul', 'status'],
+  });
+
+  const baris = new Map(jurnal.map((j) => [j.tanggal, {
+    tanggal: j.tanggal, absensi: null, id: j.id, judul: j.judul, status: j.status,
+  }]));
+  if (!status) {
+    for (const x of absen) {
+      if (baris.has(x.tanggal)) baris.get(x.tanggal).absensi = { masuk: x.jam, status: x.status };
+      else baris.set(x.tanggal, {
+        tanggal: x.tanggal, absensi: { masuk: x.jam, status: x.status },
+        id: null, judul: null, status: null,
+      });
+    }
+  } else {
+    for (const x of absen) {
+      if (baris.has(x.tanggal)) baris.get(x.tanggal).absensi = { masuk: x.jam, status: x.status };
+    }
+  }
+  const data = [...baris.values()].sort(
+    (p, s) => s.tanggal.localeCompare(p.tanggal) || (s.id ?? 0) - (p.id ?? 0),
+  );
+  res.json({ data });
 });
 
 // body.tanggal dipilih peserta (YYYY-MM-DD); aksi: "kirim" untuk langsung dikirim
 exports.create = asyncH(async (req, res) => {
   const tanggal = tanggalOk(req.body);
+  await absenAda(req.user.id, tanggal);
   try {
     const j = await Jurnal.create({
       ...ambil(req.body), user_id: req.user.id, tanggal,
@@ -104,6 +151,8 @@ exports.update = asyncH(async (req, res) => {
     throw new HttpError(409, `Jurnal berstatus ${j.status} tidak bisa diubah.`, 'STATUS_TIDAK_VALID');
   }
   const tanggal = tanggalOk(req.body);
+  // Pindah tanggal mengikuti aturan yang sama; tanggal lama jurnal lama dikecualikan
+  if (tanggal !== j.tanggal) await absenAda(req.user.id, tanggal);
   try {
     await j.update({ ...ambil(req.body), tanggal, status: req.body.aksi === 'kirim' ? 'Dikirim' : j.status });
     res.json(j);

@@ -24,7 +24,6 @@ module.exports = {
   port: n('PORT', 4000),
   tz: process.env.TZ_APLIKASI || 'Asia/Jakarta',
   trustProxy: process.env.TRUST_PROXY === 'true',
-  dbSync: process.env.DB_SYNC === 'true',
   // Produksi: backend menyajikan build frontend/dist (CSP berlaku penuh di origin yang sama)
   serveFrontend: process.env.SERVE_FRONTEND === 'true',
   db: {

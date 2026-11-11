@@ -21,7 +21,7 @@ aldi@astakira.id (dan lainnya), kata sandi sesuai `SEED_PASSWORD`.
 ## Migrasi database
 
 Tabel dibuat lewat `npm run db:migrate` (folder `migrations/`), bukan `sequelize.sync()`.
-`DB_SYNC=true` di `.env` hanya untuk development awal â€” server akan memakai `sync()` saat itu saja.
+`DB_SYNC` sudah tidak dipakai — perubahan skema wajib lewat berkas migrasi baru.
 Skrip terkait:
 
 - `npm run db:migrate` â€” jalankan migrasi yang belum diterapkan
@@ -110,8 +110,11 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 
 ## Jurnal kegiatan
 
-- Peserta memilih tanggal (`YYYY-MM-DD`): tidak boleh masa depan, maksimal
-  `JURNAL_MAKS_HARI_BELAKANG` (default 7) hari ke belakang.
+- Tanggal jurnal mengikuti kehadiran: jurnal baru hanya bisa dibuat untuk tanggal yang punya
+  absen masuk nyata (Hadir/Terlambat) -> tanpa itu 422 `JURNAL_BUTUH_ABSEN`. Daftar jurnal
+  (`GET /api/jurnal`) memuat baris dari tanggal absensi + baris jurnal yang sudah ada; tanggal
+  izin/sakit/tidak hadir tidak muncul. Batas 7 hari ke belakang dilepas (mengikuti absensi);
+  jurnal lama tetap bisa diedit asal tanggalnya tidak dipindah ke tanggal tanpa absensi.
 - Batas keras satu jurnal per peserta per tanggal (`uq_jurnal_harian`); bentrok -> 409 `JURNAL_ADA`.
 - Siklus status: Draft -> Dikirim -> (Revisi -> Dikirim | Disetujui). Hanya Draft/Revisi yang boleh
   diedit; memakai `aksi: "kirim"` untuk mengirim / mengirim ulang.
@@ -141,6 +144,7 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | MODE_QR_NONAKTIF | 409 | Metode absensi saat ini tidak memakai QR |
 | MODE_WAJAH_NONAKTIF | 409 | Metode absensi saat ini tidak memakai wajah langsung |
 | JURNAL_ADA | 409 | Sudah ada jurnal untuk tanggal itu |
+| JURNAL_BUTUH_ABSEN | 422 | Jurnal hanya untuk tanggal dengan absen masuk |
 | STATUS_TIDAK_VALID | 409 | Jurnal berstatus Dikirim/Disetujui tidak bisa diubah |
 | BELUM_ABSEN_MASUK | 422 | Belum absen masuk |
 | PULANG_BELUM_WAKTUNYA | 422 | Absen pulang dibuka 5 menit sebelum jam pulang |
@@ -178,7 +182,7 @@ Semua error berbentuk `{ "pesan": "...", "kode": "..." }`. Semua endpoint ada di
 
 ## Deployment produksi
 
-Set `.env` produksi: `NODE_ENV=production`, `DB_SYNC=false`, `SERVE_FRONTEND=true` (backend
+Set `.env` produksi: `NODE_ENV=production`, `SERVE_FRONTEND=true` (backend
 menyajikan `frontend/dist` dari origin yang sama; Helmet memasang CSP penuh termasuk
 `wasm-unsafe-eval` untuk MediaPipe; pustaka QR dibundel lokal sehingga CSP tidak
 memuat pihak ketiga). Di belakang reverse proxy
