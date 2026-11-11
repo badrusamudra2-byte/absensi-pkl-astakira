@@ -5,7 +5,7 @@ import { teksKode } from '../../lib/petaKode';
 import { ambilLandmarker, cekKondisi, hitungEmbedding, keJpeg, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
 import type { Absensi, Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
-import { isoHariIni } from '../../komponen/umum';
+import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
 export default function WajahPeriksa() {
@@ -28,6 +28,8 @@ export default function WajahPeriksa() {
   const [kirim, ubahKirim] = useState(false);
   // Absensi jenis ini hari ini sudah tercatat -> verifikasi tidak dijalankan (undefined = belum diketahui)
   const [sudah, ubahSudah] = useState<Absensi | null | undefined>(undefined);
+  // Hari ini tercatat Izin/Sakit (pengajuan disetujui) -> absensi dan verifikasi ditutup
+  const [terkunciIzin, ubahTerkunciIzin] = useState<Absensi | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hentikanRef = useRef<(() => void) | null>(null);
@@ -129,9 +131,17 @@ export default function WajahPeriksa() {
     api<{ data: Absensi[] }>('/absensi/riwayat')
       .then((r) => {
         if (!hidup) return;
-        const cocok = r.data.find((x) => x.tanggal === isoHariIni() && x.jenis === jenis) ?? null;
+        // Hari terkunci Izin/Sakit ditangkap lebih dulu, jenis apa pun, agar kamera
+        // tidak menyala dan peserta langsung melihat pesan pengajuannya.
+        const izinHari = r.data.find(
+          (x) => x.tanggal === isoHariIni() && (x.status === 'Izin' || x.status === 'Sakit'),
+        ) ?? null;
+        ubahTerkunciIzin(izinHari);
+        // Penanda otomatis "Tidak hadir" bukan absensi nyata: peserta telat datang
+        // tetap boleh memverifikasi; server mengganti penandanya saat absen.
+        const cocok = r.data.find((x) => x.tanggal === isoHariIni() && x.jenis === jenis && !penandaOtomatis(x)) ?? null;
         ubahSudah(cocok);
-        if (cocok) {
+        if (cocok || izinHari) {
           ubahPesan('');
           ubahGalat(null);
         }
@@ -149,8 +159,8 @@ export default function WajahPeriksa() {
   useEffect(() => {
     let hidup = true;
     let raf = 0;
-    // Tidak ada template, atau absensi jenis ini sudah tercatat: kamera tidak perlu menyala
-    if (templateAda !== true || sudah !== null) return undefined;
+    // Tidak ada template, hari terkunci izin, atau absensi jenis ini sudah tercatat: kamera tidak perlu menyala
+    if (templateAda !== true || sudah !== null || terkunciIzin !== null) return undefined;
 
     const mulai = async () => {
       try {
@@ -244,7 +254,7 @@ export default function WajahPeriksa() {
       hentikanRef.current?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateAda, sudah]);
+  }, [templateAda, sudah, terkunciIzin]);
 
   /* Pengaturan liveness menentukan mode verifikasi (tantangan gerakan / wajah lurus). */
   useEffect(() => {
@@ -276,6 +286,7 @@ export default function WajahPeriksa() {
       return undefined;
     }
     if (sudah !== null && sudah !== undefined) return undefined; // sudah absen: verifikasi ditutup
+    if (terkunciIzin !== null) return undefined; // hari terkunci izin/sakit: verifikasi ditutup
     if (livenessAktif !== true) {
       bawaan.current = { tan: null, mesin: null, terkunci: false };
       livenessRef.current = livenessAktif; // false = liveness mati, null = belum diketahui (loop menunggu)
@@ -294,14 +305,27 @@ export default function WajahPeriksa() {
     return () => {
       hidup = false;
     };
-  }, [daring, mintaTantangan, livenessAktif, sudah]);
+  }, [daring, mintaTantangan, livenessAktif, sudah, terkunciIzin]);
 
   const langsungBeres = beres !== null;
 
   return (
     <>
       <Kartu t={scan ? 'Verifikasi wajah untuk absen QR' : `Absen ${jenis} dengan wajah`}>
-        {galat ? (
+        {terkunciIzin ? (
+          // Hari ini tercatat Izin/Sakit — tampilkan pengajuan peserta, bukan layar verifikasi
+          <div className="text-center py-2">
+            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
+            <h2 className="text-lg font-extrabold mb-2">Anda sudah mengajukan {terkunciIzin.status.toLowerCase()}</h2>
+            <p>
+              Hari ini tercatat <Badge s={terkunciIzin.status} /> &mdash; absensi tidak perlu dan tidak bisa dilakukan.
+            </p>
+            <div className="mt-3 flex gap-2 justify-center">
+              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+            </div>
+          </div>
+        ) : galat ? (
           <div className="mb-3">
             <Pemberitahuan
               jenis="er"

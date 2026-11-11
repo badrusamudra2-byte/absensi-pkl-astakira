@@ -4,7 +4,7 @@ import { teksKode } from '../../lib/petaKode';
 import type { Absensi, Jenis, StatusAbsensi } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
-import { isoHariIni } from '../../komponen/umum';
+import { isoHariIni, gunakanTerbaru } from '../../komponen/umum';
 
 /** Modal foto wajah absensi: gambar diunduh mentah (blob JWT) lalu ditampilkan. */
 function ModalFoto({ url, tutup }: { url: string; tutup: () => void }) {
@@ -57,6 +57,7 @@ export default function AbsensiAdmin() {
   // Foto wajah absensi (dipakai untuk rekap pembuktian kehadiran)
   const [fotoUrl, ubahFotoUrl] = useState<string | null>(null);
   const [fotoMuat, ubahFotoMuat] = useState<number | null>(null); // id absensi yang sedang diunduh
+  const terbaru = gunakanTerbaru();
 
   const tutupFoto = () => {
     if (fotoUrl) URL.revokeObjectURL(fotoUrl);
@@ -92,16 +93,18 @@ export default function AbsensiAdmin() {
       ubahRows(null);
       return;
     }
+    const sah = terbaru();
     ubahRows(null);
     ubahGalat(null);
     try {
       const r = await api<{ data: Absensi[] }>(`/admin/absensi?user_id=${uid}&tanggal=${tanggal}`);
-      ubahRows(r.data);
+      if (sah(true)) ubahRows(r.data);
     } catch (e) {
+      if (!sah(true)) return;
       const err = e as ApiError;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
     }
-  }, [uid, tanggal]);
+  }, [uid, tanggal, terbaru]);
 
   const bukaEdit = (a: Absensi) => {
     ubahEditId(a.id);

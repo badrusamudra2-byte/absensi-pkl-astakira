@@ -79,7 +79,7 @@ export default function AturUlang() {
             <div className="min-h-6 mt-2">
               <Galat pesan={err} />
             </div>
-            <Tombol className="w-full" disabled={memroses}>
+            <Tombol type="submit" className="w-full" disabled={memroses}>
               {memroses ? 'Menyimpan…' : 'Simpan kata sandi baru'}
             </Tombol>
           </form>

@@ -4,8 +4,9 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge, Galat } from '../../komponen/ui';
+import { waktuWib } from '../../komponen/umum';
 
-const jam = (iso: string) => (iso ? iso.slice(0, 16).replace('T', ' ') + ' WIB' : '-');
+const jam = (iso: string) => (iso ? waktuWib(iso) + ' WIB' : '-');
 
 /** Ikhtisar perjalanan status jurnal. */
 function GarisWaktu({ status, buat, ubah, review }: { status: string; buat: string; ubah: string; review: { keputusan: string; waktu: string }[] }) {

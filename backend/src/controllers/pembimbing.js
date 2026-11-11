@@ -79,15 +79,23 @@ exports.review = asyncH(async (req, res) => {
   const ids = await idBimbingan(req.user.id);
   const j = await Jurnal.findOne({ where: { id: req.params.id, user_id: ids } });
   if (!j) throw new HttpError(404, 'Jurnal tidak ditemukan.', 'TIDAK_ADA');
-  if (j.status !== 'Dikirim') throw new HttpError(409, 'Hanya jurnal berstatus Dikirim yang bisa direview.', 'STATUS_TIDAK_VALID');
 
   const baru = keputusan === 'setujui' ? 'Disetujui' : 'Revisi';
   await sequelize.transaction(async (t) => {
+    // Status diverifikasi ulang di dalam transaksi dengan kunci baris agar dua
+    // review bersamaan (mis. dobel-klik) tidak sama-sama lolos — pola yang sama
+    // dengan pengajuan.putuskan.
+    const terkunci = await Jurnal.findOne({
+      where: { id: j.id, status: 'Dikirim' }, transaction: t, lock: t.LOCK.UPDATE,
+    });
+    if (!terkunci) {
+      throw new HttpError(409, 'Hanya jurnal berstatus Dikirim yang bisa direview.', 'STATUS_TIDAK_VALID');
+    }
     await JurnalReview.create(
       { jurnal_id: j.id, pembimbing_id: req.user.id, keputusan: baru, catatan: catatan.slice(0, 2000) || null },
       { transaction: t },
     );
-    await j.update({ status: baru }, { transaction: t });
+    await terkunci.update({ status: baru }, { transaction: t });
   });
   await audit(req, `${baru === 'Disetujui' ? 'Setujui' : 'Minta revisi'} jurnal`, `jurnal#${j.id}`);
   res.json({ pesan: baru === 'Disetujui' ? 'Jurnal disetujui.' : 'Permintaan revisi dikirim ke peserta.', status: baru });

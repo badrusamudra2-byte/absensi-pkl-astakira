@@ -1,7 +1,9 @@
-const { FaceTemplate, FaceVerification, sequelize } = require('../models');
+const { Op } = require('sequelize');
+const { FaceTemplate, FaceVerification, Absensi, sequelize } = require('../models');
 const env = require('../config/env');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { enc, dec } = require('../utils/crypto');
+const { bagian } = require('../utils/waktu');
 const siapkanFoto = require('../utils/foto');
 const audit = require('../utils/audit');
 const liveness = require('../services/liveness');
@@ -57,6 +59,13 @@ exports.tantangan = asyncH(async (req, res) => {
 exports.verify = asyncH(async (req, res) => {
   const { embedding, jenis, nonce, foto } = req.body;
   if (!['masuk', 'pulang'].includes(jenis)) throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
+  // Hari yang tercatat Izin/Sakit tidak boleh diikuti absensi QR/wajah — tolak di awal
+  // agar peserta yang lupa langsung tahu, bukan setelah QR-nya dipindai pembimbing.
+  if (await Absensi.findOne({
+    where: { user_id: req.user.id, tanggal: bagian().tanggal, status: { [Op.in]: ['Izin', 'Sakit'] } },
+  })) {
+    throw new HttpError(409, 'Hari ini tercatat Izin/Sakit — absensi tidak diperlukan.', 'HARI_TERCATAT');
+  }
   const cfg = await pengaturan.dapatkan();
   const tpl = await FaceTemplate.findOne({ where: { user_id: req.user.id } });
   if (!tpl) throw new HttpError(412, 'Template wajah belum terdaftar.', 'TEMPLATE_BELUM');

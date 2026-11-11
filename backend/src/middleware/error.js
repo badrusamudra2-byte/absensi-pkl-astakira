@@ -7,8 +7,11 @@ exports.notFound = (req, res) => res.status(404).json({ pesan: 'Endpoint tidak d
 exports.onError = (err, req, res, next) => {
   if (err instanceof HttpError) return res.status(err.status).json({ pesan: err.message, kode: err.kode });
   if (err instanceof multer.MulterError) {
+    // Batas ukuran berbeda per rute (foto profil 2 MB, bukti pengajuan 5 MB);
+    // middleware upload menandai req.batasUkuranMB agar pesannya tidak menyesatkan.
+    const batas = req.batasUkuranMB || 2;
     return res.status(400).json({
-      pesan: err.code === 'LIMIT_FILE_SIZE' ? 'Ukuran foto maksimal 2 MB.' : 'Upload gagal.',
+      pesan: err.code === 'LIMIT_FILE_SIZE' ? `Ukuran foto maksimal ${batas} MB.` : 'Upload gagal.',
       kode: 'UPLOAD',
     });
   }

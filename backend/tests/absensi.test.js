@@ -467,6 +467,74 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
   });
 });
 
+/* ---------- Telat sungguhan setelah penanda otomatis "Tidak hadir" ---------- */
+describe('penanda otomatis Tidak hadir diganti absensi sungguhan', () => {
+  afterEach(() => waktu.__jamLepas());
+
+  const penanda = (peserta) => M.Absensi.create({
+    user_id: peserta.id, tanggal: waktu.bagian().tanggal, jenis: 'masuk',
+    jam: '00:00:00', status: 'Tidak hadir', metode: 'Otomatis',
+  });
+
+  test('absen masuk wajah mengganti penanda: Terlambat, tetap satu baris', async () => {
+    const { admin, peserta } = await isiDasar();
+    await kerjakanHari();
+    await setMode(await tokenUntuk(admin.email), 'wajah');
+    waktu.__jam('09:00'); // lewat toleransi 08:15
+    await penanda(peserta);
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const r = await request(app).post('/api/absensi/wajah').set('Authorization', authz)
+      .send({ jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(200);
+    expect(r.body.status).toBe('Terlambat');
+    expect(r.body.jam.slice(0, 5)).toBe('09:00');
+    const baris = await M.Absensi.findAll({ where: { user_id: peserta.id, tanggal: hariIni().tanggal } });
+    expect(baris).toHaveLength(1);
+    expect(baris[0].metode).toBe('Wajah');
+    expect(baris[0].status).toBe('Terlambat');
+  });
+
+  test('absen pulang ditolak bila masuk masih penanda otomatis', async () => {
+    const { admin, peserta } = await isiDasar();
+    await kerjakanHari();
+    await setMode(await tokenUntuk(admin.email), 'wajah');
+    waktu.__jam('16:00');
+    await penanda(peserta);
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    const r = await request(app).post('/api/absensi/wajah').set('Authorization', authz)
+      .send({ jenis: 'pulang', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(422);
+    expect(r.body.kode).toBe('BELUM_ABSEN_MASUK');
+    expect(await M.Absensi.count({ where: { user_id: peserta.id, jenis: 'pulang' } })).toBe(0);
+  });
+
+  test('QR: penanda tidak memblokir tayang, pindaian mengganti penanda', async () => {
+    const { admin, peserta, pembimbing } = await isiDasar();
+    await kerjakanHari();
+    await setMode(await tokenUntuk(admin.email), 'qr');
+    waktu.__jam('09:00');
+    await penanda(peserta);
+    const authz = await tokenUntuk(peserta.email);
+    const minta = await request(app).post('/api/absensi/qr-saya').set('Authorization', authz).send({ jenis: 'masuk' });
+    expect(minta.status).toBe(201); // penanda otomatis bukan SUDAH_ABSEN
+    const r = await pindai(await tokenUntuk(pembimbing.email), { token: minta.body.token });
+    expect(r.status).toBe(200);
+    const baris = await M.Absensi.findAll({ where: { user_id: peserta.id, tanggal: hariIni().tanggal } });
+    expect(baris).toHaveLength(1);
+    expect(baris[0].metode).toBe('QR');
+    expect(baris[0].status).toBe('Terlambat');
+
+    // Penanda sudah diganti absensi nyata: tayang ulang ditolak seperti biasa
+    const minta2 = await request(app).post('/api/absensi/qr-saya').set('Authorization', authz).send({ jenis: 'masuk' });
+    expect(minta2.status).toBe(409);
+    expect(minta2.body.kode).toBe('SUDAH_ABSEN');
+  });
+});
+
 /* ---------- Status ditentukan server (unit murni hitungStatus) ---------- */
 describe('hitungStatus (toleransi dihitung dari jam server, bukan klien)', () => {
   const ws = { jam_masuk: '08:00:00', toleransi_menit: 15 };

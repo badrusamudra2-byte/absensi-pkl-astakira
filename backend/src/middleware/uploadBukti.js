@@ -20,6 +20,7 @@ const tandaIsi = (buf) => {
 /** Bukti pengajuan izin/sakit: memori dulu (magic bytes + ukuran), lalu berkas acak
  * di uploads/pengajuan/. Kolom form bernama 'bukti'; maks 5 MB. */
 module.exports = [
+  (req, res, next) => { req.batasUkuranMB = 5; next(); }, // untuk pesan galat LIMIT_FILE_SIZE
   multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } }).single('bukti'),
   (req, res, next) => {
     try {

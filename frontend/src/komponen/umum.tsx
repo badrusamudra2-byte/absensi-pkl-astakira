@@ -1,4 +1,11 @@
-import type { ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
+import type { Absensi } from '../lib/tipe';
+
+/** Baris "Tidak hadir" (metode Otomatis) dari job tutup hari hanyalah penanda,
+ * bukan absensi sungguhan — peserta telat datang tetap bisa absen dan penanda
+ * diganti absensi nyata oleh server. */
+export const penandaOtomatis = (a: Absensi | null | undefined) =>
+  !!a && a.status === 'Tidak hadir' && a.metode === 'Otomatis';
 
 /** Format "2026-10-17" menjadi "Jumat, 17/10/2026". */
 export const tglIndo = (s: string) =>
@@ -8,11 +15,33 @@ export const tglIndo = (s: string) =>
 /** Format "2026-10-17" singkat "17/10". */
 export const tglPendek = (s: string) => s.slice(8, 10) + '/' + s.slice(5, 7);
 
+/** Format ISO UTC dari server menjadi "17/10/2026 09.30" WIB.
+ * ISO UTC dipotong mentah akan meleset 7 jam (db menyimpan UTC, aplikasi WIB). */
+export const waktuWib = (iso?: string | null) => {
+  if (!iso) return '-';
+  const f = new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta',
+  }).formatToParts(new Date(iso));
+  const bagi = (t: string) => f.find((p) => p.type === t)?.value ?? '';
+  return `${bagi('day')}/${bagi('month')}/${bagi('year')} ${bagi('hour')}.${bagi('minute')}`;
+};
+
 export const isoHariIni = () => new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date()).slice(0, 10);
 
 /** Tanggal WIB "geser" hari silam: "2026-11-10" (geser 0), "2026-11-03" (geser 7). */
 export const isoHariSilam = (geser: number) =>
   new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date(Date.now() - geser * 86400000)).slice(0, 10);
+
+/** Penjaga respons basi: tiap pemanggilan menaikkan nomor urut dan kembalikan
+ * fungsi pemeriksa. Respons yang mulai lebih dulu (selesai belakangan) tak lagi
+ * menimpa data filter terbaru. Pakai: const sah = terbaru(); ... if (sah(true)) set... */
+export function gunakanTerbaru() {
+  const nomor = useRef(0);
+  return useCallback(() => {
+    const n = ++nomor.current;
+    return (masih: boolean) => masih && nomor.current === n;
+  }, []);
+}
 
 export function FilterTanggal({
   dari, sampai, ubahDari, ubahSampai, aksi, sedang,

@@ -17,6 +17,8 @@ export default function WajahDaftar() {
   const [menyusun, ubahMenyusun] = useState(0); // 0..12 frame terkumpul
   const [kirim, ubahKirim] = useState(false);
   const [beres, ubahBeres] = useState(false);
+  // Naikkan untuk memulai ulang kamera dari awal (tombol "Coba lagi")
+  const [percobaan, ubahPercobaan] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hentikanRef = useRef<(() => void) | null>(null);
@@ -25,7 +27,6 @@ export default function WajahDaftar() {
   // Kondisi dikendalikan dari luar loop rAF (state dalam closure effect akan basi):
   const kirimRef = useRef(false);
   const gagalRef = useRef(false);
-  const sambungUlangRef = useRef<() => void>(() => {});
 
   const daftar = useCallback(async (em: number[]) => {
     if (!setujuRef.current) {
@@ -65,10 +66,6 @@ export default function WajahDaftar() {
         v.srcObject = aliran;
         await v.play();
         hentikanRef.current = () => aliran.getTracks().forEach((t) => t.stop());
-        sambungUlangRef.current = () => {
-          antarFrame = [];
-          ubahMenyusun(0);
-        };
 
         const step = () => {
           if (!hidup) return;
@@ -114,7 +111,7 @@ export default function WajahDaftar() {
       hentikanRef.current?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [percobaan]);
 
   return (
     <>
@@ -128,7 +125,8 @@ export default function WajahDaftar() {
                 onClick={() => {
                   ubahGalat(null);
                   gagalRef.current = false;
-                  sambungUlangRef.current();
+                  ubahPesan('Menghidupkan kamera…');
+                  ubahPercobaan((n) => n + 1); // jalankan ulang effect kamera dari awal
                 }}
               >
                 Coba lagi

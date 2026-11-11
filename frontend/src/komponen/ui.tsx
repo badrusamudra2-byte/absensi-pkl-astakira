@@ -12,6 +12,7 @@ export function Kartu({ t, children, className = '' }: { t?: string; children: R
 type TombolVarian = 'utama' | 'gh' | 'dg' | 'dg2';
 export function Tombol({
   varian = 'utama',
+  type = 'button', // bawaan: bukan submit — tombol di dalam form tidak ikut terkirim
   children,
   className = '',
   ...rest
@@ -26,7 +27,7 @@ export function Tombol({
           ? 'bg-transparent text-r border-garis'
           : 'bg-r border-r text-white';
   return (
-    <button className={`${dasar} ${warna} ${className}`} {...rest}>
+    <button type={type} className={`${dasar} ${warna} ${className}`} {...rest}>
       {children}
     </button>
   );

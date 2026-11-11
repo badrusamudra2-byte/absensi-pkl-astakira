@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import type { Absensi, Jenis, MetodeAbsensi, Workshift } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { Link } from 'react-router-dom';
-import { isoHariIni } from '../../komponen/umum';
+import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
 export default function Absensi() {
@@ -72,11 +72,13 @@ export default function Absensi() {
                 }`}
               >
                 <b className="block">Absen {m}</b>
-                {terCatat ? (
+                {terCatat && !penandaOtomatis(terCatat) ? (
                   <small className="inline-flex items-center gap-1 mt-1">
                     <span className="text-g font-semibold">Tercatat {potong(terCatat.jam)}</span>
                     <Badge s={terCatat.status} />
                   </small>
+                ) : terCatat && penandaOtomatis(terCatat) ? (
+                  <small className="text-y font-semibold">Penanda otomatis: Tidak hadir — boleh absen bila datang</small>
                 ) : (
                   <small className="text-mu">
                     {m === 'masuk' ? 'Tandai kehadiran awal hari kerja' : 'Tandai waktu pulang hari kerja'}
@@ -87,12 +89,22 @@ export default function Absensi() {
           })}
         </div>
         <div className="mt-4">
-          <Tombol onClick={mulai} disabled={!daring || mode === null || tercatat() !== null}>
-            {tercatat() ? `Sudah absen ${jenis} (${potong(tercatat()!.jam)})` : mode === null ? 'Memuat metode…' : `Mulai absen ${jenis}`}
+          {/* Penanda otomatis "Tidak hadir" bukan absensi nyata: peserta telat
+              datang tetap bisa absen dan server akan mengganti penandanya. */}
+          <Tombol onClick={mulai} disabled={!daring || mode === null || (tercatat() !== null && !penandaOtomatis(tercatat()))}>
+            {tercatat() && !penandaOtomatis(tercatat())
+              ? `Sudah absen ${jenis} (${potong(tercatat()!.jam)})`
+              : mode === null ? 'Memuat metode…' : `Mulai absen ${jenis}`}
           </Tombol>
-          {tercatat() ? (
+          {tercatat() && !penandaOtomatis(tercatat()) ? (
             <p className="text-mu text-sm mt-1 font-semibold">
               Absen {jenis} hari ini sudah tercatat pada {potong(tercatat()!.jam)} — cukup sekali per jenis.
+            </p>
+          ) : null}
+          {tercatat() && penandaOtomatis(tercatat()) ? (
+            <p className="text-y text-sm mt-1 font-semibold" role="status">
+              Anda tercatat Tidak hadir oleh sistem (otomatis). Bila Anda datang, absen seperti biasa —
+              penanda otomatis akan diganti absensi asli Anda.
             </p>
           ) : null}
           {!daring ? <p className="text-r text-sm mt-1 font-semibold" role="alert">Anda sedang luring — hubungkan internet untuk absen.</p> : null}

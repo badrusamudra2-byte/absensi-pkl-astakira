@@ -3,6 +3,7 @@ import { api } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { Absensi } from '../../lib/tipe';
 import { Kartu, Tabel, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { gunakanTerbaru } from '../../komponen/umum';
 
 const isoHariIni = () => new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date()).slice(0, 10);
 const bulanLalu = () => {
@@ -20,24 +21,27 @@ export default function Riwayat() {
   const [data, ubahData] = useState<Absensi[] | null>(null);
   const [muat, ubahMuat] = useState(true);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const terbaru = gunakanTerbaru();
 
   const muatUlang = useCallback(async () => {
+    const sah = terbaru();
     ubahMuat(true);
     ubahGalat(null);
     try {
       const r = await api<{ data: Absensi[] }>(`/absensi/riwayat?dari=${dari}&sampai=${sampai}`);
-      ubahData(r.data);
+      if (sah(true)) ubahData(r.data);
     } catch (e) {
       const err = e as { status: number; kode: string; message: string };
+      if (!sah(true)) return; // respons basi: filter sudah berganti
       if (err.status === 400) {
         ubahGalat(['Rentang tanggal tidak valid.', 'Pilih rentang yang berurutan (dari lebih dulu dari sampai).']);
       } else {
         ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
       }
     } finally {
-      ubahMuat(false);
+      if (sah(true)) ubahMuat(false);
     }
-  }, [dari, sampai]);
+  }, [dari, sampai, terbaru]);
 
   useEffect(() => {
     void muatUlang();

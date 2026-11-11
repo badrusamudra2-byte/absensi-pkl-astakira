@@ -21,7 +21,13 @@ exports.password = asyncH(async (req, res) => {
 exports.foto = asyncH(async (req, res) => {
   if (!req.file) throw new HttpError(400, 'Pilih file foto terlebih dulu.', 'VALIDASI');
   const lama = req.user.foto_url;
-  await req.user.update({ foto_url: '/uploads/foto/' + req.file.filename });
+  try {
+    await req.user.update({ foto_url: '/uploads/foto/' + req.file.filename });
+  } catch (e) {
+    // Gagal simpan: berkas baru jangan jadi yatim di disk
+    try { fs.unlinkSync(path.join(__dirname, '../../uploads/foto', req.file.filename)); } catch { /* sudah tak ada */ }
+    throw e;
+  }
   if (lama) fs.unlink(path.join(__dirname, '../..', lama), () => {});
   res.json({ foto_url: req.user.foto_url });
 });

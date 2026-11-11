@@ -4,7 +4,7 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { Absensi, BarisJurnal } from '../../lib/tipe';
 import { Kartu, Pemberitahuan, Badge } from '../../komponen/ui';
-import { FxDaftar, FilterTanggal, isoHariIni, tglIndo } from '../../komponen/umum';
+import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';
 
 export default function Rekap() {
   const [sp] = useSearchParams();
@@ -15,6 +15,7 @@ export default function Rekap() {
   const [absensi, ubahAbsensi] = useState<(Absensi & { peserta?: { nama: string } })[] | null>(null);
   const [jurnal, ubahJurnal] = useState<(BarisJurnal & { peserta?: { nama: string } })[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const terbaru = gunakanTerbaru();
 
   useEffect(() => {
     api<{ data: { id: number; nama: string }[] }>('/pembimbing/peserta')
@@ -23,6 +24,7 @@ export default function Rekap() {
   }, []);
 
   const muat = useCallback(async () => {
+    const sah = terbaru();
     ubahAbsensi(null);
     ubahJurnal(null);
     ubahGalat(null);
@@ -31,13 +33,15 @@ export default function Rekap() {
       const r = await api<{ absensi: (Absensi & { peserta?: { nama: string } })[]; jurnal: (BarisJurnal & { peserta?: { nama: string } })[] }>(
         `/pembimbing/rekap?${q}`,
       );
+      if (!sah(true)) return;
       ubahAbsensi(r.absensi);
       ubahJurnal(r.jurnal);
     } catch (e) {
+      if (!sah(true)) return;
       const err = e as ApiError;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
     }
-  }, [dari, sampai, userPilih]);
+  }, [dari, sampai, userPilih, terbaru]);
 
   useEffect(() => {
     void muat();

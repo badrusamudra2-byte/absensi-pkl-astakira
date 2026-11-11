@@ -104,8 +104,26 @@ describe('verifikasi wajah (/face/verify)', () => {
     expect(await M.FaceVerification.count({ where: { user_id: peserta.id, jenis: 'masuk', dipakai_pada: null } })).toBe(1);
   });
 
-  test('wajah tidak cocok -> 422 WAJAH_TIDAK_COCOK', async () => {
+  test('hari tercatat Izin/Sakit -> 409 HARI_TERCATAT sebelum wajah dibandingkan', async () => {
     const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const tan = await mintaTantangan(authz);
+    // Izin hari ini sudah disetujui (baris absensi metode Izin menempati slot harian)
+    await M.Absensi.create({
+      user_id: peserta.id, tanggal: bagian().tanggal, jenis: 'masuk', jam: bagian().jam,
+      status: 'Izin', metode: 'Izin', keterangan: 'Acara keluarga.',
+    });
+
+    const r = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(409);
+    expect(r.body).toMatchObject({ kode: 'HARI_TERCATAT' });
+    // Verifikasi tidak tercatat dan tantangan tidak ikut terkonsumsi
+    expect(await M.FaceVerification.count()).toBe(0);
+    expect(await M.TantanganWajah.findOne({ where: { user_id: peserta.id } })).not.toBeNull();
+  });
+
+  test('wajah tidak cocok -> 422 WAJAH_TIDAK_COCOK', async () => {    const { peserta } = await isiDasar();
     const authz = await tokenUntuk(peserta.email);
     await daftarWajah(authz, VEK());
     const tan = await mintaTantangan(authz);

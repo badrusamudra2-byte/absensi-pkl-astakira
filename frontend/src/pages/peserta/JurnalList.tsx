@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import type { BarisJurnal, StatusJurnal } from '../../lib/tipe';
 import { Kartu, Tabel, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { gunakanTerbaru } from '../../komponen/umum';
 
 const STATUS_CARI: StatusJurnal[] = ['Draft', 'Dikirim', 'Revisi', 'Disetujui'];
 
@@ -16,8 +17,10 @@ export default function JurnalList() {
   const [data, cuData] = useState<BarisJurnal[] | null>(null);
   const [menmuat, cuMuat] = useState(true);
   const [galat, cuGalat] = useState<string | null>(null);
+  const terbaru = gunakanTerbaru();
 
   const muat = useCallback(() => {
+    const sah = terbaru();
     cuMuat(true);
     cuGalat(null);
     const cari = new URLSearchParams();
@@ -26,10 +29,10 @@ export default function JurnalList() {
     if (sampai) cari.set('sampai', sampai);
     const q = cari.toString();
     api<{ data: BarisJurnal[] }>('/jurnal' + (q ? `?${q}` : ''))
-      .then((r) => cuData(r.data))
-      .catch(() => cuGalat('Jurnal belum bisa dimuat. Pastikan server aktif lalu coba lagi.'))
-      .finally(() => cuMuat(false));
-  }, [status, dari, sampai]);
+      .then((r) => { if (sah(true)) cuData(r.data); })
+      .catch(() => { if (sah(true)) cuGalat('Jurnal belum bisa dimuat. Pastikan server aktif lalu coba lagi.'); })
+      .finally(() => { if (sah(true)) cuMuat(false); });
+  }, [status, dari, sampai, terbaru]);
 
   useEffect(() => {
     muat();

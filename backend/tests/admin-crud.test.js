@@ -126,6 +126,18 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect((await M.User.findByPk(dasar.peserta.id)).aktif).toBe(false);
   });
 
+  test('aktif dikirim sebagai string ditolak (400 VALIDASI, ketat boolean)', async () => {
+    // Boolean("false") === true membuat akun tetap aktif diam-diam — kini ditolak
+    const r = await request(app)
+      .put(`/api/admin/peserta/${dasar.peserta.id}`)
+      .set('Authorization', tokAdmin)
+      .send({ aktif: 'false' });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+    const M = require('../src/models');
+    expect((await M.User.findByPk(dasar.peserta.id)).aktif).toBe(true);
+  });
+
   test('hapus aman: peserta dengan riwayat absensi ditolak (PUNYA_RIWAYAT)', async () => {
     const M = require('../src/models');
     const tgl = require('../src/utils/waktu').bagian().tanggal;
@@ -144,6 +156,21 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect(r.status).toBe(200);
     expect(await M.User.findByPk(dasar.nonaktif.id)).toBeNull();
     expect(await M.Peserta.count({ where: { user_id: dasar.nonaktif.id } })).toBe(0);
+  });
+
+  test('hapus aman: peserta dengan pengajuan Menunggu ditolak (PUNYA_RIWAYAT)', async () => {
+    // Pengajuan belum membuat baris absensi — tetap harus menghalangi penghapusan
+    const M = require('../src/models');
+    const tgl = require('../src/utils/waktu').bagian().tanggal;
+    await M.PengajuanIzin.create({
+      user_id: dasar.nonaktif.id, tanggal: tgl, jenis: 'Izin',
+      keterangan: 'Menghadiri acara keluarga.', bukti: 'a.jpg',
+    });
+    const r = await request(app).delete(`/api/admin/peserta/${dasar.nonaktif.id}`).set('Authorization', tokAdmin);
+    expect(r.status).toBe(409);
+    expect(r.body.kode).toBe('PUNYA_RIWAYAT');
+    expect(await M.User.findByPk(dasar.nonaktif.id)).toBeTruthy();
+    expect(await M.PengajuanIzin.count({ where: { user_id: dasar.nonaktif.id } })).toBe(1);
   });
 
   test('pembimbing yang masih membimbing tidak bisa dihapus', async () => {

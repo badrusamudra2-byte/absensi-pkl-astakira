@@ -18,8 +18,10 @@ const tutupHari = async ({ tanggal = bagian().tanggal, sekarang = new Date() } =
   if (!ws || !ws.hari_kerja) return { tanggal, hari, dibuat: 0 };
 
   if (tanggal > bag.tanggal) return { tanggal, hari, dibuat: 0 };
-  // Untuk hari ini: belum lewat jam pulang + selisih -> belum saatnya menutup
-  const ambang = menitDariJam(ws.jam_pulang) + env.tutupHari.menit;
+  // Untuk hari ini: belum lewat jam pulang + selisih -> belum saatnya menutup.
+  // Bila ambang melewati tengah malam (jam_pulang terlambat), ambang dipotong ke
+  // 23:59 agar hari tetap ditutup, bukan terlewat selamanya.
+  const ambang = Math.min(menitDariJam(ws.jam_pulang) + env.tutupHari.menit, 23 * 60 + 59);
   if (tanggal === bag.tanggal && bag.menit < ambang) {
     return { tanggal, hari, dibuat: 0 };
   }

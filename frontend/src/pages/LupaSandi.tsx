@@ -59,7 +59,7 @@ export default function LupaSandi() {
               <div className="min-h-6 mt-2">
                 <Galat pesan={err} />
               </div>
-              <Tombol className="w-full" disabled={memroses}>
+              <Tombol type="submit" className="w-full" disabled={memroses}>
                 {memroses ? 'Mengirim…' : 'Kirim tautan atur ulang'}
               </Tombol>
               <p className="mt-3 text-sm">

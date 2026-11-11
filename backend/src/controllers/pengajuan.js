@@ -1,11 +1,12 @@
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 const { sequelize, Absensi, Peserta, PengajuanIzin, User } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
 const audit = require('../utils/audit');
 const keteranganBuat = require('../services/keterangan').buat;
 const env = require('../config/env');
-const path = require('path');
 
 // Peserta.pembimbing_id menyimpan user id pembimbing
 const idBimbingan = async (pid) => (await Peserta.findAll({
@@ -59,31 +60,47 @@ exports.kirim = asyncH(async (req, res) => {
   if (!req.file || !req.file.filename) {
     throw new HttpError(400, 'Lampirkan bukti berupa foto.', 'BUKTI_WAJIB');
   }
+  // Berkas bukti sudah ditulis middleware ke uploads/pengajuan. Bila validasi
+  // di bawah gagal, berkas wajib dihapus agar tidak menumpuk sebagai berkas yatim.
+  const hapusBukti = () => {
+    try { fs.unlinkSync(path.join(__dirname, '../../uploads/pengajuan', req.file.filename)); } catch { /* sudah tak ada */ }
+  };
 
-  // Hari itu sudah memuat catatan absensi apa pun -> tidak bisa diajukan lagi
-  const adaAbsensi = await Absensi.findOne({ where: { user_id: uid, tanggal } });
-  if (adaAbsensi) {
-    throw new HttpError(
-      409,
-      ['Izin', 'Sakit'].includes(adaAbsensi.status)
-        ? `${tanggal} sudah tercatat ${adaAbsensi.status}.`
-        : `Anda sudah punya absensi pada ${tanggal}.`,
-      'CATATAN_ADA',
-    );
-  }
-  // Pengajuan aktif (Menunggu/Disetujui) pada tanggal sama juga menutup duplikat
-  const adaAjukan = await PengajuanIzin.findOne({
-    where: { user_id: uid, tanggal, status: { [Op.ne]: 'Ditolak' } },
-  });
-  if (adaAjukan) {
-    throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${tanggal} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
-  }
+  try {
+    // Hari itu sudah memuat catatan absensi apa pun -> tidak bisa diajukan lagi.
+    // Cek dan tulis dalam satu transaksi (kunci baris yang ada) supaya dua
+    // pengiriman bersamaan tidak sama-sama lolos cek duplikat.
+    const p = await sequelize.transaction(async (t) => {
+      const adaAbsensi = await Absensi.findOne({ where: { user_id: uid, tanggal }, transaction: t });
+      if (adaAbsensi) {
+        throw new HttpError(
+          409,
+          ['Izin', 'Sakit'].includes(adaAbsensi.status)
+            ? `${tanggal} sudah tercatat ${adaAbsensi.status}.`
+            : `Anda sudah punya absensi pada ${tanggal}.`,
+          'CATATAN_ADA',
+        );
+      }
+      // Pengajuan aktif (Menunggu/Disetujui) pada tanggal sama juga menutup duplikat
+      const adaAjukan = await PengajuanIzin.findOne({
+        where: { user_id: uid, tanggal, status: { [Op.ne]: 'Ditolak' } },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (adaAjukan) {
+        throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${tanggal} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
+      }
 
-  const p = await PengajuanIzin.create({
-    user_id: uid, tanggal, jenis, keterangan: ket, bukti: req.file.filename,
-  });
-  await audit(req, `Pengajuan ${jenis} ${tanggal}`, `pes#${uid} pengajuan#${p.id}`);
-  res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
+      return PengajuanIzin.create({
+        user_id: uid, tanggal, jenis, keterangan: ket, bukti: req.file.filename,
+      }, { transaction: t });
+    });
+    await audit(req, `Pengajuan ${jenis} ${tanggal}`, `pes#${uid} pengajuan#${p.id}`);
+    res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
+  } catch (e) {
+    hapusBukti();
+    throw e;
+  }
 });
 
 /** Buka berkas bukti pengajuan (foto): hanya pemilik pengajuan, pembimbing

@@ -5,6 +5,7 @@ import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge, Label, Galat } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
+import { waktuWib } from '../../komponen/umum';
 
 export default function DetailJurnal() {
   const { id } = useParams();
@@ -56,7 +57,7 @@ export default function DetailJurnal() {
   const bisaReview = jub.status === 'Dikirim';
   const review = (jub.reviews ?? []).map((r) => ({
     keputusan: r.keputusan,
-    waktu: r.dibuat_pada?.slice(0, 16).replace('T', ' ') ?? '',
+    waktu: waktuWib(r.dibuat_pada),
     catatan: r.catatan,
     nama: r.pembimbing?.nama ?? 'Pembimbing',
   }));

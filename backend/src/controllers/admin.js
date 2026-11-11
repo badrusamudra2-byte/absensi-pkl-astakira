@@ -1,8 +1,10 @@
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { Op, fn } = require('sequelize');
 const {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification, TantanganWajah,
-  QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, AuditLog,
+  QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, AuditLog, PengajuanIzin,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { wajib, jam, email, kuat, pesanSandi } = require('../utils/validasi');
@@ -82,7 +84,12 @@ function crud(role, Profile, alias) {
       const f = {};
       if (b.nama !== undefined) f.nama = wajib(b.nama, 100);
       if (b.email !== undefined) f.email = email(b.email);
-      if (b.aktif !== undefined) f.aktif = Boolean(b.aktif);
+      // Ketat: hanya boolean. Boolean("false") === true membuat akun tetap aktif
+      // diam-diam bila klien mengirim string.
+      if (b.aktif !== undefined) {
+        if (typeof b.aktif !== 'boolean') throw new HttpError(400, 'aktif harus true atau false.', 'VALIDASI');
+        f.aktif = b.aktif;
+      }
       const profil = await dataProfil(b);
       await sequelize.transaction(async (t) => {
         await u.update(f, { transaction: t });
@@ -107,6 +114,9 @@ function crud(role, Profile, alias) {
       const u = await cari(req.params.id);
       const pakai = (await Absensi.count({ where: { user_id: u.id } }))
         + (await Jurnal.count({ where: { user_id: u.id } }))
+        // Pengajuan Menunggu belum membuat baris absensi — ikut dihitung agar
+        // akun dengan pengajuan aktif tidak bisa dihapus (baris jadi yatim).
+        + (await PengajuanIzin.count({ where: { user_id: u.id } }))
         + (role === 'pembimbing' ? await Peserta.count({ where: { pembimbing_id: u.id } }) : 0);
       if (pakai) {
         throw new HttpError(409, 'Data ini sudah punya riwayat atau peserta terkait. Nonaktifkan saja agar riwayat tetap utuh.', 'PUNYA_RIWAYAT');
@@ -120,6 +130,8 @@ function crud(role, Profile, alias) {
         await Profile.destroy(w);
         await u.destroy({ transaction: t });
       });
+      // Berkas foto profil (best-effort, di luar transaksi DB)
+      if (u.foto_url) fs.unlink(path.join(__dirname, '../..', u.foto_url), () => {});
       await audit(req, `Hapus ${role}`, u.nama);
       res.json({ pesan: 'Data dihapus.' });
     }),

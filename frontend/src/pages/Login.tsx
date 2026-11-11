@@ -67,7 +67,7 @@ export default function Login() {
               <div className="min-h-6 mt-2">
                 <Galat pesan={err} />
               </div>
-              <Tombol className="w-full mt-1" disabled={memroses}>
+              <Tombol type="submit" className="w-full mt-1" disabled={memroses}>
                 {memroses ? 'Memproses…' : 'Masuk'}
               </Tombol>
               <p className="mt-3 text-sm">

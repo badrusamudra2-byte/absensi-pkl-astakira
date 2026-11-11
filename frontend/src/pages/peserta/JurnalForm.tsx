@@ -15,7 +15,9 @@ const MAKS_TEKS = 5000;
 const hariBatas = isoHariSilam;
 
 interface Isian { tanggal: string; judul: string; uraian: string; hasil: string; kendala: string; rencana: string; }
-const KOSONG: Isian = { tanggal: hariBatas(0), judul: '', uraian: '', hasil: '', kendala: '', rencana: '' };
+// Dibuat per render (bukan konstanta modul) agar tanggal default selalu hari ini —
+// aplikasi yang tertinggal terbuka semalaman tetap mengisi tanggal benar saat dibuka.
+const kosong = (): Isian => ({ tanggal: hariBatas(0), judul: '', uraian: '', hasil: '', kendala: '', rencana: '' });
 
 /** Penghitung karakter kecil di bawah textarea/input. */
 function Hitung({ leng, maks }: { leng: number; maks: number }) {
@@ -30,7 +32,7 @@ export default function JurnalForm() {
   const navigate = useNavigate();
   const toast = useToast();
   const daring = useOnline();
-  const [isi, ubahIsi] = useState<Isian>({ ...KOSONG });
+  const [isi, ubahIsi] = useState<Isian>(kosong);
   const [judulErr, ubahJudulErr] = useState('');
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
   const [sedang, ubahSedang] = useState(false);

@@ -24,7 +24,7 @@ export const PETA: Record<string, [string, string]> = {
   BELUM_ABSEN_MASUK: ['Belum absen masuk', 'Absen pulang hanya bisa dilakukan setelah absen masuk tercatat.'],
   PULANG_BELUM_WAKTUNYA: ['Belum waktunya pulang', 'Absen pulang dibuka 5 menit sebelum jam pulang. Coba lagi saat waktunya tiba.'],
   HARI_LIBUR: ['Hari libur', 'Hari ini bukan hari kerja sesuai jadwal workshift.'],
-  HARI_TERCATAT: ['Hari sudah tercatat', 'Hari itu tercatat Izin/Sakit — peserta tidak perlu dan tidak bisa absen.'],
+  HARI_TERCATAT: ['Anda sudah mengajukan izin/sakit', 'Hari itu tercatat Izin/Sakit — absensi tidak perlu dan tidak bisa dilakukan.'],
   CATATAN_ADA: ['Catatan sudah ada', 'Sudah ada catatan izin/sakit atau absensi untuk tanggal itu.'],
   BUKTI_WAJIB: ['Bukti belum dilampirkan', 'Pilih foto bukti terlebih dahulu (JPG, PNG, atau WebP).'],
   UPLOAD: ['Format berkas tidak didukung', 'Bukti harus berupa foto JPG, PNG, atau WebP maksimal 5 MB.'],
@@ -43,6 +43,7 @@ export const PETA: Record<string, [string, string]> = {
   TIDAK_ADA: ['Tidak ditemukan', ''],
   DUPLIKAT: ['Data sudah ada', 'Email atau data yang sama sudah terdaftar.'],
   RATE_LIMIT: ['Terlalu banyak percobaan', 'Coba lagi beberapa saat lagi.'],
+  TOKEN_RESET: ['Tautan tidak valid', 'Tautan atur ulang kata sandi tidak valid atau sudah kedaluwarsa. Minta tautan baru dari halaman Lupa kata sandi.'],
   SERVER: ['Kesalahan server', 'Terjadi gangguan pada server. Coba lagi sebentar.'],
 };
 

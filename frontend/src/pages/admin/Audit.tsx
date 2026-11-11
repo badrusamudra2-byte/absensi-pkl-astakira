@@ -3,11 +3,11 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { BarisAudit } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan } from '../../komponen/ui';
-import { FxDaftar } from '../../komponen/umum';
+import { FxDaftar, gunakanTerbaru, waktuWib } from '../../komponen/umum';
 
 const LIMIT = 25;
 
-const waktu = (iso: string) => (iso ? iso.slice(0, 16).replace('T', ' ').replace('-', '/') : '-');
+const waktu = (iso: string) => waktuWib(iso); // UTC dari server dikonversi ke WIB
 
 function DetailKoreksi({ detail }: { detail: string }) {
   let d: { lama?: Record<string, unknown>; baru?: Record<string, unknown>; alasan?: string };
@@ -49,20 +49,24 @@ export default function Audit() {
   const [halaman, ubahHalaman] = useState(1);
   const [buka, ubahBuka] = useState<number | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const terbaru = gunakanTerbaru();
 
   const muat = useCallback(async () => {
+    const sah = terbaru();
     ubahRows(null);
     ubahGalat(null);
     try {
       const p = new URLSearchParams({ halaman: String(halaman), limit: String(LIMIT) });
       const r = await api<{ total: number; data: BarisAudit[] }>(`/admin/audit?${p}`);
+      if (!sah(true)) return;
       ubahRows(r.data);
       ubahTotal(r.total);
     } catch (e) {
+      if (!sah(true)) return;
       const err = e as ApiError;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
     }
-  }, [halaman]);
+  }, [halaman, terbaru]);
 
   useEffect(() => {
     void muat();

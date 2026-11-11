@@ -22,6 +22,7 @@ const tandaIsi = (buf) => {
  * ke disk dengan nama acak. Menolak isi bukan-gambar meski klaim MIME-nya gambar.
  */
 module.exports = [
+  (req, res, next) => { req.batasUkuranMB = 2; next(); }, // untuk pesan galat LIMIT_FILE_SIZE
   multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } }).single('foto'),
   (req, res, next) => {
     try {

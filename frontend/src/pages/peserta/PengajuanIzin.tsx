@@ -41,7 +41,11 @@ export default function PengajuanIzin() {
       const r = await api<Response>(`/pengajuan/bukti/${p.bukti}`, { raw: true });
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener');
+      const tab = window.open(url, '_blank', 'noopener');
+      if (!tab) {
+        // Blokir pop-up: tab tidak terbuka, jangan biarkan tombol terkesan mati
+        ubahGalat(['Pop-up diblokir', 'Izinkan pop-up untuk situs ini lalu tekan "Lihat bukti" sekali lagi.']);
+      }
       setTimeout(() => { URL.revokeObjectURL(url); }, 300000);
     } catch (e) {
       const err = e as ApiError;
