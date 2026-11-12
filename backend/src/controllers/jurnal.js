@@ -1,7 +1,12 @@
 const { Op } = require('sequelize');
-const { Jurnal, JurnalReview, User, Absensi } = require('../models');
+const fs = require('fs');
+const path = require('path');
+const { Jurnal, JurnalReview, User, Absensi, Peserta } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
+const audit = require('../utils/audit');
+
+const DIR_LAMPIRAN = path.join(__dirname, '../../uploads/lampiran');
 
 const STATUS = ['Draft', 'Dikirim', 'Revisi', 'Disetujui'];
 
@@ -63,6 +68,55 @@ const bentrok = (e) => {
   }
   throw e;
 };
+
+/* ---------- Lampiran foto kegiatan (opsional) ---------- */
+
+const hapusBerkas = (nama) => {
+  if (!nama || !/^[0-9a-f]{32}\.(jpe?g|png|webp)$/i.test(nama)) return;
+  try { fs.unlinkSync(path.join(DIR_LAMPIRAN, nama)); } catch { /* berkas sudah tidak ada */ }
+};
+
+// Siapa boleh melihat lampiran: pemilik, pembimbing yang membimbing, atau admin
+const bolehLihat = async (j, user) => {
+  if (user.id === j.user_id || user.role === 'admin') return true;
+  if (user.role !== 'pembimbing') return false;
+  const p = await Peserta.findOne({ where: { user_id: j.user_id }, attributes: ['pembimbing_id'] });
+  return !!p && p.pembimbing_id === user.id;
+};
+
+// Unggah/ubah/hapus: hanya jurnal Draft/Revisi (status lain tidak boleh diubah).
+// Tanpa berkas di body = hapus lampiran. Berkas lama dibersihkan.
+exports.isiLampiran = asyncH(async (req, res) => {
+  const j = await milik(req);
+  if (!['Draft', 'Revisi'].includes(j.status)) {
+    hapusBerkas(req.file?.filename); // jangan tinggalkan berkas yatim
+    throw new HttpError(409, `Jurnal berstatus ${j.status} tidak bisa diubah.`, 'STATUS_TIDAK_VALID');
+  }
+  const lama = j.lampiran;
+  const baru = req.file ? req.file.filename : null;
+  try {
+    await j.update({ lampiran: baru });
+  } catch (e) {
+    hapusBerkas(baru);
+    throw e;
+  }
+  if (lama && lama !== baru) hapusBerkas(lama);
+  await audit(req, baru ? 'Unggah lampiran jurnal' : 'Hapus lampiran jurnal', `jurnal#${j.id}`);
+  res.json({
+    pesan: baru ? 'Lampiran kegiatan disimpan.' : 'Lampiran kegiatan dihapus.',
+    lampiran: j.lampiran,
+  });
+});
+
+exports.lampiran = asyncH(async (req, res) => {
+  const j = await Jurnal.findByPk(req.params.id, { attributes: ['id', 'user_id', 'lampiran'] });
+  if (!j || !j.lampiran) throw new HttpError(404, 'Lampiran jurnal tidak ditemukan.', 'TIDAK_ADA');
+  if (!(await bolehLihat(j, req.user))) {
+    throw new HttpError(403, 'Lampiran ini bukan jurnal Anda atau bimbingan Anda.', 'DILARANG');
+  }
+  await audit(req, 'Buka lampiran jurnal', `jurnal#${j.id}`);
+  res.sendFile(path.join(DIR_LAMPIRAN, j.lampiran));
+});
 
 exports.list = asyncH(async (req, res) => {
   // Daftar dibentuk dari tanggal absen masuk milik peserta (dulu, hari itu "ada"),
@@ -159,4 +213,16 @@ exports.update = asyncH(async (req, res) => {
   } catch (e) {
     bentrok(e);
   }
+});
+
+// Peserta menarik kembali jurnal yang sudah dikirim (belum direview) menjadi
+// Draft agar bisa diedit. Jurnal Disetujui tetap terkunci.
+exports.tarik = asyncH(async (req, res) => {
+  const j = await milik(req);
+  if (j.status !== 'Dikirim') {
+    throw new HttpError(409, `Jurnal berstatus ${j.status} tidak bisa ditarik.`, 'STATUS_TIDAK_VALID');
+  }
+  await j.update({ status: 'Draft' });
+  await audit(req, 'Tarik jurnal ke draft', `jurnal#${j.id}`);
+  res.json(j);
 });

@@ -6,6 +6,7 @@ import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Masukan, Galat } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { useOnline } from '../../komponen/Offline';
+import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { isoHariSilam } from '../../komponen/umum';
 
 const MAKS_TEKS = 5000;
@@ -42,7 +43,10 @@ export default function JurnalForm() {
   const [sedang, ubahSedang] = useState(false);
   const [konfirm, ubahKonfirm] = useState(false);
   const [statusLama, ubahStatusLama] = useState<string | null>(null);
+  const [lampiranLama, ubahLampiranLama] = useState<string | null>(null);
+  const [berkas, ubahBerkas] = useState<File | null>(null);
   const [muat, ubahMuat] = useState(editMode);
+  const [bukaFoto, ubahBukaFoto] = useState(false);
 
   /* Mode edit: muat isi jurnal (dan pastikan milik peserta) */
   useEffect(() => {
@@ -53,6 +57,7 @@ export default function JurnalForm() {
           ubahGalat(teksKode('STATUS_TIDAK_VALID', `Jurnal berstatus ${j.status} tidak bisa diubah.`));
         }
         ubahStatusLama(j.status);
+        ubahLampiranLama(j.lampiran ?? null);
         ubahIsi({
           tanggal: j.tanggal,
           judul: j.judul,
@@ -92,21 +97,53 @@ export default function JurnalForm() {
     ubahGalat(null);
     const badan = { ...isi, aksi: kirim ? 'kirim' : 'draft' };
     try {
-      if (editMode) {
+      let idJurnal: number;
+      let pesan: string;
+      // Bila ada lampiran: simpan dulu tanpa mengirim, unggah lampiran, baru kirim.
+      // Urutan ini penting — jurnal Dikirim tidak boleh diubah, jadi lampiran yang
+      // diunggah setelahnya akan ditolak server.
+      if (berkas) {
+        const draf = await (editMode
+          ? api<{ id: number }>(`/jurnal/${id}`, { method: 'PUT', json: { ...isi, aksi: 'draft' } })
+          : api<{ id: number }>('/jurnal', { method: 'POST', json: { ...isi, aksi: 'draft' } }));
+        idJurnal = draf.id;
+        const fd = new FormData();
+        fd.append('lampiran', berkas);
+        await api<{ lampiran: string }>(`/jurnal/${idJurnal}/lampiran`, { method: 'PUT', bentuk: fd });
+        if (kirim) {
+          await api<{ id: number }>(`/jurnal/${idJurnal}`, { method: 'PUT', json: { ...isi, aksi: 'kirim' } });
+        }
+        pesan = kirim ? 'Jurnal dikirim.' : 'Draft jurnal disimpan.';
+      } else if (editMode) {
         const r = await api<{ id: number; status: string }>(`/jurnal/${id}`, { method: 'PUT', json: badan });
-        toast(statusLama === 'Revisi' ? 'Jurnal diperbaiki dan dikirim.' : badan.aksi === 'kirim' ? 'Jurnal dikirim.' : 'Perubahan draft disimpan.');
-        navigate(`/jurnal/${r.id}`);
+        idJurnal = r.id;
+        pesan = statusLama === 'Revisi' ? 'Jurnal diperbaiki dan dikirim.' : badan.aksi === 'kirim' ? 'Jurnal dikirim.' : 'Perubahan draft disimpan.';
       } else {
         const r = await api<{ id: number; status: string }>('/jurnal', { method: 'POST', json: badan });
-        toast(badan.aksi === 'kirim' ? 'Jurnal dikirim.' : 'Draft jurnal disimpan.');
-        navigate(`/jurnal/${r.id}`);
+        idJurnal = r.id;
+        pesan = badan.aksi === 'kirim' ? 'Jurnal dikirim.' : 'Draft jurnal disimpan.';
       }
+      toast(pesan);
+      navigate(`/jurnal/${idJurnal}`);
     } catch (e) {
       const err = e as ApiError;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
       ubahKonfirm(false);
     } finally {
       ubahSedang(false);
+    }
+  };
+
+  /** Hapus lampiran saat ini (hanya di mode edit; jurnal Draft/Revisi). */
+  const hapusLampiran = async () => {
+    if (!editMode) return;
+    try {
+      await api<{ pesan: string }>(`/jurnal/${id}/lampiran`, { method: 'DELETE' });
+      ubahLampiranLama(null);
+      ubahBerkas(null);
+      toast('Lampiran kegiatan dihapus.');
+    } catch (e) {
+      ubahGalat(teksKode((e as ApiError).kode ?? 'SERVER', (e as ApiError).message));
     }
   };
 
@@ -187,6 +224,25 @@ export default function JurnalForm() {
           <span className="block text-right"><Hitung leng={isi.rencana.length} maks={MAKS_TEKS} /></span>
         </p>
 
+        {/* Lampiran foto kegiatan: opsional. Diunggah setelah jurnal tersimpan. */}
+        <p className="mt-3">
+          <label htmlFor="lmp" className="block text-[13px] font-semibold">Lampiran foto kegiatan (opsional)</label>
+          {lampiranLama ? (
+            <span className="block text-sm mt-1">
+              Lampiran saat ini:{' '}
+              <button type="button" onClick={() => ubahBukaFoto(true)} className="text-pr underline">Lihat</button>
+              {' · '}
+              <button type="button" onClick={() => void hapusLampiran()} className="text-r underline">Hapus</button>
+            </span>
+          ) : null}
+          <input
+            id="lmp" type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => ubahBerkas(e.target.files?.[0] ?? null)}
+            className="block mt-1 text-sm text-mu file:mr-2 file:px-3 file:py-[6px] file:rounded-lg file:border file:border-garis file:bg-bg file:text-sm file:cursor-pointer"
+          />
+          <small className="text-mu text-xs">JPG, PNG, atau WebP, maksimal 5 MB. Foto hasil kegiatan, dokumen, dsb.</small>
+        </p>
+
         {konfirm ? (
           <div className="mt-4 border border-y rounded-lg px-[14px] py-3" role="dialog" aria-label="Konfirmasi kirim jurnal">
             <b className="block mb-1">Kirim jurnal sekarang?</b>
@@ -211,6 +267,16 @@ export default function JurnalForm() {
           </div>
         )}
       </Kartu>
+
+      {bukaFoto && id ? (
+        <PenampilFoto
+          buka={bukaFoto}
+          judul={`Lampiran kegiatan ${isi.tanggal}`}
+          sumber={`/jurnal/${id}/lampiran`}
+          namaBerkas={`lampiran-jurnal-${isi.tanggal}`}
+          tutup={() => ubahBukaFoto(false)}
+        />
+      ) : null}
     </>
   );
 }

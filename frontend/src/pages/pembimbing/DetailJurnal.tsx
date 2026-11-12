@@ -5,6 +5,7 @@ import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge, Label, Galat } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
+import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { waktuWib } from '../../komponen/umum';
 
 export default function DetailJurnal() {
@@ -16,6 +17,7 @@ export default function DetailJurnal() {
   const [bukaRevisi, ubahBukaRevisi] = useState(false);
   const [catatan, ubahCatatan] = useState('');
   const [sedang, ubahSedang] = useState(false);
+  const [bukaFoto, ubahBukaFoto] = useState(false);
 
   useEffect(() => {
     api<JurnalDetail>(`/pembimbing/jurnal/${id}`)
@@ -121,6 +123,22 @@ export default function DetailJurnal() {
               <dd className="text-sm whitespace-pre-wrap">{b || <span className="text-mu">(tidak diisi)</span>}</dd>
             </div>
           ))}
+          <div>
+            <dt className="text-[13px] font-semibold mb-0.5">Lampiran kegiatan</dt>
+            <dd>
+              {jub.lampiran ? (
+                <button
+                  type="button"
+                  onClick={() => ubahBukaFoto(true)}
+                  className="text-pr underline"
+                >
+                  Lihat lampiran
+                </button>
+              ) : (
+                <span className="text-mu text-sm">(tidak ada lampiran)</span>
+              )}
+            </dd>
+          </div>
         </dl>
       </Kartu>
 
@@ -138,6 +156,14 @@ export default function DetailJurnal() {
         </Kartu>
       ) : null}
       <div className="sm:hidden"><Galat pesan={null} /></div>
+
+      <PenampilFoto
+        buka={bukaFoto}
+        judul={`Lampiran kegiatan ${jub.tanggal} — ${jub.peserta?.nama ?? 'Peserta'}`}
+        sumber={`/jurnal/${jub.id}/lampiran`}
+        namaBerkas={`lampiran-jurnal-${jub.tanggal}`}
+        tutup={() => ubahBukaFoto(false)}
+      />
     </>
   );
 }

@@ -2,9 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
+import { ambilLokasiKantor, teksJarak } from '../../lib/kantor';
 import type { Absensi, BarisJurnal } from '../../lib/tipe';
+
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
+import { Kartu, Pemberitahuan, Badge } from '../../komponen/ui';
+import PetaAbsensi, { type TitikPeta } from '../../komponen/PetaAbsensi';
+ 
 import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';
 import { unduhBerkas, type FormatLaporan } from '../../lib/unduh';
 
@@ -17,8 +22,12 @@ export default function Rekap() {
   const [absensi, ubahAbsensi] = useState<(Absensi & { peserta?: { nama: string } })[] | null>(null);
   const [jurnal, ubahJurnal] = useState<(BarisJurnal & { peserta?: { nama: string } })[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+
   const [sedangUnduh, ubahSedangUnduh] = useState(false);
   const toast = useToast();
+
+  const [kantor, ubahKantor] = useState<{ lat: number; lng: number; radius_m: number } | null>(null);
+
   const terbaru = gunakanTerbaru();
 
   const unduh = async (format: FormatLaporan) => {
@@ -35,6 +44,10 @@ export default function Rekap() {
       ubahSedangUnduh(false);
     }
   };
+
+  useEffect(() => {
+    void ambilLokasiKantor().then(ubahKantor);
+  }, []);
 
   useEffect(() => {
     api<{ data: { id: number; nama: string }[] }>('/pembimbing/peserta')
@@ -105,6 +118,29 @@ export default function Rekap() {
             { t: 'Metode', isi: (a) => a.metode },
           ]}
         />
+      </Kartu>
+
+      <Kartu t="Peta absensi">
+        {absensi && (absensi.some((a) => a.lat !== null && a.lng !== null) || kantor) ? (
+          <PetaAbsensi
+            kantor={kantor}
+            titik={absensi
+              .filter((a) => a.lat !== null && a.lng !== null)
+              .map((a) => ({
+                lat: a.lat as number,
+                lng: a.lng as number,
+                jenis: a.jenis,
+                label:
+                  `${a.peserta?.nama ?? 'Peserta'} — ${a.jenis} ${a.jam.slice(0, 5)}, ` +
+                  `${tglIndo(a.tanggal)} (${teksJarak(a.jarak_m)} dari kantor)`,
+              }))}
+          />
+        ) : (
+          <p className="text-mu text-sm">
+            Belum ada data lokasi untuk periode ini. Titik absensi muncul bila area kantor sudah diatur admin dan
+            peserta mengirim lokasi saat absen.
+          </p>
+        )}
       </Kartu>
 
       <Kartu t="Jurnal kegiatan">

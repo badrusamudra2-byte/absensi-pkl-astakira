@@ -176,7 +176,9 @@ describe('verifikasi wajah (/face/verify)', () => {
     const r1 = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
     expect(r1.status).toBe(200);
 
-    const r2 = await verifikasi(authz, { jenis: 'pulang', embedding: VEK(), nonce: tan.body.nonce });
+    // Nonce sekali pakai: dipakai ulang ditolak (jenis masuk — verifikasi pulang
+    // punya gerbang waktu tersendiri yang dicek lebih dulu)
+    const r2 = await verifikasi(authz, { jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
     expect(r2.status).toBe(409);
     expect(r2.body).toMatchObject({ kode: 'TANTANGAN_SUDAH' });
   });

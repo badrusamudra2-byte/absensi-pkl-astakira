@@ -1,10 +1,12 @@
 const { Op } = require('sequelize');
 const tutupHari = require('./tutup-hari');
+const tutupLive = require('./live-tutup');
 const M = require('../models');
 
 const lama = 24 * 3600 * 1000; // simpan maksimal 24 jam setelah kedaluwarsa
 let timerJob = null;
 let timerBer = null;
+let timerLive = null;
 
 /** Hapus token QR, verifikasi wajah, tantangan liveness, dan foto wajah lewat retensi.
  * Idempotent. */
@@ -25,7 +27,6 @@ const bersihkan = async () => {
 /** Jalankan job rutin di interval; tanpa efek bila dipanggil ulang. */
 const mulai = (setiapMenit = 5) => {
   if (timerJob) return;
-
   const jalankan = async () => {
     try {
       const r = await tutupHari();
@@ -36,6 +37,14 @@ const mulai = (setiapMenit = 5) => {
   };
   timerJob = setInterval(jalankan, setiapMenit * 60 * 1000);
   timerJob.unref?.();
+
+  // Live tracking: sesi aktif ditutup otomatis pada jam pulang + toleransi.
+  // Interval 1 menit agar peta tidak menyimpan sesi sesudah jam pulang terlalu lama.
+  timerLive = setInterval(
+    () => tutupLive().catch((e) => console.error('Job tutup live tracking gagal:', e.message)),
+    60 * 1000,
+  );
+  timerLive.unref?.();
 
   // Pembersih sekali sehari (mulai 1 menit setelah server hidup)
   const ber = setTimeout(async () => {

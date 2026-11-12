@@ -9,6 +9,8 @@ const User = sequelize.define('User', {
   role: { type: T.ENUM('peserta', 'pembimbing', 'admin'), allowNull: false },
   foto_url: T.STRING(255),
   aktif: { type: T.BOOLEAN, allowNull: false, defaultValue: true },
+  // Live tracking: NULL = belum pernah memberi persetujuan pelacakan pertama
+  setuju_live_tracking: T.BOOLEAN,
   reset_token_hash: T.CHAR(64),
   reset_expires: T.DATE,
 }, {
@@ -60,6 +62,10 @@ const QrToken = sequelize.define('QrToken', {
   dipindai_oleh: T.INTEGER,
   dipindai_pada: T.DATE,
   dipakai_pada: T.DATE,
+  // Lokasi peserta saat menayangkan QR (server yang memvalidasi jaraknya)
+  lat: T.DOUBLE,
+  lng: T.DOUBLE,
+  akurasi_m: T.DOUBLE,
 }, { tableName: 'qr_tokens', indexes: [{ fields: ['user_id', 'jenis'] }] });
 
 // QR ditayangkan peserta dari HP-nya dan dipindai oleh pembimbing (diganti tiap QR_TTL_DETIK).
@@ -77,6 +83,12 @@ const Absensi = sequelize.define('Absensi', {
   keterangan: T.TEXT,
   token_id: T.INTEGER,
   dikonfirmasi_oleh: T.INTEGER,
+  // Titik absen peserta (dikirim perangkat peserta, divalidasi server dengan Haversine)
+  lat: T.DOUBLE,
+  lng: T.DOUBLE,
+  akurasi_m: T.DOUBLE,
+  jarak_m: T.DOUBLE,
+  di_dalam_area: T.BOOLEAN,
 }, {
   tableName: 'absensi',
   // Batas keras di database: satu jenis absen per peserta per hari
@@ -118,6 +130,11 @@ const WajahFoto = sequelize.define('WajahFoto', {
 const PengaturanAbsensi = sequelize.define('PengaturanAbsensi', {
   metode: { type: T.ENUM('qr_wajah', 'qr', 'wajah'), allowNull: false, defaultValue: 'qr_wajah' },
   liveness_aktif: { type: T.BOOLEAN, allowNull: false, defaultValue: true },
+  // Area kantor: lat/lng NULL = validasi lokasi belum aktif (absen tanpa lokasi tetap sah)
+  lat_kantor: T.DOUBLE,
+  lng_kantor: T.DOUBLE,
+  radius_m: { type: T.INTEGER, allowNull: false, defaultValue: 100 },
+  akurasi_maks_m: { type: T.INTEGER, allowNull: false, defaultValue: 50 },
 }, { tableName: 'pengaturan_absensi' });
 
 // Tantangan liveness: nonce hash sekali pakai + instruksi gerakan dari server.
@@ -138,6 +155,7 @@ const Jurnal = sequelize.define('Jurnal', {
   kendala: T.TEXT,
   rencana: T.TEXT,
   status: { type: T.ENUM('Draft', 'Dikirim', 'Revisi', 'Disetujui'), allowNull: false, defaultValue: 'Draft' },
+  lampiran: { type: T.STRING(72), allowNull: true }, // nama berkas di uploads/lampiran/ (opsional)
 }, {
   tableName: 'jurnal',
   indexes: [{ fields: ['user_id', 'status'] }, { unique: true, name: 'uq_jurnal_harian', fields: ['user_id', 'tanggal'] }],
@@ -161,6 +179,26 @@ const AuditLog = sequelize.define('AuditLog', {
   perangkat: T.STRING(255),
 }, { tableName: 'audit_log', updatedAt: false });
 
+// Sesi live tracking: dibuka saat absen masuk, ditutup saat absen pulang (transaksi
+// yang sama) atau otomatis oleh job pada jam pulang + toleransi. Posisi terakhir
+// peserta disimpan langsung di baris sesi (di-upsert) — tanpa riwayat jejak; kolom
+// posisi dikosongkan saat sesi ditutup sehingga tidak ada posisi tersisa.
+const SesiTracking = sequelize.define('SesiTracking', {
+  user_id: { type: T.INTEGER, allowNull: false },
+  tanggal: { type: T.DATEONLY, allowNull: false },
+  status: { type: T.ENUM('aktif', 'selesai'), allowNull: false, defaultValue: 'aktif' },
+  mulai_pada: { type: T.DATE, allowNull: false },
+  ditutup_pada: T.DATE,
+  sebab: T.ENUM('pulang', 'otomatis'),
+  lat: T.DOUBLE,
+  lng: T.DOUBLE,
+  akurasi_m: T.DOUBLE,
+  diperbarui_pada: T.DATE,
+}, {
+  tableName: 'sesi_tracking',
+  indexes: [{ fields: ['user_id', 'status'] }, { fields: ['tanggal'] }],
+});
+
 User.hasOne(Peserta, { foreignKey: 'user_id', as: 'peserta' });
 Peserta.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Peserta.belongsTo(User, { foreignKey: 'pembimbing_id', as: 'pembimbing' });
@@ -177,5 +215,5 @@ JurnalReview.belongsTo(User, { foreignKey: 'pembimbing_id', as: 'pembimbing' });
 module.exports = {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification,
   QrToken, Absensi, AbsensiPenolakan, WajahFoto, Jurnal, JurnalReview, AuditLog,
-  PengaturanAbsensi, TantanganWajah, PengajuanIzin,
+  PengaturanAbsensi, TantanganWajah, PengajuanIzin, SesiTracking,
 };

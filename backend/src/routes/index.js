@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const { auth, role } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const uploadBukti = require('../middleware/uploadBukti');
+const uploadLampiran = require('../middleware/lampiranJurnal');
 
 const C = {
   auth: require('../controllers/auth'),
@@ -14,6 +15,7 @@ const C = {
   admin: require('../controllers/admin'),
   pengaturan: require('../controllers/pengaturan'),
   pengajuan: require('../controllers/pengajuan'),
+  live: require('../controllers/live'),
 };
 
 // Rate limit berlaku untuk semua lingkungan imbang NODE_ENV=test — agar pengujian supertest
@@ -55,12 +57,25 @@ router.get('/jurnal', ...PESERTA, C.jurnal.list);
 router.post('/jurnal', ...PESERTA, C.jurnal.create);
 router.get('/jurnal/:id', ...PESERTA, C.jurnal.detail);
 router.put('/jurnal/:id', ...PESERTA, C.jurnal.update);
+// Tarik kembali jurnal Dikirim (belum direview) menjadi draft agar bisa diedit
+router.post('/jurnal/:id/tarik', ...PESERTA, C.jurnal.tarik);
+// Lampiran foto kegiatan jurnal (opsional): unggah/ubah/hapus dan lihat
+router.put('/jurnal/:id/lampiran', ...PESERTA, batas(15, 20), uploadLampiran, C.jurnal.isiLampiran);
+router.delete('/jurnal/:id/lampiran', ...PESERTA, C.jurnal.isiLampiran);
+router.get('/jurnal/:id/lampiran', auth, C.jurnal.lampiran);
 // Pengajuan izin/sakit: peserta kirim + bukti, pembimbing lihat & putuskan
 router.post('/pengajuan/izin', ...PESERTA, batas(15, 10), uploadBukti, C.pengajuan.kirim);
 router.get('/pengajuan/izin', auth, C.pengajuan.daftar);
 router.get('/pengajuan/bukti/:berkas', auth, C.pengajuan.bukti);
 router.get('/pengajuan/notifikasi', ...PEMBIMBING, C.pengajuan.notifikasi);
 router.put('/pengajuan/izin/:id/putuskan', ...PEMBIMBING, C.pengajuan.putuskan);
+
+// Live tracking (tahap 2): posisi berkala peserta saat sesi aktif (masuk..pulang).
+// Peta hanya pembimbing (bimbingannya) dan admin; tiap akses masuk audit log.
+router.put('/live/izin', ...PESERTA, C.live.izin);
+router.get('/live/status', ...PESERTA, C.live.status);
+router.post('/live/posisi', ...PESERTA, batas(1, 120), C.live.posisi);
+router.get('/live/peta', auth, role('pembimbing', 'admin'), C.live.peta);
 
 // Pembimbing: review, rekap
 router.get('/pembimbing/ringkasan', ...PEMBIMBING, C.pembimbing.ringkasan);

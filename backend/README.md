@@ -119,6 +119,10 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 - Siklus status: Draft -> Dikirim -> (Revisi -> Dikirim | Disetujui). Hanya Draft/Revisi yang boleh
   diedit; memakai `aksi: "kirim"` untuk mengirim / mengirim ulang.
 - Batas panjang: judul 150, uraian/hasil/kendala/rencana 5000 karakter.
+- **Lampiran foto kegiatan (opsional)**: `PUT /api/jurnal/:id/lampiran` (kolom `lampiran`,
+  JPG/PNG/WebP maks 5 MB, tersimpan acak di `uploads/lampiran/`; tanpa berkas = hapus lampiran).
+  Hanya jurnal Draft/Revisi yang boleh diganti. Lihat: `GET /api/jurnal/:id/lampiran` — pemilik,
+  pembimbing yang membimbing, atau admin; tiap pembukaan dicatat di audit log.
 
 ## Kode error -> pesan UI
 
@@ -150,6 +154,11 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | PULANG_BELUM_WAKTUNYA | 422 | Absen pulang dibuka 5 menit sebelum jam pulang |
 | HARI_LIBUR | 422 | Hari ini bukan hari kerja |
 | HARI_TERCATAT | 409 | Hari ini tercatat Izin/Sakit â€” absensi tidak diperlukan |
+| LOKASI_DIBUTUHKAN | 422 | Izinkan akses lokasi dan nyalakan GPS lalu coba lagi (peserta tayang ulang QR bila dari scan) |
+| AKURASI_BURUK | 422 | Sinyal GPS kurang akurat (melebihi ambang akurasi_maks_m) |
+| DI_LUAR_RADIUS | 422 | Posisi di luar radius kantor — absen harus di dalam area kantor |
+| LIVE_BELUM_SETUJU | 403 | Persetujuan live tracking belum diberikan (banner di HP peserta) |
+| LIVE_TIDAK_AKTIF | 409 | Tidak ada sesi live tracking aktif — hanya berjalan dari absen masuk sampai absen pulang |
 | CATATAN_ADA | 409 | Catatan izin/sakit untuk tanggal itu sudah ada |
 | BUKTI_WAJIB | 400 | Lampirkan bukti pengajuan izin/sakit terlebih dulu |
 | UPLOAD | 400 | Format bukti/foto tidak didukung (JPG, PNG, atau WebP) |

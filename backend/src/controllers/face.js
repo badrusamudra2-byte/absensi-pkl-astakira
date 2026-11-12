@@ -8,6 +8,7 @@ const siapkanFoto = require('../utils/foto');
 const audit = require('../utils/audit');
 const liveness = require('../services/liveness');
 const pengaturan = require('../services/pengaturan');
+const { jadwalHari, cekWaktuPulang } = require('./absensi').kisiWaktu;
 
 const valid = (a) => Array.isArray(a) && a.length === env.face.dim && a.every(Number.isFinite);
 const jarak = (a, b) => Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
@@ -59,6 +60,12 @@ exports.tantangan = asyncH(async (req, res) => {
 exports.verify = asyncH(async (req, res) => {
   const { embedding, jenis, nonce, foto } = req.body;
   if (!['masuk', 'pulang'].includes(jenis)) throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
+  // Pulang belum waktunya ditolak di sini (bukan hanya saat pembimbing memindai):
+  // peserta tidak perlu menghabiskan verifikasi wajah sebelum jendela pulang dibuka.
+  if (jenis === 'pulang') {
+    const w = bagian();
+    cekWaktuPulang('pulang', await jadwalHari(w.hari), w);
+  }
   // Hari yang tercatat Izin/Sakit tidak boleh diikuti absensi QR/wajah — tolak di awal
   // agar peserta yang lupa langsung tahu, bukan setelah QR-nya dipindai pembimbing.
   if (await Absensi.findOne({

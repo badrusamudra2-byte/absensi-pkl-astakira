@@ -4,11 +4,13 @@
  * - Aset statis sama origin: cache-first (bernama hash, aman untuk versi baru).
  * - /api dan /uploads: SELALU jaringan, tidak pernah disinggahi (data harus segar).
  */
-const CACHE = 'astakira-absensi-v2';
+const CACHE = 'astakira-absensi-v3';
 // Pustaka QR disertakan precache: fitur absensi luring (tayang + pemindai) wajib tetap jalan.
+// Leaflet (peta riwayat) ikut disertakan; tile peta tetap dari jaringan.
 const SHELL = [
   '/', '/manifest.webmanifest', '/ikon/ikon-192.png', '/ikon/ikon-512.png',
   '/vendor/qrcode.min.js', '/vendor/jsQR.min.js',
+  '/vendor/leaflet/leaflet.js', '/vendor/leaflet/leaflet.css',
 ];
 
 self.addEventListener('install', (e) => {

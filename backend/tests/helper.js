@@ -4,6 +4,7 @@ const M = require('../src/models');
 /** Urutan tabel menurun supaya truncate aman (tidak ada FK eksplisit, tapi hati-hati). */
 const TABEL = [
   'audit_log',
+  'sesi_tracking',
   'jurnal_review',
   'jurnal',
   'absensi_penolakan',

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
+import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import { ambilLandmarker, cekKondisi, hitungEmbedding, keJpeg, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
 import type { Absensi, Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
@@ -39,6 +40,8 @@ export default function WajahPeriksa() {
   });
   const kirimRef = useRef(false);
   const livenessRef = useRef<boolean | null>(null); // null = pengaturan belum diketahui
+  // Pengaturan absensi: area kantor diatur -> posisi GPS dikirim bersama absensi wajah
+  const kantorRef = useRef<{ lat: number; lng: number } | null>(null);
   const lurusRef = useRef(0); // hitung frame wajah lurus saat liveness mati
   const lusarRef = useRef<number[][]>([]); // buffer embedding wajah lurus untuk dirata-rata
 
@@ -77,9 +80,25 @@ export default function WajahPeriksa() {
           navigate(`/absensi/qr?jenis=${jenis}`);
           return;
         }
+        // Area kantor diatur: posisi GPS wajib dilaporkan — validasi jarak dilakukan server
+        let lokasi: TitikLokasi | null = null;
+        if (kantorRef.current) {
+          try {
+            lokasi = await ambilLokasi();
+          } catch (e) {
+            ubahGalat(['Lokasi dibutuhkan', (e as Error).message]);
+            hentikanRef.current?.();
+            return;
+          }
+        }
         const r = await api<{ pesan: string; jam: string; status: StatusAbsensi }>('/absensi/wajah', {
           method: 'POST',
-          json: { jenis, embedding: em, ...(jac ? { nonce: jac.nonce } : {}), ...(foto ? { foto } : {}) },
+          json: {
+            jenis, embedding: em,
+            ...(jac ? { nonce: jac.nonce } : {}),
+            ...(foto ? { foto } : {}),
+            ...(lokasi ? { lat: lokasi.lat, lng: lokasi.lng, akurasi_m: lokasi.akurasi_m } : {}),
+          },
         });
         hentikanRef.current?.();
         ubahBeres({ jam: r.jam, status: r.status });
@@ -264,6 +283,8 @@ export default function WajahPeriksa() {
         if (!hidup) return;
         ubahLivenessAktif(r.liveness_aktif);
         livenessRef.current = r.liveness_aktif;
+        kantorRef.current =
+          r.lat_kantor !== null && r.lng_kantor !== null ? { lat: r.lat_kantor, lng: r.lng_kantor } : null;
       })
       .catch(() => {
         // Gagal diketahui: pakai mode tantangan (perilaku bawaan server)
