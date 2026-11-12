@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
-import type { Absensi, TayanganQr } from '../../lib/tipe';
+import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
+import type { Absensi, Pengaturan, TayanganQr } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
@@ -47,6 +48,24 @@ export default function TayangQr() {
     release: () => Promise<void>;
     addEventListener: (t: string, f: () => void) => void;
   } | null>(null);
+  // Pengaturan absensi: area kantor diatur -> lokasi GPS dikirim bersama QR
+  const kantorRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    let hidup = true;
+    api<Pengaturan>('/pengaturan/absensi')
+      .then((r) => {
+        if (!hidup) return;
+        kantorRef.current =
+          r.lat_kantor !== null && r.lng_kantor !== null ? { lat: r.lat_kantor, lng: r.lng_kantor } : null;
+      })
+      .catch(() => {
+        /* gagal diketahui: server tetap menuntut lokasi bila kantor sudah diatur */
+      });
+    return () => {
+      hidup = false;
+    };
+  }, []);
 
   const tayangkan = useCallback(async () => {
     if (!navigator.onLine) {
@@ -58,7 +77,20 @@ export default function TayangQr() {
     ubahSedang(true);
     ubahGalat(null);
     try {
-      const r = await api<TayanganQr>('/absensi/qr-saya', { method: 'POST', json: { jenis } });
+      // Area kantor diatur: ambil posisi GPS dulu — validasi jarak dilakukan server
+      let lokasi: TitikLokasi | null = null;
+      if (kantorRef.current) {
+        try {
+          lokasi = await ambilLokasi();
+        } catch (e) {
+          ubahGalat(['Lokasi dibutuhkan', (e as Error).message]);
+          return;
+        }
+      }
+      const r = await api<TayanganQr>('/absensi/qr-saya', {
+        method: 'POST',
+        json: { jenis, ...(lokasi ? { lat: lokasi.lat, lng: lokasi.lng, akurasi_m: lokasi.akurasi_m } : {}) },
+      });
       setQr(r);
       ubahSisa(r.berlaku_detik);
     } catch (e) {

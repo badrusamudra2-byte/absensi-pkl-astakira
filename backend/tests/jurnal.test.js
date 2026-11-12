@@ -85,8 +85,7 @@ describe('siklus status jurnal', () => {
     expect(edit.status).toBe(409);
   });
 
-  test('jurnal Dikirim tidak boleh diubah -> 409 STATUS_TIDAK_VALID', async () => {
-    const { peserta } = await isiDasar();
+  test('jurnal Dikirim tidak boleh diubah -> 409 STATUS_TIDAK_VALID', async () => {    const { peserta } = await isiDasar();
     const authz = await tokenUntuk(peserta.email);
     await absen(peserta, HARI);
     const r = await request(app).post('/api/jurnal').set('Authorization', authz)
@@ -330,6 +329,42 @@ describe('daftar jurnal mengikuti absensi', () => {
       .send({ ...ISI(), tanggal: hariLalu(2) });
     expect(pindah.status).toBe(422);
     expect(pindah.body).toMatchObject({ kode: 'JURNAL_BUTUH_ABSEN' });
+  });
+});
+
+describe('tarik kembali jurnal Dikirim', () => {
+  test('tarik Dikirim -> Draft, lalu bisa diedit dan dikirim ulang', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await absen(peserta, HARI);
+    const buat = await request(app).post('/api/jurnal').set('Authorization', authz)
+      .send({ ...ISI(), tanggal: HARI, aksi: 'kirim' });
+    const id = buat.body.id;
+
+    const tarik = await request(app).post(`/api/jurnal/${id}/tarik`).set('Authorization', authz);
+    expect(tarik.status).toBe(200);
+    expect(tarik.body.status).toBe('Draft');
+
+    const ulang = await request(app).put(`/api/jurnal/${id}`).set('Authorization', authz)
+      .send({ ...ISI(), judul: 'Sudah diperbaiki', tanggal: HARI, aksi: 'kirim' });
+    expect(ulang.status).toBe(200);
+    expect(ulang.body.status).toBe('Dikirim');
+  });
+
+  test('tarik jurnal Disetujui dan jurnal milik peserta lain ditolak', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await absen(peserta, HARI);
+    const buat = await request(app).post('/api/jurnal').set('Authorization', authz).send({ ...ISI(), tanggal: HARI });
+    const id = buat.body.id;
+    await M.Jurnal.update({ status: 'Disetujui' }, { where: { id } });
+
+    const disetujui = await request(app).post(`/api/jurnal/${id}/tarik`).set('Authorization', authz);
+    expect(disetujui.status).toBe(409);
+    expect(disetujui.body).toMatchObject({ kode: 'STATUS_TIDAK_VALID' });
+
+    const lain = await request(app).post('/api/jurnal/999999/tarik').set('Authorization', authz);
+    expect(lain.status).toBe(404);
   });
 });
 

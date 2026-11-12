@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
+import { ambilLokasiKantor, teksJarak } from '../../lib/kantor';
 import type { Absensi, Jenis, StatusAbsensi } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
+import PetaAbsensi, { type TitikPeta } from '../../komponen/PetaAbsensi';
 import { useToast } from '../../komponen/Toast';
 import { isoHariIni, gunakanTerbaru } from '../../komponen/umum';
 
@@ -57,7 +59,12 @@ export default function AbsensiAdmin() {
   // Foto wajah absensi (dipakai untuk rekap pembuktian kehadiran)
   const [fotoUrl, ubahFotoUrl] = useState<string | null>(null);
   const [fotoMuat, ubahFotoMuat] = useState<number | null>(null); // id absensi yang sedang diunduh
+  const [kantor, ubahKantor] = useState<{ lat: number; lng: number; radius_m: number } | null>(null);
   const terbaru = gunakanTerbaru();
+
+  useEffect(() => {
+    void ambilLokasiKantor().then(ubahKantor);
+  }, []);
 
   const tutupFoto = () => {
     if (fotoUrl) URL.revokeObjectURL(fotoUrl);
@@ -233,6 +240,27 @@ export default function AbsensiAdmin() {
             ))}
             </ul>
             {fotoUrl ? <ModalFoto url={fotoUrl} tutup={tutupFoto} /> : null}
+            {rows.some((a) => a.lat !== null && a.lng !== null) || kantor ? (
+              <div className="mt-4">
+                <p className="text-[13px] font-semibold mb-2">Peta lokasi absensi</p>
+                <PetaAbsensi
+                  kantor={kantor}
+                  titik={rows
+                    .filter((a) => a.lat !== null && a.lng !== null)
+                    .map((a) => ({
+                      lat: a.lat as number,
+                      lng: a.lng as number,
+                      jenis: a.jenis,
+                      label: `${a.jenis} ${a.jam.slice(0, 5)} (${teksJarak(a.jarak_m)} dari kantor)`,
+                    }))}
+                />
+              </div>
+            ) : (
+              <p className="text-mu text-sm mt-4">
+                Belum ada data lokasi. Titik absensi muncul bila area kantor sudah diatur pada Pengaturan dan peserta
+                mengirim lokasi saat absen.
+              </p>
+            )}
           </>
         ) : rows !== null ? (
           <p className="text-mu text-sm mt-4">Tidak ada catatan absensi peserta ini pada tanggal tersebut.</p>

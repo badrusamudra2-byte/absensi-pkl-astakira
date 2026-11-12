@@ -10,6 +10,8 @@ const audit = require('../utils/audit');
 const pengaturan = require('../services/pengaturan');
 const liveness = require('../services/liveness');
 const siapkanFoto = require('../utils/foto');
+const { bacaLokasi, sahkanLokasi } = require('../utils/lokasi');
+const live = require('./live');
 
 const jenisOk = (j) => {
   if (!['masuk', 'pulang'].includes(j)) throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
@@ -57,6 +59,10 @@ const cekWaktuPulang = (jen, ws, w) => {
   }
 };
 
+// Dipakai bersama controller face: verifikasi wajah peserta (pulang) harus menunggu
+// jendela waktu yang sama dengan scan pembimbing, bukan hanya dicek saat pemindaian.
+exports.kisiWaktu = { jadwalHari, cekWaktuPulang };
+
 /* ---------- Peserta ---------- */
 
 // Peserta menayangkan QR dari HP-nya; QR berotasi tiap QR_TTL_DETIK dan satu token
@@ -101,6 +107,10 @@ exports.qrSaya = asyncH(async (req, res) => {
   }
 
   const now = new Date();
+  // Lokasi peserta saat menayangkan QR: divalidasi server (Haversine) bila area
+  // kantor sudah diatur; bila belum, alur lama — QR tayang tanpa data lokasi.
+  const titik = bacaLokasi(req.body);
+  const lok = sahkanLokasi(cfg, titik);
   await QrToken.update(
     { kedaluwarsa_pada: now },
     { where: { user_id: uid, jenis: jen, dipakai_pada: null, kedaluwarsa_pada: { [Op.gt]: now } } },
@@ -108,7 +118,7 @@ exports.qrSaya = asyncH(async (req, res) => {
   const mentah = acak();
   const kedaluwarsa = new Date(now.getTime() + env.qrTtl * 1000);
   await QrToken.create({
-    token_hash: sha256(mentah), user_id: uid, jenis: jen, kedaluwarsa_pada: kedaluwarsa,
+    token_hash: sha256(mentah), user_id: uid, jenis: jen, kedaluwarsa_pada: kedaluwarsa, ...lok,
   });
   res.status(201).json({ token: mentah, jenis: jen, berlaku_detik: env.qrTtl, kedaluwarsa_pada: kedaluwarsa });
 });
@@ -158,9 +168,12 @@ exports.wajah = asyncH(async (req, res) => {
     throw new HttpError(422, 'Wajah tidak cocok dengan template yang terdaftar.', 'WAJAH_TIDAK_COCOK');
   }
 
+  // Lokasi absen dari perangkat peserta: divalidasi server bila area kantor diatur
+  const lok = sahkanLokasi(cfg, bacaLokasi(req.body));
+
   const fotoCt = siapkanFoto(foto); // dilempar sebagai 422 bila foto dikirim tapi tidak sah
   const status = hitungStatus(jen, ws, w);
-  const isi = { jam: w.jam, status, metode: 'Wajah' };
+  const isi = { jam: w.jam, status, metode: 'Wajah', ...lok };
   try {
     await sequelize.transaction(async (t) => {
       if (cfg.liveness_aktif) await liveness.periksa(uid, nonce, t);
@@ -168,6 +181,12 @@ exports.wajah = asyncH(async (req, res) => {
         ? await gantiPenanda(lama.id, isi, t) // telat sungguhan: penanda diganti
         : await Absensi.create({ user_id: uid, tanggal: w.tanggal, jenis: jen, ...isi }, { transaction: t });
       if (fotoCt) await WajahFoto.create({ absensi_id: a.id, data: fotoCt }, { transaction: t });
+      // Live tracking: sesi dibuka saat masuk, ditutup saat pulang (transaksi yang sama).
+      // Hanya peserta yang sudah memberi persetujuan yang punya sesi.
+      if (req.user.setuju_live_tracking) {
+        if (jen === 'masuk') await live.bukaSesi(uid, w.tanggal, t);
+        else await live.tutupSesi(uid, 'pulang', t);
+      }
     });
   } catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
@@ -246,6 +265,22 @@ exports.scanPeserta = asyncH(async (req, res) => {
     }
   }
 
+  // Lokasi absen milik peserta: dikumpulkan saat peserta menayangkan QR lalu
+  // divalidasi ulang di sini (server, dengan radius kantor terkini). QR tanpa
+  // lokasi ditolak bila area kantor sudah diatur — minta peserta tayang ulang.
+  let lok = {};
+  if (cfg.lat_kantor !== null && cfg.lat_kantor !== undefined &&
+      cfg.lng_kantor !== null && cfg.lng_kantor !== undefined) {
+    if (tok.lat === null || tok.lat === undefined) {
+      throw new HttpError(
+        422,
+        'Peserta menayangkan QR tanpa data lokasi. Minta peserta menayangkan ulang QR dengan izin lokasi aktif.',
+        'LOKASI_DIBUTUHKAN',
+      );
+    }
+    lok = sahkanLokasi(cfg, { lat: tok.lat, lng: tok.lng, akurasi_m: tok.akurasi_m }, 'peserta');
+  }
+
   const status = hitungStatus(jen, ws, w);
   const metode = cfg.metode === 'qr_wajah' ? 'QR+Wajah' : 'QR';
   try {
@@ -257,7 +292,7 @@ exports.scanPeserta = asyncH(async (req, res) => {
       if (!n) throw new HttpError(409, 'QR ini sudah dipakai. Minta peserta menayangkan QR baru.', 'QR_SUDAH_DIPAKAI'); // dua scan bersamaan
       const isi = {
         user_id: uid, tanggal: w.tanggal, jenis: jen, jam: w.jam, status,
-        metode, token_id: tok.id, dikonfirmasi_oleh: req.user.id,
+        metode, token_id: tok.id, dikonfirmasi_oleh: req.user.id, ...lok,
       };
       const a = lama && penandaOtomatis(lama)
         ? await gantiPenanda(lama.id, isi, t) // telat sungguhan: penanda diganti
@@ -280,6 +315,12 @@ exports.scanPeserta = asyncH(async (req, res) => {
           await WajahFoto.create({ absensi_id: a.id, data: fV.foto_ciphertext }, { transaction: t });
         }
       }
+      // Live tracking (data peserta dari token, bukan pembimbing pemindai):
+      // sesi dibuka saat masuk, ditutup saat pulang — dalam transaksi absensi.
+      if (tok.peserta.setuju_live_tracking) {
+        if (jen === 'masuk') await live.bukaSesi(uid, w.tanggal, t);
+        else await live.tutupSesi(uid, 'pulang', t);
+      }
     });
   } catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
@@ -298,7 +339,8 @@ exports.riwayat = asyncH(async (req, res) => {
   if (r) where.tanggal = r;
   const data = await Absensi.findAll({
     where, order: [['tanggal', 'DESC'], ['jenis', 'ASC']], limit: 366,
-    attributes: ['id', 'tanggal', 'jenis', 'jam', 'status', 'metode', 'keterangan'],
+    attributes: ['id', 'tanggal', 'jenis', 'jam', 'status', 'metode', 'keterangan',
+      'lat', 'lng', 'jarak_m', 'di_dalam_area'],
   });
   res.json({ data });
 });

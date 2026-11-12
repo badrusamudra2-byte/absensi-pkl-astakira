@@ -4,6 +4,7 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge, Galat } from '../../komponen/ui';
+import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { waktuWib } from '../../komponen/umum';
 
 const jam = (iso: string) => (iso ? waktuWib(iso) + ' WIB' : '-');
@@ -39,6 +40,8 @@ export default function JurnalDetail() {
   const navigate = useNavigate();
   const [jub, ubahJub] = useState<JurnalDetail | null>(null);
   const [galat, ubahGalat] = useState<string | null>(null);
+  const [sedangTarik, ubahSedangTarik] = useState(false);
+  const [bukaFoto, ubahBukaFoto] = useState(false);
 
   useEffect(() => {
     api<JurnalDetail>(`/jurnal/${id}`)
@@ -48,6 +51,22 @@ export default function JurnalDetail() {
         ubahGalat(err.status === 404 ? 'Jurnal tidak ditemukan atau bukan milik Anda.' : 'Jurnal belum bisa dimuat. Muat ulang halaman.');
       });
   }, [id]);
+
+  /** Tarik jurnal Dikirim (belum direview) kembali menjadi draft, lalu buka editor. */
+  const tarik = async () => {
+    if (!jub) return;
+    ubahSedangTarik(true);
+    try {
+      await api<JurnalDetail>(`/jurnal/${jub.id}/tarik`, { method: 'POST' });
+      ubahGalat(null);
+      navigate(`/jurnal/${jub.id}/edit`);
+    } catch (e) {
+      const err = e as ApiError;
+      ubahGalat(err.status === 404 ? 'Jurnal tidak ditemukan atau bukan milik Anda.' : 'Jurnal belum bisa ditarik. Muat ulang halaman lalu coba lagi.');
+    } finally {
+      ubahSedangTarik(false);
+    }
+  };
 
   if (galat) {
     return (
@@ -105,6 +124,10 @@ export default function JurnalDetail() {
                 <Tombol varian="gh" onClick={() => navigate(`/jurnal/${jub.id}/edit`)}>Buka di editor</Tombol>
               ) : null}
             </>
+          ) : jub.status === 'Dikirim' ? (
+            <Tombol varian="gh" disabled={sedangTarik} onClick={() => void tarik()}>
+              {sedangTarik ? 'Menarik…' : 'Tarik ke draft untuk diedit'}
+            </Tombol>
           ) : null}
           <Tombol varian="gh" onClick={() => navigate('/jurnal')}>Kembali ke daftar</Tombol>
         </div>
@@ -123,8 +146,32 @@ export default function JurnalDetail() {
               <dd className="text-sm whitespace-pre-wrap">{b || <span className="text-mu">(tidak diisi)</span>}</dd>
             </div>
           ))}
+          <div>
+            <dt className="text-[13px] font-semibold mb-0.5">Lampiran kegiatan</dt>
+            <dd>
+              {jub.lampiran ? (
+                <button
+                  type="button"
+                  onClick={() => ubahBukaFoto(true)}
+                  className="text-pr underline"
+                >
+                  Lihat lampiran
+                </button>
+              ) : (
+                <span className="text-mu text-sm">(tidak ada lampiran)</span>
+              )}
+            </dd>
+          </div>
         </dl>
       </Kartu>
+
+      <PenampilFoto
+        buka={bukaFoto}
+        judul={`Lampiran kegiatan ${jub.tanggal}`}
+        sumber={`/jurnal/${jub.id}/lampiran`}
+        namaBerkas={`lampiran-jurnal-${jub.tanggal}`}
+        tutup={() => ubahBukaFoto(false)}
+      />
     </>
   );
 }

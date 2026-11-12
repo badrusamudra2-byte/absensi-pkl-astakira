@@ -4,11 +4,16 @@ export type StatusAbsensi = 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Tidak ha
 export type MetodeAbsensi = 'qr_wajah' | 'qr' | 'wajah';
 export type KodeGerakan = 'kedip' | 'tengok_kiri' | 'tengok_kanan' | 'buka_mulut';
 
-/** Pengaturan absensi penyelenggara (baris tunggal, dibaca semua yang login). */
+/** Pengaturan absensi penyelenggara (baris tunggal, dibaca semua yang login).
+ * lat_kantor/lng_kantor null = validasi lokasi belum diaktifkan admin. */
 export interface Pengaturan {
   id: number;
   metode: MetodeAbsensi;
   liveness_aktif: boolean;
+  lat_kantor: number | null;
+  lng_kantor: number | null;
+  radius_m: number;
+  akurasi_maks_m: number;
 }
 
 /** Tantangan liveness dari server: nonce sekali pakai + instruksi acak. */
@@ -77,6 +82,11 @@ export interface Absensi {
   status: StatusAbsensi;
   metode: string;
   keterangan?: string | null;
+  // Lokasi absen (null bila validasi lokasi belum diaktifkan admin)
+  lat?: number | null;
+  lng?: number | null;
+  jarak_m?: number | null;
+  di_dalam_area?: boolean | null;
 }
 
 /* ---------- Pengajuan izin/sakit ---------- */
@@ -145,6 +155,7 @@ export interface JurnalDetail extends BarisJurnal {
   hasil: string | null;
   kendala: string | null;
   rencana: string | null;
+  lampiran: string | null;
   dibuat_pada: string;
   diubah_pada: string;
   reviews: ReviewJurnal[];
