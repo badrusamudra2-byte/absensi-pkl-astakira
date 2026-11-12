@@ -7,7 +7,6 @@ import type { Absensi, BarisJurnal } from '../../lib/tipe';
 
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
-import { Kartu, Pemberitahuan, Badge } from '../../komponen/ui';
 import PetaAbsensi, { type TitikPeta } from '../../komponen/PetaAbsensi';
  
 import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';

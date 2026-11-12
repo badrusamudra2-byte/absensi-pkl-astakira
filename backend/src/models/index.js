@@ -89,10 +89,13 @@ const Absensi = sequelize.define('Absensi', {
   akurasi_m: T.DOUBLE,
   jarak_m: T.DOUBLE,
   di_dalam_area: T.BOOLEAN,
+  // Kolom satuan: pulang_jam dan pulang_status menyimpan data pulang di dalam 1 baris dengan absen masuk
+  pulang_jam: { type: T.TIME, allowNull: true, after: 'jam' },
+  pulang_status: { type: T.ENUM('Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir'), allowNull: true, after: 'pulang_jam' },
 }, {
   tableName: 'absensi',
-  // Batas keras di database: satu jenis absen per peserta per hari
-  indexes: [{ unique: true, name: 'uq_absensi_harian', fields: ['user_id', 'tanggal', 'jenis'] }],
+  // Satu baris per peserta per hari (tanpa pisah masuk/pulang)
+  indexes: [{ unique: true, name: 'uq_absensi_harian', fields: ['user_id', 'tanggal'] }],
 });
 
 const AbsensiPenolakan = sequelize.define('AbsensiPenolakan', {
