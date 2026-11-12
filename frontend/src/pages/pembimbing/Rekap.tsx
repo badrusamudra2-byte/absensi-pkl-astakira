@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { Absensi, BarisJurnal } from '../../lib/tipe';
-import { Kartu, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { useToast } from '../../komponen/Toast';
 import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';
+import { unduhBerkas, type FormatLaporan } from '../../lib/unduh';
 
 export default function Rekap() {
   const [sp] = useSearchParams();
@@ -15,7 +17,24 @@ export default function Rekap() {
   const [absensi, ubahAbsensi] = useState<(Absensi & { peserta?: { nama: string } })[] | null>(null);
   const [jurnal, ubahJurnal] = useState<(BarisJurnal & { peserta?: { nama: string } })[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const [sedangUnduh, ubahSedangUnduh] = useState(false);
+  const toast = useToast();
   const terbaru = gunakanTerbaru();
+
+  const unduh = async (format: FormatLaporan) => {
+    ubahSedangUnduh(true);
+    ubahGalat(null);
+    try {
+      const q = new URLSearchParams({ dari, sampai, ...(userPilih ? { user_id: String(userPilih) } : {}) });
+      const nama = await unduhBerkas(`/pembimbing/rekap?${q}`, format, 'rekap-bimbingan');
+      toast(`Laporan diunduh (${nama}).`);
+    } catch (e) {
+      const err = e as ApiError;
+      ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
+    } finally {
+      ubahSedangUnduh(false);
+    }
+  };
 
   useEffect(() => {
     api<{ data: { id: number; nama: string }[] }>('/pembimbing/peserta')
@@ -66,6 +85,12 @@ export default function Rekap() {
           </select>
         </p>
         {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
+        <p className="mt-4 flex flex-wrap gap-2">
+          <Tombol varian="gh" onClick={() => void unduh('csv')} disabled={sedangUnduh}>Unduh CSV</Tombol>
+          <Tombol varian="gh" onClick={() => void unduh('xlsx')} disabled={sedangUnduh}>Unduh Excel</Tombol>
+          <Tombol varian="gh" onClick={() => void unduh('pdf')} disabled={sedangUnduh}>Unduh PDF</Tombol>
+        </p>
+        <p className="text-mu text-xs mt-3">Berkas mengikuti filter di atas dan hanya memuat peserta bimbingan Anda.</p>
       </Kartu>
 
       <Kartu t="Absensi">

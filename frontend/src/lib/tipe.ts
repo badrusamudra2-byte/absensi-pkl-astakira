@@ -203,3 +203,23 @@ export interface BarisAudit {
   perangkat: string | null;
   dibuat_pada: string;
 }
+
+/* ---------- Laporan admin (rekap + jurnal per periode) ---------- */
+export interface BarisRekapLaporan {
+  id: number;
+  nama: string;
+  hadir: number;
+  terlambat: number;
+  izin: number;
+  sakit: number;
+  tidak_hadir: number;
+  jurnal_disetujui: number;
+  jurnal_dikirim: number;
+  jurnal_revisi: number;
+}
+
+export interface LaporanData {
+  absensi: (Absensi & { peserta?: { nama: string } })[];
+  jurnal: (BarisJurnal & { peserta?: { nama: string } })[];
+  rekap: BarisRekapLaporan[];
+}

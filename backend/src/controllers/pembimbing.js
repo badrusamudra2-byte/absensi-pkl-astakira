@@ -2,6 +2,7 @@ const { Op, fn } = require('sequelize');
 const { sequelize, Peserta, User, Absensi, Jurnal, JurnalReview } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian, rentang } = require('../utils/waktu');
+const { namaBerkas, dariSampai, csvLaporan, xlsxLaporan, pdfLaporan, isiRekapDariBaris, rekapKosong } = require('../utils/ekspor');
 const audit = require('../utils/audit');
 
 const idBimbingan = async (pid) => (await Peserta.findAll({ where: { pembimbing_id: pid }, attributes: ['user_id'] })).map((p) => p.user_id);
@@ -107,6 +108,7 @@ exports.rekap = asyncH(async (req, res) => {
   const uid = Number(req.query.user_id);
   const daftar = Number.isInteger(uid) && ids.includes(uid) ? [uid] : ids;
   const r = rentang(req.query);
+  const { dari, sampai } = dariSampai(req.query);
   const w = r ? { tanggal: r } : {};
   const [absensi, jurnal] = await Promise.all([
     Absensi.findAll({
@@ -115,9 +117,36 @@ exports.rekap = asyncH(async (req, res) => {
     }),
     Jurnal.findAll({
       where: { user_id: daftar, status: { [Op.ne]: 'Draft' }, ...w }, order: [['tanggal', 'DESC']], limit: 1000,
-      attributes: ['id', 'tanggal', 'judul', 'status'],
+      attributes: ['id', 'user_id', 'tanggal', 'judul', 'status'], // user_id untuk rekap saat ekspor
       include: [{ model: User, as: 'peserta', attributes: ['id', 'nama'] }],
     }),
   ]);
+
+  // Ekspor laporan bimbingan: rekap per peserta dihitung dari baris yang sudah diambil.
+  if (['csv', 'xlsx', 'pdf'].includes(req.query.format)) {
+    const daftarPeserta = await User.findAll({ where: { id: daftar }, attributes: ['id', 'nama'], order: [['nama', 'ASC']] });
+    const rekap = isiRekapDariBaris(daftarPeserta.map((p) => rekapKosong(p.id, p.nama)), absensi, jurnal);
+    const data = { rekap, absensi, jurnal };
+    if (req.query.format === 'csv') {
+      await audit(req, 'Export laporan CSV');
+      return res
+        .type('text/csv; charset=utf-8')
+        .set('Content-Disposition', `attachment; filename="${namaBerkas('csv', dari, sampai)}"`)
+        .send(csvLaporan(data));
+    }
+    if (req.query.format === 'xlsx') {
+      await audit(req, 'Export laporan Excel');
+      return res
+        .type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        .set('Content-Disposition', `attachment; filename="${namaBerkas('xlsx', dari, sampai)}"`)
+        .send(await xlsxLaporan(data));
+    }
+    await audit(req, 'Export laporan PDF');
+    return res
+      .type('application/pdf')
+      .set('Content-Disposition', `attachment; filename="${namaBerkas('pdf', dari, sampai)}"`)
+      .send(await pdfLaporan({ ...data, dari, sampai }));
+  }
+
   res.json({ absensi, jurnal });
 });

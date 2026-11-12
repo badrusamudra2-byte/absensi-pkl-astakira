@@ -52,6 +52,7 @@ const PesertaAdmin = lazy(() => import('./pages/admin/Peserta'));
 const PembimbingAdmin = lazy(() => import('./pages/admin/Pembimbing'));
 const Jadwal = lazy(() => import('./pages/admin/Jadwal'));
 const AbsensiAdmin = lazy(() => import('./pages/admin/Absensi'));
+const LaporanAdmin = lazy(() => import('./pages/admin/Laporan'));
 const Audit = lazy(() => import('./pages/admin/Audit'));
 const Pengaturan = lazy(() => import('./pages/admin/Pengaturan'));
 
@@ -118,6 +119,7 @@ export default function App() {
                 <Route path="/admin/pembimbing" element={<GuardPeran role="admin"><PembimbingAdmin /></GuardPeran>} />
                 <Route path="/admin/jadwal" element={<GuardPeran role="admin"><Jadwal /></GuardPeran>} />
                 <Route path="/admin/absensi" element={<GuardPeran role="admin"><AbsensiAdmin /></GuardPeran>} />
+                <Route path="/admin/laporan" element={<GuardPeran role="admin"><LaporanAdmin /></GuardPeran>} />
                 <Route path="/admin/audit" element={<GuardPeran role="admin"><Audit /></GuardPeran>} />
                 <Route path="/pengaturan" element={<GuardPeran role="admin"><Pengaturan /></GuardPeran>} />
               </Route>

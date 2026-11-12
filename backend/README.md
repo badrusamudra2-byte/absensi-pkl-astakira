@@ -205,12 +205,15 @@ node scripts/pulihkan-db.js backup-absensi.sql
 Tanpa argumen berkas, script hanya membentuk ulang database kosong (schema dibuat
 oleh `npm run db:migrate`).
 
-Catatan audit dependensi: `sprintf-js` (rantai dev-only Jest/istanbul) belum punya rilis perbaikan
-dari upstream, jadi risikonya diterima. Nodemailer telah dinaikkan ke 10.x.
+Catatan audit dependensi: sisa 28 kerentanan (1 low, 27 moderate) tidak bisa diperbaiki tanpa
+`npm audit fix --force` (perubahan besar): semuanya di rantai alat pengembangan (jest, eslint,
+sequelize-cli) kecuali `uuid` (pengganti perlu upgrade besar `sequelize`/`exceljs`) dan `deepmerge`
+(rantai jest, belum ada rilis perbaikan di 4.x). Risiko diterima dan dicatat di sini. Nodemailer
+telah dinaikkan ke 10.x.
 
 ## Belum dikerjakan
 
-- Export Excel dan PDF. Saat ini `GET /api/admin/laporan?format=csv` sudah tersedia; Excel bisa memakai `exceljs`, PDF `pdfkit`.
+- Export Excel dan PDF untuk `GET /api/admin/laporan` sudah tersedia (`?format=xlsx`, `?format=pdf`)
 - Pembersihan berkala token QR, verifikasi wajah, dan tantangan liveness yang lama (job harian di
   `src/services/jobs.js`, menyimpan maksimal 24 jam setelah kedaluwarsa).
 - Migrasi sudah tersedia dan tervalidasi sintaks; pengujian menyeluruh terhadap MySQL sungguhan

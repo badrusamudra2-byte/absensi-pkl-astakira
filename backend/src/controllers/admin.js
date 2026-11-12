@@ -11,8 +11,8 @@ const { wajib, jam, email, kuat, pesanSandi } = require('../utils/validasi');
 const { acak, dekripBait } = require('../utils/crypto');
 const { HARI, bagian, rentang } = require('../utils/waktu');
 const mail = require('../utils/mailer');
-const csv = require('../utils/csv');
 const audit = require('../utils/audit');
+const { namaBerkas, dariSampai, csvLaporan, xlsxLaporan, pdfLaporan } = require('../utils/ekspor');
 
 /* ---------- CRUD peserta dan pembimbing (satu pabrik untuk keduanya) ---------- */
 function crud(role, Profile, alias) {
@@ -201,21 +201,92 @@ exports.ringkasan = asyncH(async (req, res) => {
   });
 });
 
-exports.laporan = asyncH(async (req, res) => {
-  const r = rentang(req.query);
-  const rows = await Absensi.findAll({
-    where: r ? { tanggal: r } : {}, order: [['tanggal', 'DESC'], ['jam', 'ASC']], limit: 5000,
-    include: [{ model: User, as: 'peserta', attributes: ['nama'] }],
+/* ---------- Laporan: rekap kehadiran + jurnal per periode ---------- */
+
+const LIMIT_ABSENSI_LAPORAN = 5000;
+const LIMIT_JURNAL_LAPORAN = 2000;
+
+async function dataLaporan(query) {
+  const r = rentang(query);
+  const { dari, sampai } = dariSampai(query);
+  const uidRaw = String(query.user_id || '').trim();
+  let uid = null;
+  if (uidRaw) {
+    if (!/^\d+$/.test(uidRaw)) {
+      throw new HttpError(400, 'user_id harus berupa angka.', 'VALIDASI');
+    }
+    uid = Number(uidRaw);
+    const p = await User.findOne({ where: { id: uid, role: 'peserta' }, attributes: ['id'] });
+    if (!p) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');
+  }
+  const w = { ...(r ? { tanggal: r } : {}), ...(uid ? { user_id: uid } : {}) };
+  const wJurnal = { ...(r ? { tanggal: r } : {}), ...(uid ? { user_id: uid } : {}), status: { [Op.ne]: 'Draft' } };
+
+  const [absensi, jurnal, aggAbsensi, aggJurnal, daftarPeserta] = await Promise.all([
+    Absensi.findAll({
+      where: w, order: [['tanggal', 'DESC'], ['jam', 'ASC']], limit: LIMIT_ABSENSI_LAPORAN,
+      include: [{ model: User, as: 'peserta', attributes: ['nama'] }],
+    }),
+    Jurnal.findAll({
+      where: wJurnal, order: [['tanggal', 'DESC'], ['id', 'DESC']], limit: LIMIT_JURNAL_LAPORAN,
+      attributes: ['id', 'tanggal', 'judul', 'status'],
+      include: [{ model: User, as: 'peserta', attributes: ['nama'] }],
+    }),
+    Absensi.findAll({
+      attributes: ['user_id', 'status', [fn('COUNT', '*'), 'n']],
+      where: { ...w, jenis: 'masuk' }, group: ['user_id', 'status'], raw: true,
+    }),
+    Jurnal.findAll({
+      attributes: ['user_id', 'status', [fn('COUNT', '*'), 'n']],
+      where: wJurnal, group: ['user_id', 'status'], raw: true,
+    }),
+    User.findAll({ where: { role: 'peserta', aktif: true }, attributes: ['id', 'nama'], order: [['nama', 'ASC']] }),
+  ]);
+
+  // Rekap per peserta: jumlah tiap status absen masuk + jumlah jurnal per status.
+  const rekap = daftarPeserta.map((p) => {
+    const baris = { id: p.id, nama: p.nama, hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir: 0,
+      jurnal_disetujui: 0, jurnal_dikirim: 0, jurnal_revisi: 0 };
+    const kAbs = { Hadir: 'hadir', Terlambat: 'terlambat', Izin: 'izin', Sakit: 'sakit', 'Tidak hadir': 'tidak_hadir' };
+    aggAbsensi.filter((a) => a.user_id === p.id).forEach((a) => { baris[kAbs[a.status]] = Number(a.n); });
+    const kJur = { Disetujui: 'jurnal_disetujui', Dikirim: 'jurnal_dikirim', Revisi: 'jurnal_revisi' };
+    aggJurnal.filter((a) => a.user_id === p.id).forEach((a) => { if (kJur[a.status]) baris[kJur[a.status]] = Number(a.n); });
+    return baris;
   });
-  if (req.query.format === 'csv') {
+
+  return { dari, sampai, absensi, jurnal, rekap };
+}
+
+exports.laporan = asyncH(async (req, res) => {
+  const { dari, sampai, absensi, jurnal, rekap } = await dataLaporan(req.query);
+  const data = { rekap, absensi, jurnal };
+  const format = req.query.format;
+
+  if (format === 'csv') {
     await audit(req, 'Export laporan CSV');
     return res
       .type('text/csv; charset=utf-8')
-      .set('Content-Disposition', 'attachment; filename="laporan-absensi.csv"')
-      .send(csv(['Tanggal', 'Peserta', 'Jenis', 'Jam', 'Status', 'Metode'],
-        rows.map((a) => [a.tanggal, a.peserta.nama, a.jenis, a.jam, a.status, a.metode])));
+      .set('Content-Disposition', `attachment; filename="${namaBerkas('csv', dari, sampai)}"`)
+      .send(csvLaporan(data));
   }
-  res.json({ data: rows });
+
+  if (format === 'xlsx') {
+    await audit(req, 'Export laporan Excel');
+    return res
+      .type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .set('Content-Disposition', `attachment; filename="${namaBerkas('xlsx', dari, sampai)}"`)
+      .send(await xlsxLaporan(data));
+  }
+
+  if (format === 'pdf') {
+    await audit(req, 'Export laporan PDF');
+    return res
+      .type('application/pdf')
+      .set('Content-Disposition', `attachment; filename="${namaBerkas('pdf', dari, sampai)}"`)
+      .send(await pdfLaporan({ ...data, dari, sampai }));
+  }
+
+  res.json({ absensi, jurnal, rekap });
 });
 
 exports.audit = asyncH(async (req, res) => {

@@ -177,7 +177,7 @@ Detail lain (lihat backend/README untuk tabel kode lengkap): peserta memindai QR
 - Pembimbing hanya melihat jurnal bimbingannya; dashboard peserta/pembimbing menampilkan jumlah disetujui.
 
 ### 5.7 Laporan & Audit
-- Admin: `GET /api/admin/laporan` (filter rentang, `?format=csv` untuk ekspor CSV dengan mitigasi formula injection).
+- Admin: `GET /api/admin/laporan` (filter rentang `dari`/`sampai` dan `user_id`; JSON berisi `absensi`, `jurnal` tanpa Draft, dan `rekap` per peserta). Ekspor: `?format=csv` (mitigasi formula injection), `?format=xlsx` (3 lembar: Rekap/Absensi/Jurnal, `exceljs`), `?format=pdf` (3 tabel, `pdfkit`).
 - `GET /api/admin/audit` berhalaman (limit, halaman) menampilkan jejak: login gagal/berhasil, perubahan data, koreksi absensi `{lama, baru, alasan}`, reset wajah, dsb.
 
 ---
@@ -204,7 +204,7 @@ Auth me (`/api/auth/me`), ganti sandi (`PUT /api/profil/password`), foto profil 
 
 ### 6.4 Pembimbing
 - `POST /api/absensi/qr-tayang` — QR tayangan berotasi (rate 60/mnt).
-- Dashboard & peserta: `/api/pembimbing/ringkasan`, `/peserta`, `/rekap`.
+- Dashboard & peserta: `/api/pembimbing/ringkasan`, `/peserta`, `/rekap` (JSON, atau `?format=csv|xlsx|pdf` untuk unduh laporan bimbingan — CSV memuat bagian Rekap/Absensi/Jurnal; dibatasi ke peserta bimbingannya).
 - Jurnal: `/api/pembimbing/jurnal`, detail, review (`{keputusan: "setujui"|"revisi", catatan}`).
 - Ketidakhadiran: `POST /api/pembimbing/keterangan` (Izin/Sakit bimbingan).
 
@@ -284,5 +284,5 @@ Dari `backend/.env.example` (divalidasi ketat di `config/env.js`; wajib terisi: 
 
 ## 11. Batasan yang Dicatat Rancangan
 1. **Liveness mode A** dapat dikelabui penelepon API langsung yang mengakui gerakan eksplisit — mitigasi: nonce, TTL pendek, rate limit, audit; upgrade jalur "mode B" terisolasikan di `services/liveness.js`.
-2. Ekspor laporan saat ini baru CSV (Excel/PDF belum).
+2. Ekspor laporan (admin dan pembimbing) tersedia dalam CSV, Excel (`exceljs`), dan PDF (`pdfkit`); ketiganya memuat bagian Rekap, Absensi, dan Jurnal.
 3. `dashboard-siswa-demo.html` dan `docs/referensi-ui/index.html` adalah mokap referensi dan tidak dipakai sejak runtime; mokap masih menggambarkan arah QR lama (QR milik peserta), sedangkan implementasi berjalan memakai tayangan pembimbing.

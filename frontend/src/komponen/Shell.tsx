@@ -70,6 +70,7 @@ const MENU: Record<Role, { rote: string; label: string; dot?: boolean }[]> = {
     { rote: '/admin/pembimbing', label: 'Kelola pembimbing' },
     { rote: '/admin/jadwal', label: 'Jadwal kerja' },
     { rote: '/admin/absensi', label: 'Absensi & koreksi' },
+    { rote: '/admin/laporan', label: 'Laporan' },
     { rote: '/pengaturan', label: 'Pengaturan absensi' },
     { rote: '/admin/audit', label: 'Audit log' },
     { rote: '/profil', label: 'Profil' },
