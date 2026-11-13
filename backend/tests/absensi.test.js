@@ -373,7 +373,7 @@ describe('pembimbing memindai QR peserta (/absensi/scan)', () => {
   });
 
   test('mode wajah: /absensi/wajah dengan foto -> foto dilampirkan ke absensi', async () => {
-    const { admin, peserta } = await isiDasar();
+    const { admin, peserta, pembimbing } = await isiDasar();
     await kerjakanHari();
     await setMode(await tokenUntuk(admin.email), 'wajah');
     const authz = await tokenUntuk(peserta.email);
@@ -386,8 +386,8 @@ describe('pembimbing memindai QR peserta (/absensi/scan)', () => {
     expect(baris.metode).toBe('Wajah');
     expect(await M.WajahFoto.count({ where: { absensi_id: baris.id } })).toBe(1);
 
-    // Absensi tanpa foto (mis. mode QR) -> admin mendapat 404 FOTO_ABSEN_TAK_ADA
-    const baris2 = await M.Absensi.create({ user_id: peserta.id, tanggal: hariIni().tanggal, jenis: 'pulang', jam: '09:00', status: 'Hadir', metode: 'QR' });
+    // Absensi tanpa foto (baris lain, mis. metode QR) -> admin mendapat 404 FOTO_ABSEN_TAK_ADA
+    const baris2 = await M.Absensi.create({ user_id: pembimbing.id, tanggal: hariIni().tanggal, jenis: 'masuk', jam: '09:00', status: 'Hadir', metode: 'QR' });
     const f = await request(app).get(`/api/admin/absensi/${baris2.id}/foto`)
       .set('Authorization', await tokenUntuk(admin.email));
     expect(f.status).toBe(404);
@@ -411,7 +411,7 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
     if (r.status !== 200) throw new Error('Absen masuk gagal: ' + JSON.stringify(r.body));
   };
 
-  test('absen pulang via scan: dibuka 15:55, tercatat Hadir dan jenis pulang', async () => {
+  test('absen pulang via scan: dibuka 15:55, tercatat pulang_status Hadir di baris masuk', async () => {
     const { admin, peserta, pembimbing } = await isiDasar();
     await jadwalKerja();
     await setMode(await tokenUntuk(admin.email), 'qr');
@@ -423,11 +423,24 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ pesan: 'Absensi tercatat.', status: 'Hadir' });
 
-    const baris = await M.Absensi.findOne({ where: { user_id: peserta.id, jenis: 'pulang' } });
+    const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
     expect(baris).not.toBeNull();
     expect(baris.metode).toBe('QR');
     expect(baris.tanggal).toBe(waktu.bagian().tanggal);
     expect(baris.jam).toBe(waktu.bagian().jam);
+    // Satu baris per hari: pulang tersimpan di kolom pulang, status masuk tak tersentuh
+    expect(baris.pulang_jam).toBe(waktu.bagian().jam);
+    expect(baris.pulang_status).toBe('Hadir');
+    expect(baris.jenis).toBe('masuk');
+
+    // Tayang ulang QR pulang setelah pulang tercatat ditolak — QR tidak boleh
+    // tayang lagi (sebelumnya tetap tayang lalu ditolak di pemindai, membingungkan)
+    const ulang = await request(app)
+      .post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email))
+      .send({ jenis: 'pulang' });
+    expect(ulang.status).toBe(409);
+    expect(ulang.body).toMatchObject({ kode: 'SUDAH_ABSEN' });
   });
 
   test('pindai QR pulang lebih awal dari 5 menit sebelum jam pulang -> 422 PULANG_BELUM_WAKTUNYA', async () => {

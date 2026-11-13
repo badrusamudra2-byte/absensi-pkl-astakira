@@ -22,6 +22,8 @@ exports.onError = (err, req, res, next) => {
     return res.status(400).json({ pesan: err.errors.map((e) => e.message).join(', '), kode: 'VALIDASI' });
   }
   if (err.type === 'entity.parse.failed') return res.status(400).json({ pesan: 'Format JSON tidak valid.', kode: 'VALIDASI' });
-  console.error(err);
+  // Hanya nama dan kode yang dicatat: pesan/stack error driver bisa berisi SQL atau
+  // binding (data pribadi) yang tidak boleh muncul di log.
+  console.error(`Error internal: ${err.name || 'Error'}${err.code ? ` (${err.code})` : ''}`);
   res.status(500).json({ pesan: 'Terjadi kesalahan di server.', kode: 'SERVER' });
 };

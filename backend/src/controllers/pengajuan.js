@@ -71,7 +71,9 @@ exports.kirim = asyncH(async (req, res) => {
     // Cek dan tulis dalam satu transaksi (kunci baris yang ada) supaya dua
     // pengiriman bersamaan tidak sama-sama lolos cek duplikat.
     const p = await sequelize.transaction(async (t) => {
-      const adaAbsensi = await Absensi.findOne({ where: { user_id: uid, tanggal }, transaction: t });
+      const adaAbsensi = await Absensi.findOne({
+        where: { user_id: uid, tanggal }, transaction: t, lock: t.LOCK.UPDATE,
+      });
       if (adaAbsensi) {
         throw new HttpError(
           409,
@@ -99,6 +101,11 @@ exports.kirim = asyncH(async (req, res) => {
     res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
   } catch (e) {
     hapusBukti();
+    // Dua kirim bersamaan bisa saling mengunci (deadlock InnoDB): perlakukan
+    // seperti duplikat, bukan 500 server error.
+    if (e.parent?.code === 'ER_LOCK_DEADLOCK') {
+      throw new HttpError(409, `Sudah ada pengajuan/absensi untuk ${tanggal}.`, 'CATATAN_ADA');
+    }
     throw e;
   }
 });
@@ -156,6 +163,7 @@ exports.notifikasi = asyncH(async (req, res) => {
 exports.putuskan = asyncH(async (req, res) => {
   const pid = req.user.id; // id user pembimbing
   const id = Number(req.params.id);
+  if (!Number.isInteger(id)) throw new HttpError(400, 'ID pengajuan tidak valid.', 'VALIDASI');
   const putusan = String(req.body.putusan ?? '').trim();
   const alasan = String(req.body.alasan ?? '').trim();
   if (!['Disetujui', 'Ditolak'].includes(putusan)) {

@@ -68,13 +68,27 @@ describe('Koreksi absensi oleh admin', () => {
     expect(r.body.kode).toBe('VALIDASI');
   });
 
-  test('ubah jenis yang sudah terdipakai hari itu ditolak (SUDAH_ABSEN)', async () => {
-    await M.Absensi.create({
-      user_id: dasar.peserta.id, tanggal: TGL_LAMPAU, jenis: 'pulang', jam: '17:00:00', status: 'Hadir', metode: 'QR+Wajah',
-    });
-    const r = await koreksi(tokAdmin, absen.id, { jenis: 'pulang', alasan: 'Mengubah masuk jadi pulang.' });
-    expect(r.status).toBe(409);
-    expect(r.body.kode).toBe('SUDAH_ABSEN');
+  test('jenis tidak bisa diubah (satu baris per hari); data pulang bisa dikoreksi', async () => {
+    const jn = await koreksi(tokAdmin, absen.id, { jenis: 'pulang', alasan: 'Mencoba ubah jenis.' });
+    expect(jn.status).toBe(400);
+    expect(jn.body.kode).toBe('VALIDASI');
+
+    // Koreksi data pulang pada baris masuk yang sama
+    const r = await koreksi(tokAdmin, absen.id, { pulang_jam: '17:05:00', alasan: 'Lupa absen pulang, disetel manual.' });
+    expect(r.status).toBe(200);
+    const a = await M.Absensi.findByPk(absen.id);
+    expect(a.pulang_jam).toBe('17:05:00');
+    expect(a.pulang_status).toBe('Hadir');
+    // Data masuk tidak tersentuh
+    expect(a.jam).toBe('09:30:00');
+    expect(a.status).toBe('Terlambat');
+
+    // pulang_jam bisa dikosongkan (null)
+    const kosong = await koreksi(tokAdmin, absen.id, { pulang_jam: null, alasan: 'Ternyata tidak perlu data pulang.' });
+    expect(kosong.status).toBe(200);
+    const b = await M.Absensi.findByPk(absen.id);
+    expect(b.pulang_jam).toBeNull();
+    expect(b.pulang_status).toBeNull();
   });
 
   test('id absensi yang tidak ada -> 404', async () => {
@@ -90,15 +104,13 @@ describe('Koreksi absensi oleh admin', () => {
   });
 
   test('daftar absensi per tanggal untuk form koreksi', async () => {
-    await M.Absensi.create({
-      user_id: dasar.peserta.id, tanggal: TGL_LAMPAU, jenis: 'pulang', jam: '17:00:00', status: 'Hadir', metode: 'QR+Wajah',
-    });
     const r = await request(app)
       .get(`/api/admin/absensi?user_id=${dasar.peserta.id}&tanggal=${TGL_LAMPAU}`)
       .set('Authorization', tokAdmin);
     expect(r.status).toBe(200);
     expect(r.body.peserta.nama).toBe('Alya Rahma');
-    expect(r.body.data).toHaveLength(2);
+    // Satu baris per hari: hanya baris masuk
+    expect(r.body.data).toHaveLength(1);
     expect(r.body.data[0].jenis).toBe('masuk');
 
     const salah = await request(app)

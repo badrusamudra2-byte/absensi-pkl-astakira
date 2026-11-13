@@ -95,8 +95,17 @@ exports.isiLampiran = asyncH(async (req, res) => {
   const lama = j.lampiran;
   const baru = req.file ? req.file.filename : null;
   try {
-    await j.update({ lampiran: baru });
+    // Update kondisional: bila status berubah (mis. pembimbing menyetujui) bersamaan,
+    // baris tidak ikut tertimpa lampiran.
+    const [n] = await Jurnal.update({ lampiran: baru }, { where: { id: j.id, status: ['Draft', 'Revisi'] } });
+    if (!n) {
+      hapusBerkas(baru);
+      const kini = await Jurnal.findByPk(j.id, { attributes: ['status'] });
+      throw new HttpError(409, `Jurnal berstatus ${kini.status} tidak bisa diubah.`, 'STATUS_TIDAK_VALID');
+    }
+    j.lampiran = baru;
   } catch (e) {
+    if (e instanceof HttpError) throw e;
     hapusBerkas(baru);
     throw e;
   }
@@ -208,7 +217,14 @@ exports.update = asyncH(async (req, res) => {
   // Pindah tanggal mengikuti aturan yang sama; tanggal lama jurnal lama dikecualikan
   if (tanggal !== j.tanggal) await absenAda(req.user.id, tanggal);
   try {
-    await j.update({ ...ambil(req.body), tanggal, status: req.body.aksi === 'kirim' ? 'Dikirim' : j.status });
+    // Update kondisional: putusan pembimbing yang masuk bersamaan tidak ikut tertimpa
+    const isi = { ...ambil(req.body), tanggal, status: req.body.aksi === 'kirim' ? 'Dikirim' : j.status };
+    const [n] = await Jurnal.update(isi, { where: { id: j.id, status: ['Draft', 'Revisi'] } });
+    if (!n) {
+      const kini = await Jurnal.findByPk(j.id, { attributes: ['status'] });
+      throw new HttpError(409, `Jurnal berstatus ${kini.status} tidak bisa diubah.`, 'STATUS_TIDAK_VALID');
+    }
+    await j.reload();
     res.json(j);
   } catch (e) {
     bentrok(e);
@@ -219,10 +235,14 @@ exports.update = asyncH(async (req, res) => {
 // Draft agar bisa diedit. Jurnal Disetujui tetap terkunci.
 exports.tarik = asyncH(async (req, res) => {
   const j = await milik(req);
-  if (j.status !== 'Dikirim') {
-    throw new HttpError(409, `Jurnal berstatus ${j.status} tidak bisa ditarik.`, 'STATUS_TIDAK_VALID');
+  // Update kondisional: bila pembimbing menyetujui/merevisi bersamaan, baris
+  // tidak ikut tertimpa menjadi Draft.
+  const [n] = await Jurnal.update({ status: 'Draft' }, { where: { id: j.id, status: 'Dikirim', user_id: req.user.id } });
+  if (!n) {
+    const kini = await Jurnal.findByPk(j.id, { attributes: ['status'] });
+    throw new HttpError(409, `Jurnal berstatus ${kini.status} tidak bisa ditarik.`, 'STATUS_TIDAK_VALID');
   }
-  await j.update({ status: 'Draft' });
+  await j.reload();
   await audit(req, 'Tarik jurnal ke draft', `jurnal#${j.id}`);
   res.json(j);
 });

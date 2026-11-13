@@ -9,7 +9,9 @@ const { sha256, acak } = require('../utils/crypto');
 const mail = require('../utils/mailer');
 const audit = require('../utils/audit');
 
-const DUMMY = bcrypt.hashSync('tidak-dipakai', 10); // menyamakan waktu respons saat akun tidak ada
+// Cost harus sama dengan hash asli (12) agar waktu respons "akun tidak terdaftar"
+// tidak bisa dibedakan dari "salah sandi" lewat timing.
+const DUMMY = bcrypt.hashSync('tidak-dipakai', 12);
 const pub = (u) => ({ id: u.id, nama: u.nama, username: u.username, email: u.email, role: u.role, foto_url: u.foto_url });
 
 exports.login = asyncH(async (req, res) => {

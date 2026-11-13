@@ -44,18 +44,42 @@ app.use(
 );
 app.use(cors({ origin: env.corsOrigin }));
 // Morgan hanya mencatat baris permintaan (method, URL, status, durasi) — bukan header/token isi
-app.use(morgan(env.prod ? 'combined' : 'dev'));
+const fs = require('fs');
+const folderLog = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(folderLog)) fs.mkdirSync(folderLog, { recursive: true });
+const arusLog = fs.createWriteStream(path.join(folderLog, 'akses.log'), { flags: 'a' });
+app.use(morgan((tokens, req, res) => {
+  const baris = [
+    new Date().toISOString(), req.method, req.originalUrl,
+    tokens.status(req, res), tokens['response-time'](req, res) + 'ms',
+    req.get('origin') || '-', req.ip || '-',
+  ].join(' | ');
+  arusLog.write(baris + '\n');
+  return baris;
+}));
+// SEMENTARA (diagnostik): catat isi respons scan QR agar alasan penolakan 409 terbaca.
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.originalUrl === '/api/absensi/scan') {
+    const j = res.json.bind(res);
+    res.json = (b) => {
+      arusLog.write('BODY-SCAN ' + JSON.stringify(b).slice(0, 300) + '\n');
+      return j(b);
+    };
+  }
+  next();
+});
 // 1mb: menampung foto wajah JPEG (maks FACE_FOTO_MAKS_BAIT, diperluas base64) pada /face/verify
 app.use(express.json({ limit: '1mb' }));
 
-// Bukti pengajuan (foto surat dokter dsb.) tidak dibentangkan statis: bisa
-// berisi data pribadi. Akses hanya lewat GET /api/pengajuan/bukti/:berkas yang
-// memeriksa login dan kepemilikan. Foto profil memang disengaja publik
-// (dipakai lintas origin saat pengembangan).
+// Bukti pengajuan dan lampiran jurnal tidak dibentangkan statis: bisa berisi
+// data pribadi. Akses hanya lewat API (GET /api/pengajuan/bukti/:berkas dan
+// GET /api/jurnal/:id/lampiran) yang memeriksa login dan kepemilikan.
+// Foto profil memang disengaja publik (dipakai lintas origin saat pengembangan).
 app.use('/uploads', (req, res, next) => {
-  if (req.path.toLowerCase().startsWith('/pengajuan')) {
+  const p = req.path.toLowerCase();
+  if (p.startsWith('/pengajuan') || p.startsWith('/lampiran')) {
     return res.status(404).json({
-      pesan: 'Bekas bukti pengajuan hanya bisa dibuka lewat API yang memeriksa izin akses.',
+      pesan: 'Berkas ini hanya bisa dibuka lewat API yang memeriksa izin akses.',
       kode: 'TIDAK_ADA',
     });
   }
@@ -67,7 +91,7 @@ app.use('/api', routes);
 if (env.serveFrontend) {
   const dist = path.join(__dirname, '../../frontend/dist');
   app.use(express.static(dist, { index: false, maxAge: '1h' }));
-  app.get(/^(?!\/(api|uploads)\/).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.get(/^(?!\/(?:api|uploads)(?:\/|$)).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
 app.use(notFound);

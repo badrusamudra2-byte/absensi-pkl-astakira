@@ -13,10 +13,8 @@ const tutupLive = async ({ sekarang = new Date() } = {}) => {
   const w = bagian(sekarang);
   // Sisa sesi dari hari sebelumnya: pasti ditutup apa pun jadwalnya.
   const sisa = await SesiTracking.findAll({ where: { status: 'aktif', tanggal: { [Op.ne]: w.tanggal } } });
-  let ditutup = 0;
   for (const s of sisa) {
-    const t = await live.tutupSesi(s.user_id, 'otomatis');
-    if (t) ditutup += 1;
+    await live.tutupSesi(s.user_id, 'otomatis');
   }
 
   // Hari ini: hanya bila sudah lewat jam pulang + toleransi workshift hari ini.

@@ -44,7 +44,10 @@ const buat = async ({ user_id, tanggal, status, keterangan, oleh }, opts = {}) =
   const tgl = tanggalOk(String(tanggal ?? '').trim(), Boolean(opts.lewatiBatas));
 
   const ada = await Absensi.findOne({ where: { user_id, tanggal: tgl }, ...opts });
-  if (ada) {
+  // Penanda otomatis 'Tidak hadir' (job tutup hari) hanyalah penanda, bukan absensi
+  // sungguhan — bila ternyata izin/sakit disetujui telat, penanda diganti, bukan ditolak.
+  const penanda = ada && ada.status === 'Tidak hadir' && ada.metode === 'Otomatis';
+  if (ada && !penanda) {
     throw new HttpError(
       409,
       ['Izin', 'Sakit'].includes(ada.status)
@@ -55,11 +58,22 @@ const buat = async ({ user_id, tanggal, status, keterangan, oleh }, opts = {}) =
   }
 
   try {
+    if (penanda) {
+      // Ganti penanda secara atomik (guard metode/status mencegah menimpa absensi nyata
+      // yang mungkin ditulis bersamaan).
+      const [n] = await Absensi.update(
+        { jam: bagian().jam, status: st, metode: st, keterangan: ket, dikonfirmasi_oleh: oleh },
+        { where: { id: ada.id, status: 'Tidak hadir', metode: 'Otomatis' }, ...opts },
+      );
+      if (!n) throw new HttpError(409, 'Hari itu sudah punya catatan absensi.', 'CATATAN_ADA');
+      return Absensi.findByPk(ada.id, opts);
+    }
     return await Absensi.create({
       user_id, tanggal: tgl, jenis: 'masuk', jam: bagian().jam, status: st,
       metode: st, keterangan: ket, dikonfirmasi_oleh: oleh,
     }, opts);
   } catch (e) {
+    if (e instanceof HttpError) throw e;
     if (e.name === 'SequelizeUniqueConstraintError') {
       throw new HttpError(409, 'Hari itu sudah punya catatan absensi.', 'CATATAN_ADA');
     }

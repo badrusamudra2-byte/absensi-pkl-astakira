@@ -1,12 +1,14 @@
 const { HttpError } = require('./httpError');
 
-// Kebijakan sandi: 8-72 karakter (batas bcrypt 72 byte), huruf + angka wajib.
+// Kebijakan sandi: 8-72 byte (batas bcrypt; dihitung byte agar sandi multibyte
+// tidak terpotong diam-diam), huruf + angka wajib.
 exports.pesanSandi = 'Kata sandi minimal 8 karakter dan mengandung huruf serta angka.';
 exports.kuat = (p) =>
-  typeof p === 'string' && p.length >= 8 && p.length <= 72 && /[a-zA-Z]/.test(p) && /\d/.test(p);
+  typeof p === 'string' && p.length >= 8 && Buffer.byteLength(p, 'utf8') <= 72 && /[a-zA-Z]/.test(p) && /\d/.test(p);
 
 exports.wajib = (v, maks, nama = 'Nama') => {
-  const s = String(v ?? '').trim();
+  // Hanya string yang diterima: objek/array akan merusak data (mis. "[object Object]")
+  const s = typeof v === 'string' ? v.trim() : '';
   if (!s || s.length > maks) throw new HttpError(400, `${nama} wajib diisi (maksimal ${maks} karakter).`, 'VALIDASI');
   return s;
 };

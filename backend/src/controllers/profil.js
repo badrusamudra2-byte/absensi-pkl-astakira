@@ -28,6 +28,8 @@ exports.foto = asyncH(async (req, res) => {
     try { fs.unlinkSync(path.join(__dirname, '../../uploads/foto', req.file.filename)); } catch { /* sudah tak ada */ }
     throw e;
   }
-  if (lama) fs.unlink(path.join(__dirname, '../..', lama), () => {});
+  // Hapus berkas lama hanya bila path-nya memang milik folder foto profil
+  // (jaga-jaga bila kolom foto_url pernah ternodai).
+  if (lama && lama.startsWith('/uploads/foto/')) fs.unlink(path.join(__dirname, '../..', lama), () => {});
   res.json({ foto_url: req.user.foto_url });
 });

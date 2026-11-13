@@ -79,17 +79,18 @@ exports.qrSaya = asyncH(async (req, res) => {
   // qr_wajah: QR hanya boleh dibuat bila verifikasi wajah peserta (jenis sama)
   // masih aktif — belum kedaluwarsa dan belum pernah dipakai. Ditentukan server,
   // bukan dari UI klien, sehingga QR tak mungkin tayang tanpa verifikasi.
-  // Slot jenis sama sudah terisi absensi nyata (bukan baris izin/sakit — hari itu
-  // memang tak boleh absen dan barisnya dikunci lewat cekTerkunci saat pemindaian).
+  // Baris harian dibagi masuk/pulang (jenis selalu 'masuk'), jadi jangan saring
+  // jenis di query. Keputusan sama dengan scanPeserta: masuk ditolak bila baris
+  // nyata sudah ada; pulang ditolak hanya bila pulang_jam sudah terisi.
   // Penanda otomatis 'Tidak hadir' boleh ditimpa: QR tayang, penggantian saat pindai.
   const lama = await Absensi.findOne({
     where: {
-      user_id: uid, tanggal: bagian().tanggal, jenis: jen,
+      user_id: uid, tanggal: bagian().tanggal,
       status: { [Op.notIn]: ['Izin', 'Sakit'] },
     },
   });
-  if (lama && !penandaOtomatis(lama)) {
-    throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat — cukup sekali per jenis.`, 'SUDAH_ABSEN');
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+    throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
   }
   if (cfg.metode === 'qr_wajah') {
     const fV = await FaceVerification.findOne({
@@ -151,15 +152,14 @@ exports.wajah = asyncH(async (req, res) => {
   cekWaktuPulang(jen, ws, w);
   await cekTerkunci(uid, w.tanggal);
   const lama = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
-  if (lama && !penandaOtomatis(lama)) {
-    throw new HttpError(409, `Absen hari ini sudah tercatat.`, 'SUDAH_ABSEN');
+  // Satu baris per hari: masuk ditolak bila baris nyata sudah ada; pulang ditolak
+  // hanya bila pulang_jam sudah terisi — bukan sekadar karena baris masuk ada.
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+    throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
   }
-  if (jen === 'pulang') {
+  if (jen === 'pulang' && (!lama || penandaOtomatis(lama))) {
     // Penanda otomatis tidak dihitung: pulang harus setelah masuk sungguhan
-    const masuk = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
-    if (!masuk || penandaOtomatis(masuk)) {
-      throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
-    }
+    throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
   }
 
   const jarakWajah = jarak(embedding, dec(tpl.embedding)); // jarak saja yang dicatat, bukan embedding
@@ -177,22 +177,30 @@ exports.wajah = asyncH(async (req, res) => {
   try {
     await sequelize.transaction(async (t) => {
       if (cfg.liveness_aktif) await liveness.periksa(uid, nonce, t);
+      // Baris dikunci dan keputusan diperiksa ulang di dalam transaksi agar dua
+      // absen bersamaan tidak sama-sama lolos (atomik).
+      const baris = lama
+        ? await Absensi.findOne({ where: { id: lama.id }, transaction: t, lock: t.LOCK.UPDATE })
+        : null;
       let a;
-      // Baru: jika lama null (belum ada absen hari ini) → buat row baru dengan jenis 'masuk'
-      // Jika lama ada dan bukan penanda otomatis → sudah ditangani di atas (SUDAH_ABSEN)
-      // Jika lama ada dan penanda otomatis → gantiPenanda
-      if (!lama) {
-        // First absen of the day: buat row dengan jenis 'masuk'
+      if (!baris) {
+        // Absen pertama hari ini: buat row baru dengan jenis 'masuk'
         a = await Absensi.create({ user_id: uid, tanggal: w.tanggal, jenis: 'masuk', ...isi }, { transaction: t });
-      } else if (penandaOtomatis(lama)) {
-        a = await gantiPenanda(lama.id, isi, t);
+      } else if (penandaOtomatis(baris)) {
+        if (jen === 'pulang') throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
+        a = await gantiPenanda(baris.id, isi, t);
+      } else if (jen === 'masuk' || baris.pulang_jam) {
+        throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
       } else {
-        // Sudah tercatat dan bukan penanda otomatis → sudah dilempar di atas (SUDAH_ABSEN),
-        // tapi jaga-jaga bisa jadi baris tadi adalah pulang sebelumnya
-        a = await Absensi.update(
-          { pulang_jam: w.jam, pulang_status: 'Hadir', status: 'Hadir' },
-          { where: { id: lama.id }, transaction: t, returning: true },
-        ).then(([_, updated]) => updated.get({ plain: true }));
+        // Pulang: isi kolom pulang pada baris masuk (MySQL tidak butuh returning —
+        // baca ulang bila perlu). Guard pulang_jam null mencegah dobel-set bersamaan.
+        // Status masuk (mis. Terlambat) dan lokasi masuk tidak ditimpa.
+        const [n] = await Absensi.update(
+          { pulang_jam: w.jam, pulang_status: status },
+          { where: { id: baris.id, pulang_jam: null }, transaction: t },
+        );
+        if (!n) throw new HttpError(409, 'Absen pulang hari ini sudah tercatat.', 'SUDAH_ABSEN');
+        a = await Absensi.findByPk(baris.id, { transaction: t });
       }
       if (fotoCt) await WajahFoto.create({ absensi_id: a.id, data: fotoCt }, { transaction: t });
       // Live tracking: sesi dibuka saat masuk, ditutup saat pulang (transaksi yang sama).
@@ -250,22 +258,14 @@ exports.scanPeserta = asyncH(async (req, res) => {
   const ws = await jadwalHari(w.hari);
   cekWaktuPulang(jen, ws, w);
   const lama = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
-  // Sistem satu baris: izinkan update pulang jika baris ada tapi belum punya pulang_jam
-  if (lama && lama.pulang_jam) {
-    // Sudah punya pulang_jam = sudah pulang tadi, tolak
-    throw new HttpError(409, `Peserta ini sudah absen (pulang) hari ini.`, 'SUDAH_ABSEN');
+  // Satu baris per hari: masuk ditolak bila baris nyata sudah ada; pulang ditolak
+  // hanya bila pulang_jam sudah terisi — bukan sekadar karena baris masuk ada.
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+    throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
   }
-  // Jika lama ada tapi pulang_jamnya null, atau lama null -> izinkan proceed
-  // (akan dibuat baris baru atau di-update di dalam transaksi)
-  if (lama && penandaOtomatis(lama)) {
-    // penanda otomatis tetap bisa diganti
-  }
-  if (jen === 'pulang') {
+  if (jen === 'pulang' && (!lama || penandaOtomatis(lama))) {
     // Penanda otomatis tidak dihitung: pulang harus setelah masuk sungguhan
-    const masuk = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
-    if (!masuk || penandaOtomatis(masuk)) {
-      throw new HttpError(422, 'Peserta belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
-    }
+    throw new HttpError(422, 'Peserta belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
   }
 
   // qr_wajah: verifikasi wajah dilakukan peserta di HP-nya sendiri sebelum QR tayang.
@@ -315,19 +315,29 @@ exports.scanPeserta = asyncH(async (req, res) => {
         user_id: uid, tanggal: w.tanggal, jenis: 'masuk', jam: w.jam, status,
         metode, token_id: tok.id, dikonfirmasi_oleh: req.user.id, ...lok,
       };
+      // Baris dikunci dan keputusan diperiksa ulang di dalam transaksi agar dua
+      // scan bersamaan tidak sama-sama lolos (atomik).
+      const baris = lama
+        ? await Absensi.findOne({ where: { id: lama.id }, transaction: t, lock: t.LOCK.UPDATE })
+        : null;
       let a;
-      if (!lama) {
-        // First absen of the day: buat row baru dengan jenis 'masuk'
+      if (!baris) {
+        // Absen pertama hari ini: buat row baru dengan jenis 'masuk'
         a = await Absensi.create(isi, { transaction: t });
-      } else if (penandaOtomatis(lama)) {
-        a = await gantiPenanda(lama.id, isi, t);
+      } else if (penandaOtomatis(baris)) {
+        if (jen === 'pulang') throw new HttpError(422, 'Peserta belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
+        a = await gantiPenanda(baris.id, isi, t);
+      } else if (jen === 'masuk' || baris.pulang_jam) {
+        throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
       } else {
-        // Sudah tercatat dan bukan penanda otomatis -> sudah dilempar di atas (SUDAH_ABSEN),
-        // tapi jaga-jaga bisa jadi baris tadi adalah pulang sebelumnya
-        a = await Absensi.update(
-          { pulang_jam: w.jam, pulang_status: 'Hadir', status: 'Hadir' },
-          { where: { id: lama.id }, transaction: t, returning: true },
-        ).then(([_, updated]) => updated.get({ plain: true }));
+        // Pulang: isi kolom pulang pada baris masuk. Guard pulang_jam null mencegah
+        // dobel-set bersamaan; status masuk (mis. Terlambat) tidak ditimpa.
+        const [p] = await Absensi.update(
+          { pulang_jam: w.jam, pulang_status: status },
+          { where: { id: baris.id, pulang_jam: null }, transaction: t },
+        );
+        if (!p) throw new HttpError(409, 'Peserta ini sudah absen pulang hari ini.', 'SUDAH_ABSEN');
+        a = await Absensi.findByPk(baris.id, { transaction: t });
       }
       // Konsumsi verifikasi wajah (atomik) lalu pindahkan foto ke absensi bila ada
       if (fV) {

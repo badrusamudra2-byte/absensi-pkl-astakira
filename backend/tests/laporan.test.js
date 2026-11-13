@@ -19,9 +19,9 @@ beforeEach(async () => {
   tokPmb = await tokenUntuk('rizal@astakira.id');
   tokPsr = await tokenUntuk('alya@astakira.id');
 
+  // Satu baris per hari: data pulang disimpan di kolom pulang_jam/pulang_status
   await M.Absensi.bulkCreate([
-    { user_id: dasar.peserta.id, tanggal: DARI, jenis: 'masuk', jam: '08:05:00', status: 'Hadir', metode: 'QR+Wajah' },
-    { user_id: dasar.peserta.id, tanggal: DARI, jenis: 'pulang', jam: '17:00:00', status: 'Hadir', metode: 'QR' },
+    { user_id: dasar.peserta.id, tanggal: DARI, jenis: 'masuk', jam: '08:05:00', status: 'Hadir', metode: 'QR+Wajah', pulang_jam: '17:00:00', pulang_status: 'Hadir' },
     { user_id: dasar.peserta.id, tanggal: SAMPAI, jenis: 'masuk', jam: '09:40:00', status: 'Terlambat', metode: 'Wajah' },
     { user_id: dasar.peserta.id, tanggal: DI_LUAR, jenis: 'masuk', jam: '08:00:00', status: 'Hadir', metode: 'QR+Wajah' },
   ]);
@@ -46,7 +46,7 @@ describe('Laporan admin (rekap + jurnal per periode)', () => {
   test('JSON: absensi, jurnal (tanpa Draft), dan rekap per peserta terisi benar', async () => {
     const r = await laporan(tokAdmin);
     expect(r.status).toBe(200);
-    expect(r.body.absensi).toHaveLength(4);
+    expect(r.body.absensi).toHaveLength(3);
     expect(r.body.jurnal.map((j) => j.judul)).not.toContain('Draft draf');
     expect(r.body.jurnal).toHaveLength(2);
 
@@ -60,7 +60,7 @@ describe('Laporan admin (rekap + jurnal per periode)', () => {
   test('filter rentang: baris di luar periode tidak ikut', async () => {
     const r = await laporan(tokAdmin, `?dari=${DARI}&sampai=${SAMPAI}`);
     expect(r.status).toBe(200);
-    expect(r.body.absensi).toHaveLength(3);
+    expect(r.body.absensi).toHaveLength(2);
     expect(r.body.absensi.every((a) => a.tanggal >= DARI && a.tanggal <= SAMPAI)).toBe(true);
   });
 

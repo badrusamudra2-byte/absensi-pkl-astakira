@@ -343,12 +343,17 @@ exports.fotoWajah = asyncH(async (req, res) => {
   res.type('image/jpeg').send(dekripBait(f.data));
 });
 
-// Koreksi absensi oleh admin: alasan wajib, nilai lama dan baru dicatat di audit
+// Koreksi absensi oleh admin: alasan wajib, nilai lama dan baru dicatat di audit.
+// Skema satu baris per hari: jenis selalu 'masuk' (kolom jenis tidak bisa diubah),
+// data pulang disimpan di pulang_jam/pulang_status pada baris yang sama.
 exports.koreksi = asyncH(async (req, res) => {
   const a = await Absensi.findByPk(req.params.id);
   if (!a) throw new HttpError(404, 'Baris absensi tidak ditemukan.', 'TIDAK_ADA');
   const alasan = String(req.body.alasan || '').trim();
   if (alasan.length < 3) throw new HttpError(400, 'Tulis alasan koreksi (minimal 3 karakter).', 'ALASAN_WAJIB');
+  if (req.body.jenis !== undefined) {
+    throw new HttpError(400, 'Jenis absen tidak bisa diubah (satu baris per hari: jenis selalu masuk).', 'VALIDASI');
+  }
 
   const f = {};
   if (req.body.jam !== undefined) {
@@ -363,28 +368,37 @@ exports.koreksi = asyncH(async (req, res) => {
     }
     f.status = st;
   }
-  const jenisBaru = req.body.jenis !== undefined;
-  if (jenisBaru) {
-    if (!['masuk', 'pulang'].includes(String(req.body.jenis))) {
-      throw new HttpError(400, 'Jenis absen harus masuk atau pulang.', 'VALIDASI');
+  // Data pulang: pulang_jam HH:MM(:SS) atau null (kosongkan pulang).
+  if (req.body.pulang_jam !== undefined) {
+    if (req.body.pulang_jam === null || String(req.body.pulang_jam).trim() === '') {
+      f.pulang_jam = null;
+      f.pulang_status = null;
+    } else {
+      const p = jam(req.body.pulang_jam);
+      if (!p) throw new HttpError(400, 'Pulang jam harus berformat HH:MM atau HH:MM:SS.', 'VALIDASI');
+      f.pulang_jam = p;
+      if (req.body.pulang_status === undefined) f.pulang_status = 'Hadir';
     }
-    f.jenis = String(req.body.jenis);
+  }
+  if (req.body.pulang_status !== undefined) {
+    const ps = String(req.body.pulang_status).trim();
+    if (!STATUS_KOREKSI.includes(ps)) {
+      throw new HttpError(400, `Pulang status harus salah satu dari: ${STATUS_KOREKSI.join(', ')}.`, 'VALIDASI');
+    }
+    // Set status pulang butuh pulang_jam terisi (baru atau sudah ada di baris ini)
+    const jPulang = f.pulang_jam !== undefined ? f.pulang_jam : a.pulang_jam;
+    if (!jPulang) {
+      throw new HttpError(400, 'Isi pulang_jam terlebih dahulu bila ingin mengisi pulang_status.', 'VALIDASI');
+    }
+    f.pulang_status = ps;
   }
   if (!Object.keys(f).length) {
-    throw new HttpError(400, 'Tidak ada perubahan yang dikirim (cek kolom jenis/jam/status).', 'VALIDASI');
-  }
-  if (f.jenis && f.jenis !== a.jenis) {
-    const bentrok = await Absensi.findOne({
-      where: { user_id: a.user_id, tanggal: a.tanggal, jenis: f.jenis },
-    });
-    if (bentrok && bentrok.id !== a.id) {
-      throw new HttpError(409, `Absen ${f.jenis} tanggal tersebut sudah ada.`, 'SUDAH_ABSEN');
-    }
+    throw new HttpError(400, 'Tidak ada perubahan yang dikirim (cek kolom jam/status/pulang_jam/pulang_status).', 'VALIDASI');
   }
 
-  const lama = { jenis: a.jenis, jam: a.jam, status: a.status, metode: a.metode };
+  const lama = { jenis: a.jenis, jam: a.jam, status: a.status, pulang_jam: a.pulang_jam, pulang_status: a.pulang_status, metode: a.metode };
   await a.update(f);
-  const baru = { jenis: a.jenis, jam: a.jam, status: a.status, metode: a.metode };
+  const baru = { jenis: a.jenis, jam: a.jam, status: a.status, pulang_jam: a.pulang_jam, pulang_status: a.pulang_status, metode: a.metode };
   await audit(req, 'Koreksi absensi', `absensi#${a.id}`, { lama, baru, alasan: alasan.slice(0, 500) });
   res.json({ pesan: 'Absensi dikoreksi.', data: a });
 });

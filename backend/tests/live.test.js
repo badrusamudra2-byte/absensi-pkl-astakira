@@ -223,22 +223,27 @@ describe('tutupLive (job otomatis)', () => {
 
   test('sesi ditutup dan posisi dihapus pada jam pulang + toleransi; sisa kemarian ikut ditutup', async () => {
     const { peserta } = await isiDasar();
+    // Bekukan jam dulu agar tanggal "hari ini" konsisten dengan tanggal injeksi sekarang
+    waktu.__jam('16:00');
     await hariKerja();
+    // Sesi "kemarin" milik peserta lain (tutupSesi menutup semua sesi aktif satu user,
+    // jadi sisa kemarin harus milik user berbeda agar sesi hari ini tetap teruji)
+    const bimo = await buatUser({ nama: 'Bimo Sisa', username: 'bimosisa', email: 'bimosisa@astakira.id', role: 'peserta' });
     const kemarin = new Date(Date.now() - 26 * 3600 * 1000);
     const tglKemarin = bagian(kemarin).tanggal;
     // Sesi hari ini (dengan posisi) + sisa sesi dari kemarin
     await M.SesiTracking.create({ user_id: peserta.id, tanggal: bagian().tanggal, status: 'aktif', mulai_pada: new Date(), lat: POSISI.lat, lng: POSISI.lng, diperbarui_pada: new Date() });
-    const sisa = await M.SesiTracking.create({ user_id: peserta.id, tanggal: tglKemarin, status: 'aktif', mulai_pada: kemarin, lat: 1, lng: 1 });
+    const sisa = await M.SesiTracking.create({ user_id: bimo.id, tanggal: tglKemarin, status: 'aktif', mulai_pada: kemarin, lat: 1, lng: 1 });
 
-    // Sebelum jam pulang + toleransi (16:15): hari ini belum ditutup
-    let r = await tutupLive({ sekarang: new Date(Date.UTC(2026, 5, 15, 9, 30)) });
+    // Tepat jam pulang (16:00, belum lewat toleransi 15 menit): hari ini belum ditutup
+    let r = await tutupLive({ sekarang: new Date(Date.UTC(2026, 5, 15, 9, 0)) }); // 16:00 WIB
     expect(r.ditutupHariIni).toBe(0);
-    expect(await sesi(peserta.id)).toMatchObject({ status: 'aktif' });
+    expect(await sesi(peserta.id, bagian().tanggal)).toMatchObject({ status: 'aktif' });
 
     // Lewat 16:15: keduanya ditutup, posisi dikosongkan
-    r = await tutupLive({ sekarang: new Date(Date.UTC(2026, 5, 15, 9, 30 + 7 * 60)) }); // 16:30 WIB
+    r = await tutupLive({ sekarang: new Date(Date.UTC(2026, 5, 15, 9, 30)) }); // 16:30 WIB
     expect(r.ditutupHariIni).toBe(1);
-    const h = await sesi(peserta.id);
+    const h = await sesi(peserta.id, bagian().tanggal);
     expect(h).toMatchObject({ status: 'selesai', sebab: 'otomatis', lat: null });
     expect(h.id).not.toBe(sisa.id); // sisa kemarin baris terpisah juga selesai
     expect(await M.SesiTracking.count({ where: { status: 'aktif' } })).toBe(0);

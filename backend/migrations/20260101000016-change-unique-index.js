@@ -1,7 +1,6 @@
 'use strict';
 
 /** Mengubah unique index: dari [user_id, tanggal, jenis] menjadi [user_id, tanggal] */
-const DT = require('sequelize').DataTypes;
 
 module.exports = {
   async up(queryInterface) {
