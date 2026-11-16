@@ -5,7 +5,7 @@ import { teksKode } from '../../lib/petaKode';
 import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import type { Absensi, Pengaturan, TayanganQr } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
-import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
+import { isoHariIni, tercatatPada } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
 /** Tampilkan token server sebagai QR besar (pustaka qrcode-generator dari CDN). */
@@ -145,8 +145,9 @@ export default function TayangQr() {
     (async () => {
       try {
         const r = await api<{ data: Absensi[] }>('/absensi/riwayat');
-        // Penanda otomatis "Tidak hadir" bukan absensi nyata: QR tetap tayang
-        const cocok = r.data.find((x) => x.tanggal === isoHariIni() && x.jenis === jenis && !penandaOtomatis(x));
+        // Satu baris per hari: data pulang dibaca dari pulang_jam baris masuk;
+        // penanda otomatis "Tidak hadir" bukan absensi nyata — QR tetap tayang.
+        const cocok = tercatatPada(r.data, isoHariIni(), jenis);
         if (cocok && hidup) {
           ubahBeres({ jam: cocok.jam, status: cocok.status });
           return;
@@ -183,7 +184,7 @@ export default function TayangQr() {
       if (!navigator.onLine) return; // luring: polling coba lagi di detik berikutnya
       try {
         const r = await api<{ data: Absensi[] }>('/absensi/riwayat');
-        const cocok = r.data.find((x) => x.tanggal === tanggal && x.jenis === jenis && !penandaOtomatis(x));
+        const cocok = tercatatPada(r.data, tanggal, jenis);
         if (cocok) {
           setQr(null);
           ubahSisa(0);

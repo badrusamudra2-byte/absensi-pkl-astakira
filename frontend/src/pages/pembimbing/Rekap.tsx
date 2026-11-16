@@ -7,9 +7,9 @@ import type { Absensi, BarisJurnal } from '../../lib/tipe';
 
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
-import PetaAbsensi, { type TitikPeta } from '../../komponen/PetaAbsensi';
+import PetaAbsensi, { warnaTitik, type TitikPeta } from '../../komponen/PetaAbsensi';
  
-import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';
+import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo, titikTerbaruBerlokasi } from '../../komponen/umum';
 import { unduhBerkas, type FormatLaporan } from '../../lib/unduh';
 
 export default function Rekap() {
@@ -18,7 +18,7 @@ export default function Rekap() {
   const [sampai, ubahSampai] = useState(isoHariIni());
   const [userPilih, ubahUserPilih] = useState<number | ''>(Number(sp.get('user_id')) || '');
   const [peserta, ubahPeserta] = useState<{ id: number; nama: string }[]>([]);
-  const [absensi, ubahAbsensi] = useState<(Absensi & { peserta?: { nama: string } })[] | null>(null);
+  const [absensi, ubahAbsensi] = useState<(Absensi & { peserta?: { id: number; nama: string } })[] | null>(null);
   const [jurnal, ubahJurnal] = useState<(BarisJurnal & { peserta?: { nama: string } })[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
 
@@ -61,7 +61,7 @@ export default function Rekap() {
     ubahGalat(null);
     try {
       const q = new URLSearchParams({ dari, sampai, ...(userPilih ? { user_id: String(userPilih) } : {}) });
-      const r = await api<{ absensi: (Absensi & { peserta?: { nama: string } })[]; jurnal: (BarisJurnal & { peserta?: { nama: string } })[] }>(
+      const r = await api<{ absensi: (Absensi & { peserta?: { id: number; nama: string } })[]; jurnal: (BarisJurnal & { peserta?: { nama: string } })[] }>(
         `/pembimbing/rekap?${q}`,
       );
       if (!sah(true)) return;
@@ -121,23 +121,35 @@ export default function Rekap() {
 
       <Kartu t="Peta absensi">
         {absensi && (absensi.some((a) => a.lat !== null && a.lng !== null) || kantor) ? (
-          <PetaAbsensi
-            kantor={kantor}
-            titik={absensi
-              .filter((a) => a.lat !== null && a.lng !== null)
-              .map((a) => ({
-                lat: a.lat as number,
-                lng: a.lng as number,
-                jenis: a.jenis,
-                label:
-                  `${a.peserta?.nama ?? 'Peserta'} — ${a.jenis} ${a.jam.slice(0, 5)}, ` +
-                  `${tglIndo(a.tanggal)} (${teksJarak(a.jarak_m)} dari kantor)`,
-              }))}
-          />
+          <>
+            <PetaAbsensi
+              kantor={kantor}
+              titik={titikTerbaruBerlokasi(absensi)
+                .map((a) => ({
+                  lat: a.lat as number,
+                  lng: a.lng as number,
+                  jenis: a.jenis,
+                  warna: warnaTitik(a.peserta?.id ?? a.user_id),
+                  label:
+                    `${a.peserta?.nama ?? 'Peserta'} — ${a.jenis} ${a.jam.slice(0, 5)}, ` +
+                    `${tglIndo(a.tanggal)} (${teksJarak(a.jarak_m)} dari kantor)`,
+                }))}
+            />
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+              {titikTerbaruBerlokasi(absensi).map((a) => (
+                <li key={a.id} className="flex items-center gap-1.5 text-sm">
+                  <span aria-hidden="true" className="inline-block w-3 h-3 rounded-full"
+                    style={{ background: warnaTitik(a.peserta?.id ?? a.user_id) }} />
+                  {a.peserta?.nama ?? 'Peserta'}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : (
           <p className="text-mu text-sm">
             Belum ada data lokasi untuk periode ini. Titik absensi muncul bila area kantor sudah diatur admin dan
-            peserta mengirim lokasi saat absen.
+            peserta mengirim lokasi saat absen. Hanya absen terbaru berlokasi per peserta yang ditampilkan, agar
+            titik tidak menumpuk di koordinat yang sama.
           </p>
         )}
       </Kartu>

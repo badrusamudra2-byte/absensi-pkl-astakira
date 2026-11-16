@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import type { Absensi, Jenis, MetodeAbsensi, Workshift } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { Link } from 'react-router-dom';
-import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
+import { isoHariIni, penandaOtomatis, tercatatPada } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
 export default function Absensi() {
@@ -32,8 +32,10 @@ export default function Absensi() {
   const potong = (t?: string) => (t ? t.slice(0, 5) : '-'); // "08:00:00" -> "08:00"
   const hariIni = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
   const w = jadwal?.find((x: Workshift) => x.hari === hariIni) ?? null;
-  // Baris absensi jenis ini yang hari ini sudah tercatat (null = belum absen)
-  const tercatat = () => hariIniRow.find((x) => x.jenis === jenis) ?? null;
+  // Satu baris per hari: data pulang ada di pulang_jam baris masuk yang sama.
+  const tglHariIni = isoHariIni();
+  const barisHari = hariIniRow.find((x) => x.tanggal === tglHariIni) ?? null;
+  const tercatat = (j: Jenis) => tercatatPada(hariIniRow, tglHariIni, j);
 
   /* Rute lanjutan menurut metode absensi penyelenggara.
    * qr_wajah: verifikasi wajah di HP peserta dulu (foto disimpan untuk rekap), lalu QR tayang;
@@ -61,7 +63,7 @@ export default function Absensi() {
       <Kartu t="Pilih jenis absensi">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(['masuk', 'pulang'] as Jenis[]).map((m) => {
-            const terCatat = hariIniRow.find((x) => x.jenis === m) ?? null;
+            const terCatat = tercatat(m);
             return (
               <button
                 key={m}
@@ -72,12 +74,12 @@ export default function Absensi() {
                 }`}
               >
                 <b className="block">Absen {m}</b>
-                {terCatat && !penandaOtomatis(terCatat) ? (
+                {terCatat ? (
                   <small className="inline-flex items-center gap-1 mt-1">
                     <span className="text-g font-semibold">Tercatat {potong(terCatat.jam)}</span>
                     <Badge s={terCatat.status} />
                   </small>
-                ) : terCatat && penandaOtomatis(terCatat) ? (
+                ) : barisHari && penandaOtomatis(barisHari) && m === 'masuk' ? (
                   <small className="text-y font-semibold">Penanda otomatis: Tidak hadir — boleh absen bila datang</small>
                 ) : (
                   <small className="text-mu">
@@ -91,17 +93,17 @@ export default function Absensi() {
         <div className="mt-4">
           {/* Penanda otomatis "Tidak hadir" bukan absensi nyata: peserta telat
               datang tetap bisa absen dan server akan mengganti penandanya. */}
-          <Tombol onClick={mulai} disabled={!daring || mode === null || (tercatat() !== null && !penandaOtomatis(tercatat()))}>
-            {tercatat() && !penandaOtomatis(tercatat())
-              ? `Sudah absen ${jenis} (${potong(tercatat()!.jam)})`
+          <Tombol onClick={mulai} disabled={!daring || mode === null || tercatat(jenis) !== null}>
+            {tercatat(jenis)
+              ? `Sudah absen ${jenis} (${potong(tercatat(jenis)!.jam)})`
               : mode === null ? 'Memuat metode…' : `Mulai absen ${jenis}`}
           </Tombol>
-          {tercatat() && !penandaOtomatis(tercatat()) ? (
+          {tercatat(jenis) ? (
             <p className="text-mu text-sm mt-1 font-semibold">
-              Absen {jenis} hari ini sudah tercatat pada {potong(tercatat()!.jam)} — cukup sekali per jenis.
+              Absen {jenis} hari ini sudah tercatat pada {potong(tercatat(jenis)!.jam)} — cukup sekali per jenis.
             </p>
           ) : null}
-          {tercatat() && penandaOtomatis(tercatat()) ? (
+          {barisHari && penandaOtomatis(barisHari) && tercatat(jenis) === null ? (
             <p className="text-y text-sm mt-1 font-semibold" role="status">
               Anda tercatat Tidak hadir oleh sistem (otomatis). Bila Anda datang, absen seperti biasa —
               penanda otomatis akan diganti absensi asli Anda.

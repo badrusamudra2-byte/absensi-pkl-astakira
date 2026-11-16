@@ -1,0 +1,147 @@
+@startuml
+title Activity Diagram — Alur Absensi Harian
+skinparam backgroundColor white
+skinparam activity {
+  BackgroundColor #B3E5FC
+  BorderColor #222222
+  DiamondBackgroundColor #B3E5FC
+  DiamondBorderColor #222222
+  DiamondFontSize 11
+}
+skinparam ArrowColor black
+
+|Peserta|
+start
+:Login (email + kata sandi);
+
+|Server|
+if (Kredensial valid?) then (tidak)
+  :Tampilkan pesan error;
+  stop
+else (ya)
+  :Terbitkan JWT,
+  arahkan ke dashboard sesuai peran;
+endif
+
+|Peserta|
+:Absen masuk —
+minta QR / verifikasi wajah;
+
+|Server|
+if (Hari kerja & belum tercatat?) then (tidak)
+  :Tolak — HARI_LIBUR / SUDAH_ABSEN / HARI_TERCATAT;
+  stop
+else (ya)
+  :Tayangkan QR / token wajah (rotasi TTL);
+endif
+
+|Peserta|
+:Tampilkan QR di layar HP;
+
+|Pembimbing|
+:Pindai QR peserta;
+
+|Server|
+:Hitung status: Tepat waktu / Terlambat;
+:Simpan absensi + foto wajah + audit log;
+
+|Peserta|
+:Tulis jurnal kegiatan
+(+ lampiran foto opsional);
+:Kirim jurnal;
+
+|Pembimbing|
+:Review jurnal;
+if (Perlu revisi?) then (ya)
+  |Peserta|
+  :Edit jurnal & kirim ulang;
+  |Pembimbing|
+  :Review ulang;
+else (tidak)
+endif
+:Setujui jurnal;
+
+|Peserta|
+:Absen pulang;
+
+|Server|
+if (Waktu pulang dibuka?) then (belum)
+  :Tolak — PULANG_BELUM_WAKTUNYA;
+  stop
+else (ya)
+  :Catat jam pulang & durasi;
+endif
+
+|Peserta|
+stop
+@enduml
+
+@startuml
+title Activity Diagram — Pengajuan Izin / Sakit
+skinparam backgroundColor white
+skinparam activity {
+  BackgroundColor #B3E5FC
+  BorderColor #222222
+  DiamondBackgroundColor #B3E5FC
+  DiamondBorderColor #222222
+  DiamondFontSize 11
+}
+skinparam ArrowColor black
+
+|Peserta|
+start
+:Ajukan izin/sakit
++ unggah foto bukti;
+
+|Server|
+:Validasi input & simpan berkas bukti;
+:Kirim notifikasi ke pembimbing;
+
+|Pembimbing|
+:Lihat pengajuan & bukti;
+if (Bukti cukup?) then (ya)
+  :Putuskan "Diterima";
+
+  |Server|
+  :Catat hari sebagai Izin/Sakit;
+  :Kunci absensi QR/wajah hari tersebut;
+else (tidak)
+  :Putuskan "Ditolak";
+
+  |Server|
+  :Kirim hasil keputusan ke peserta;
+
+  |Peserta|
+  :Absen normal sesuai jadwal;
+endif
+
+stop
+@enduml
+
+@startuml
+title Activity Diagram — Tutup Hari Otomatis (Job Server)
+skinparam backgroundColor white
+skinparam activity {
+  BackgroundColor #B3E5FC
+  BorderColor #222222
+  DiamondBackgroundColor #B3E5FC
+  DiamondBorderColor #222222
+  DiamondFontSize 11
+}
+skinparam ArrowColor black
+
+|Server|
+start
+:Job terjadwal dijalankan
+(setelah jam pulang);
+:Ambil seluruh absensi hari ini;
+if (Peserta tanpa catatan?) then (ya)
+  :Buat baris metode "Otomatis"
+  status "Tidak hadir";
+else (tidak)
+  :Lewati;
+endif
+:Tutup sesi live tracking
+yang masih aktif;
+stop
+@enduml

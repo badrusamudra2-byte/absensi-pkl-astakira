@@ -6,7 +6,7 @@ import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import { ambilLandmarker, cekKondisi, hitungEmbedding, keJpeg, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
 import type { Absensi, Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
-import { isoHariIni, penandaOtomatis } from '../../komponen/umum';
+import { isoHariIni, tercatatPada } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
 export default function WajahPeriksa() {
@@ -28,7 +28,7 @@ export default function WajahPeriksa() {
   const [beres, ubahBeres] = useState<null | { jam: string; status: StatusAbsensi }>(null);
   const [kirim, ubahKirim] = useState(false);
   // Absensi jenis ini hari ini sudah tercatat -> verifikasi tidak dijalankan (undefined = belum diketahui)
-  const [sudah, ubahSudah] = useState<Absensi | null | undefined>(undefined);
+  const [sudah, ubahSudah] = useState<{ jam: string; status: StatusAbsensi } | null | undefined>(undefined);
   // Hari ini tercatat Izin/Sakit (pengajuan disetujui) -> absensi dan verifikasi ditutup
   const [terkunciIzin, ubahTerkunciIzin] = useState<Absensi | null>(null);
 
@@ -158,7 +158,8 @@ export default function WajahPeriksa() {
         ubahTerkunciIzin(izinHari);
         // Penanda otomatis "Tidak hadir" bukan absensi nyata: peserta telat datang
         // tetap boleh memverifikasi; server mengganti penandanya saat absen.
-        const cocok = r.data.find((x) => x.tanggal === isoHariIni() && x.jenis === jenis && !penandaOtomatis(x)) ?? null;
+        // Satu baris per hari: data pulang dibaca dari pulang_jam baris masuk.
+        const cocok = tercatatPada(r.data, isoHariIni(), jenis);
         ubahSudah(cocok);
         if (cocok || izinHari) {
           ubahPesan('');

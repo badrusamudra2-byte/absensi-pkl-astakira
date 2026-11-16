@@ -75,12 +75,13 @@ export default function Riwayat() {
           <p className="text-mu text-sm">Memuat…</p>
         ) : (
           <Tabel
-            h={['Tanggal', 'Jenis', 'Jam', 'Status', 'Metode']}
+            h={['Tanggal', 'Masuk', 'Pulang', 'Metode']}
             rows={(data ?? []).map((a) => [
               `${namaHari(a.tanggal)}, ${a.tanggal}`,
-              <b key="j" className="capitalize">{a.jenis}</b>,
-              a.jam.slice(0, 5),
-              <Badge key="s" s={a.status} />,
+              <span key="m"><b>{a.jam.slice(0, 5)}</b> <Badge s={a.status} /></span>,
+              a.pulang_jam && a.pulang_status ? (
+                <span key="p"><b>{a.pulang_jam.slice(0, 5)}</b> <Badge s={a.pulang_status} /></span>
+              ) : '-',
               a.metode,
             ])}
           />

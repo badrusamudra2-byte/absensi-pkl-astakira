@@ -1,11 +1,28 @@
 import { useCallback, useRef, type ReactNode } from 'react';
-import type { Absensi } from '../lib/tipe';
+import type { Absensi, Jenis } from '../lib/tipe';
 
 /** Baris "Tidak hadir" (metode Otomatis) dari job tutup hari hanyalah penanda,
  * bukan absensi sungguhan — peserta telat datang tetap bisa absen dan penanda
  * diganti absensi nyata oleh server. */
 export const penandaOtomatis = (a: Absensi | null | undefined) =>
   !!a && a.status === 'Tidak hadir' && a.metode === 'Otomatis';
+
+/** Absensi satu baris per hari: data pulang ada di pulang_jam/pulang_status
+ * baris masuk yang sama. Kembalikan { jam, status } bila jenis itu sudah
+ * tercatat pada tanggal itu (penanda otomatis tidak dihitung), atau null bila
+ * belum. Baris Izin/Sakit ikut terbaca sebagai tercatat untuk jenisnya. */
+export const tercatatPada = (
+  rows: Absensi[],
+  tanggal: string,
+  jenis: Jenis,
+): { jam: string; status: Absensi['status'] } | null => {
+  const baris = rows.find((x) => x.tanggal === tanggal && !penandaOtomatis(x));
+  if (!baris) return null;
+  if (jenis === 'masuk') return { jam: baris.jam, status: baris.status };
+  return baris.pulang_jam && baris.pulang_status
+    ? { jam: baris.pulang_jam, status: baris.pulang_status }
+    : null;
+};
 
 /** Format "2026-10-17" menjadi "Jumat, 17/10/2026". */
 export const tglIndo = (s: string) =>
@@ -42,6 +59,25 @@ export function gunakanTerbaru() {
     return (masih: boolean) => masih && nomor.current === n;
   }, []);
 }
+
+/** Untuk peta: satu titik terbaru per peserta dari baris yang punya koordinat.
+ * Tanpa ini marker menumpuk di koordinat yang sama (kantor) untuk tiap absen
+ * sepanjang periode dan terlihat seperti titik duplikat. Baris dikunci per
+ * user_id (tersedia pada daftar rekap dan daftar admin). */
+export const titikTerbaruBerlokasi = <
+  T extends { user_id?: number; tanggal: string; jam: string; lat?: number | null; lng?: number | null },
+>(rows: T[]): T[] => {
+  const terpilih = new Map<number, T>();
+  for (const a of rows) {
+    if (a.lat === null || a.lat === undefined || a.lng === null || a.lng === undefined) continue;
+    const kunci = a.user_id ?? 0;
+    const lama = terpilih.get(kunci);
+    if (!lama || a.tanggal > lama.tanggal || (a.tanggal === lama.tanggal && a.jam > lama.jam)) {
+      terpilih.set(kunci, a);
+    }
+  }
+  return [...terpilih.values()];
+};
 
 export function FilterTanggal({
   dari, sampai, ubahDari, ubahSampai, aksi, sedang,

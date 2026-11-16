@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "figcraft": {
+      "type": "local",
+      "command": ["D:\\FigCraft\\figcraft-cli.exe", "mcp"],
+      "enabled": true
+    }
+  }
+}

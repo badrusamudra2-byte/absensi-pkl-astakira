@@ -6,7 +6,16 @@ export interface TitikPeta {
   lng: number;
   jenis: 'masuk' | 'pulang';
   label: string; // tooltip: nama peserta + jam
+  /** Warna khas per peserta, agar titik tiap orang terpisah jelas */
+  warna?: string;
 }
+
+/** Palet warna titik per peserta (memutar bila peserta lebih banyak). */
+export const WARNA_TITIK = [
+  '#15803d', '#c2410c', '#1d4ed8', '#7c3aed', '#be123c',
+  '#0e7490', '#a16207', '#4d7c0f', '#9333ea', '#0369a1',
+];
+export const warnaTitik = (kunci: number | undefined) => WARNA_TITIK[(kunci ?? 0) % WARNA_TITIK.length];
 
 export interface PetaAbsensiProps {
   titik: TitikPeta[];
@@ -34,6 +43,7 @@ function PetaDalam({ titik, kantor }: PetaAbsensiProps) {
   const kotakRef = useRef<HTMLDivElement | null>(null);
   const petaRef = useRef<any>(null);
   const lapisanRef = useRef<any>(null);
+  const gambarRef = useRef<(() => void) | null>(null);
 
   /* Buat peta sekali; tile OSM standar, tanpa kunci API */
   useEffect(() => {
@@ -46,50 +56,89 @@ function PetaDalam({ titik, kantor }: PetaAbsensiProps) {
     }).addTo(peta);
     lapisanRef.current = L.layerGroup().addTo(peta);
     petaRef.current = peta;
+    // Zoom berubah -> jarak geser piksel dipetakan ulang ke koordinat
+    peta.on('zoomend', () => gambarRef.current?.());
     return () => {
+      peta.off('zoomend');
       peta.remove();
       petaRef.current = null;
       lapisanRef.current = null;
+      gambarRef.current = null;
     };
   }, []);
 
-  /* Gambar ulang titik & lingkaran kantor saat data berubah */
+  /* Gambar ulang titik & lingkaran kantor saat data berubah (dan saat zoom berubah) */
   useEffect(() => {
     const peta = petaRef.current;
     const lapisan = lapisanRef.current;
     if (!peta || !lapisan) return undefined;
-    lapisan.clearLayers();
 
-    const batas: any[] = [];
-    if (kantor) {
-      L.circle([kantor.lat, kantor.lng], {
-        radius: kantor.radius_m,
-        color: '#1d4ed8',
-        weight: 1.5,
-        fillOpacity: 0.08,
-      }).addTo(lapisan);
-      batas.push([kantor.lat, kantor.lng]);
-    }
-    for (const t of titik) {
-      const masuk = t.jenis === 'masuk';
-      L.marker([t.lat, t.lng], {
-        icon: L.divIcon({
-          className: '',
-          html:
-            `<div style="display:flex;align-items:center;justify-content:center;` +
-            `width:26px;height:26px;border-radius:50%;color:#fff;font-size:13px;` +
-            `font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px #0006;` +
-            `background:${masuk ? '#15803d' : '#c2410c'}">` +
-            `${masuk ? '&#8594;' : '&#8592;'}</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
-        }),
-        title: t.label,
-      }).bindTooltip(t.label).addTo(lapisan);
-      batas.push([t.lat, t.lng]);
-    }
-    if (batas.length) peta.fitBounds(L.latLngBounds(batas).pad(0.25), { animate: false });
-    return undefined;
+    const gambar = () => {
+      lapisan.clearLayers();
+
+      const batas: any[] = [];
+      if (kantor) {
+        L.circle([kantor.lat, kantor.lng], {
+          radius: kantor.radius_m,
+          color: '#1d4ed8',
+          weight: 1.5,
+          fillOpacity: 0.08,
+        }).addTo(lapisan);
+        batas.push([kantor.lat, kantor.lng]);
+      }
+      // Kelompokkan titik berkoordinat hampir sama (≈11 m, umumnya lokasi kantor).
+      // Anggota yang bertumpuk hanya digeser melingkar ±17 PIKSEL dari titik asli
+      // (marker 16 px): nyaris berdempet, cukup terpisah agar tidak saling menutupi,
+      // dan makin dekat ke titik sebenarnya saat zoom diperbesar. Titik tunggal
+      // tetap tepat di koordinat aslinya.
+      const kelompok = new Map<string, { lat: number; lng: number; anggota: TitikPeta[] }>();
+      for (const t of titik) {
+        const k = `${t.lat.toFixed(4)},${t.lng.toFixed(4)}`;
+        const g = kelompok.get(k) ?? { lat: t.lat, lng: t.lng, anggota: [] };
+        g.anggota.push(t);
+        kelompok.set(k, g);
+      }
+      for (const g of kelompok.values()) {
+        const n = g.anggota.length;
+        const asal = n > 1 ? peta.latLngToContainerPoint([g.lat, g.lng]) : null;
+        g.anggota.forEach((t, i) => {
+          let lat = g.lat;
+          let lng = g.lng;
+          if (asal) {
+            const sudut = (i * 2 * Math.PI) / n;
+            const ll = peta.containerPointToLatLng(
+              asal.add(L.point(Math.cos(sudut) * 17, Math.sin(sudut) * 17)),
+            );
+            lat = ll.lat;
+            lng = ll.lng;
+          }
+          const masuk = t.jenis === 'masuk';
+          const warna = t.warna ?? (masuk ? '#15803d' : '#c2410c');
+          L.marker([lat, lng], {
+            icon: L.divIcon({
+              className: '',
+              html:
+                `<div style="display:flex;align-items:center;justify-content:center;` +
+                `width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;` +
+                `font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px #0006;` +
+                `background:${warna}">` +
+                `${masuk ? '&#8594;' : '&#8592;'}</div>`,
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+            }),
+            title: t.label,
+          }).bindTooltip(t.label).addTo(lapisan);
+          batas.push([lat, lng]);
+        });
+      }
+      if (batas.length) peta.fitBounds(L.latLngBounds(batas).pad(0.25), { animate: false });
+    };
+
+    gambar();
+    gambarRef.current = gambar;
+    return () => {
+      gambarRef.current = null;
+    };
   }, [titik, kantor]);
 
   return (

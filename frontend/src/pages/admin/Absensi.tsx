@@ -4,9 +4,9 @@ import { teksKode } from '../../lib/petaKode';
 import { ambilLokasiKantor, teksJarak } from '../../lib/kantor';
 import type { Absensi, Jenis, StatusAbsensi } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
-import PetaAbsensi, { type TitikPeta } from '../../komponen/PetaAbsensi';
+import PetaAbsensi, { warnaTitik, type TitikPeta } from '../../komponen/PetaAbsensi';
 import { useToast } from '../../komponen/Toast';
-import { isoHariIni, gunakanTerbaru } from '../../komponen/umum';
+import { isoHariIni, gunakanTerbaru, titikTerbaruBerlokasi } from '../../komponen/umum';
 
 /** Modal foto wajah absensi: gambar diunduh mentah (blob JWT) lalu ditampilkan. */
 function ModalFoto({ url, tutup }: { url: string; tutup: () => void }) {
@@ -245,12 +245,12 @@ export default function AbsensiAdmin() {
                 <p className="text-[13px] font-semibold mb-2">Peta lokasi absensi</p>
                 <PetaAbsensi
                   kantor={kantor}
-                  titik={rows
-                    .filter((a) => a.lat !== null && a.lng !== null)
+                  titik={titikTerbaruBerlokasi(rows)
                     .map((a) => ({
                       lat: a.lat as number,
                       lng: a.lng as number,
                       jenis: a.jenis,
+                      warna: warnaTitik(a.user_id),
                       label: `${a.jenis} ${a.jam.slice(0, 5)} (${teksJarak(a.jarak_m)} dari kantor)`,
                     }))}
                 />
@@ -258,7 +258,7 @@ export default function AbsensiAdmin() {
             ) : (
               <p className="text-mu text-sm mt-4">
                 Belum ada data lokasi. Titik absensi muncul bila area kantor sudah diatur pada Pengaturan dan peserta
-                mengirim lokasi saat absen.
+                mengirim lokasi saat absen. Hanya absen terbaru berlokasi yang ditampilkan.
               </p>
             )}
           </>

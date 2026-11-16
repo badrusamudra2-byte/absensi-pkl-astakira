@@ -76,10 +76,15 @@ export interface Workshift {
 /* ---------- Absensi ---------- */
 export interface Absensi {
   id: number;
+  user_id: number;
   tanggal: string; // "2026-10-17"
   jenis: Jenis;
   jam: string; // "08:01:23"
   status: StatusAbsensi;
+  // Data pulang tersimpan pada baris yang sama dengan absen masuk
+  // (satu baris per hari); null bila belum absen pulang.
+  pulang_jam?: string | null; // "17:03:45"
+  pulang_status?: StatusAbsensi | null;
   metode: string;
   keterangan?: string | null;
   // Lokasi absen (null bila validasi lokasi belum diaktifkan admin)
@@ -230,7 +235,7 @@ export interface BarisRekapLaporan {
 }
 
 export interface LaporanData {
-  absensi: (Absensi & { peserta?: { nama: string } })[];
-  jurnal: (BarisJurnal & { peserta?: { nama: string } })[];
+  absensi: (Absensi & { peserta?: { id: number; nama: string } })[];
+  jurnal: (BarisJurnal & { peserta?: { id: number; nama: string } })[];
   rekap: BarisRekapLaporan[];
 }
