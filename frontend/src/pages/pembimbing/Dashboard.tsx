@@ -4,6 +4,7 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { RingkasanPembimbing } from '../../lib/tipe';
 import { Kartu, Pemberitahuan } from '../../komponen/ui';
+import KartuProfil from '../../komponen/KartuProfil';
 
 function Angka({ nilai, label, warna }: { nilai: number | null; label: string; warna: string }) {
   return (
@@ -26,6 +27,7 @@ export default function Dashboard() {
 
   return (
     <>
+      <KartuProfil />
       <Kartu t="Ringkasan hari ini">
         {galat ? (
           <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />

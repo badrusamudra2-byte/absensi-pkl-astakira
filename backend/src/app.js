@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const env = require('./config/env');
+const berkas = require('./utils/berkas');
 const routes = require('./routes');
 const { notFound, onError } = require('./middleware/error');
 
@@ -84,7 +85,7 @@ app.use('/uploads', (req, res, next) => {
     });
   }
   next();
-}, express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
+}, express.static(berkas.root, { index: false, dotfiles: 'deny' }));
 app.use('/api', routes);
 
 // Produksi: sajikan build frontend (CSP pasangan dengan index.html) + SPA fallback

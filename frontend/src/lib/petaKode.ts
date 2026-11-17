@@ -34,6 +34,8 @@ export const PETA: Record<string, [string, string]> = {
   BUKAN_BIMBINGAN: ['Bukan bimbingan Anda', 'Pengajuan ini dari peserta di luar bimbingan Anda.'],
   ALASAN_WAJIB: ['Alasan wajib diisi', 'Tulis alasan koreksi (minimal 3 karakter) agar perubahan terdokumentasi.'],
   PUNYA_RIWAYAT: ['Punya riwayat', 'Data ini sudah dipakai, jadi hanya bisa dinonaktifkan — bukan dihapus.'],
+  LIVE_BELUM_SETUJU: ['Persetujuan dibutuhkan', 'Beri izin pelacakan lokasi pada banner di bawah halaman terlebih dahulu.'],
+  LIVE_TIDAK_AKTIF: ['Pelacakan tidak aktif', 'Pelacakan hanya berjalan dari absen masuk sampai absen pulang.'],
 
   // Galat baku (README backend)
   JURNAL_ADA: ['Jurnal sudah ada', 'Anda sudah punya jurnal untuk tanggal ini. Pilih tanggal lain atau ubah jurnal tersebut.'],

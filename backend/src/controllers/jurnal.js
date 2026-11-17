@@ -5,8 +5,9 @@ const { Jurnal, JurnalReview, User, Absensi, Peserta } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
 const audit = require('../utils/audit');
+const berkas = require('../utils/berkas');
 
-const DIR_LAMPIRAN = path.join(__dirname, '../../uploads/lampiran');
+const DIR_LAMPIRAN = berkas.lampiran;
 
 const STATUS = ['Draft', 'Dikirim', 'Revisi', 'Disetujui'];
 

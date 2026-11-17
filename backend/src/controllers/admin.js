@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
-const path = require('path');
 const { Op, fn } = require('sequelize');
 const {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification, TantanganWajah,
@@ -10,6 +9,7 @@ const { HttpError, asyncH } = require('../utils/httpError');
 const { wajib, jam, email, kuat, pesanSandi } = require('../utils/validasi');
 const { acak, dekripBait } = require('../utils/crypto');
 const { HARI, bagian, rentang } = require('../utils/waktu');
+const berkas = require('../utils/berkas');
 const mail = require('../utils/mailer');
 const audit = require('../utils/audit');
 const { namaBerkas, dariSampai, csvLaporan, xlsxLaporan, pdfLaporan } = require('../utils/ekspor');
@@ -147,7 +147,8 @@ function crud(role, Profile, alias) {
         await u.destroy({ transaction: t });
       });
       // Berkas foto profil (best-effort, di luar transaksi DB)
-      if (u.foto_url) fs.unlink(path.join(__dirname, '../..', u.foto_url), () => {});
+      const pFoto = berkas.urlKePath(u.foto_url);
+      if (pFoto) fs.unlink(pFoto, () => {});
       await audit(req, `Hapus ${role}`, u.nama);
       res.json({ pesan: 'Data dihapus.' });
     }),

@@ -5,6 +5,7 @@ const { kosongkanDb, isiDasar, buatUser, tokenUntuk } = require('./helper');
 const { bagian } = require('../src/utils/waktu');
 const path = require('path');
 const fs = require('fs');
+const berkas = require('../src/utils/berkas');
 
 beforeEach(kosongkanDb);
 
@@ -15,8 +16,7 @@ const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
 const TXT = Buffer.from('bukan gambar');
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
 
-const DIR = path.join(__dirname, '../uploads/lampiran');
-const adaBerkas = (nama) => fs.existsSync(path.join(DIR, nama));
+const adaBerkas = (nama) => fs.existsSync(path.join(berkas.lampiran, nama));
 
 /** Buat jurnal draft milik peserta lewat API. */
 const jurnal = async (authz, tanggal = HARI) => {
@@ -106,7 +106,7 @@ describe('lampiran foto kegiatan jurnal (opsional)', () => {
       .attach('lampiran', TXT, { filename: 'bukan.txt', contentType: 'text/plain' });
     expect(r.status).toBe(422);
     expect(r.body).toMatchObject({ kode: 'UPLOAD' });
-    const sisa = fs.readdirSync(DIR).filter((f) => f.endsWith('.txt'));
+    const sisa = fs.readdirSync(berkas.lampiran).filter((f) => f.endsWith('.txt'));
     expect(sisa).toHaveLength(0);
   });
 

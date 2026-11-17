@@ -6,6 +6,7 @@ const { HttpError, asyncH } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
 const audit = require('../utils/audit');
 const keteranganBuat = require('../services/keterangan').buat;
+const berkas = require('../utils/berkas');
 const env = require('../config/env');
 
 // Peserta.pembimbing_id menyimpan user id pembimbing
@@ -63,7 +64,7 @@ exports.kirim = asyncH(async (req, res) => {
   // Berkas bukti sudah ditulis middleware ke uploads/pengajuan. Bila validasi
   // di bawah gagal, berkas wajib dihapus agar tidak menumpuk sebagai berkas yatim.
   const hapusBukti = () => {
-    try { fs.unlinkSync(path.join(__dirname, '../../uploads/pengajuan', req.file.filename)); } catch { /* sudah tak ada */ }
+    try { fs.unlinkSync(path.join(berkas.pengajuan, req.file.filename)); } catch { /* sudah tak ada */ }
   };
 
   try {
@@ -128,7 +129,7 @@ exports.bukti = asyncH(async (req, res) => {
   }
   if (!boleh) throw new HttpError(403, 'Bukti ini bukan pengajuan Anda atau bimbingan Anda.', 'DILARANG');
 
-  res.sendFile(path.join(__dirname, '../../uploads/pengajuan', nama));
+  res.sendFile(path.join(berkas.pengajuan, nama));
 });
 
 /** Daftar pengajuan: peserta melihat miliknya; pembimbing melihat bimbingannya. */
@@ -186,8 +187,9 @@ exports.putuskan = asyncH(async (req, res) => {
 
     if (putusan === 'Disetujui') {
       // Tulis baris absensi izin/sakit (hari terkunci dari QR/wajah); peserta lain tak sempat absen.
-      // Batas 7-hari dilewati: tanggalnya sudah tervalidasi saat pengajuan dikirim, jadi
-      // keputusan yang diajukan telat tetap bisa disetujui (tidak macet Menunggu).
+      // Hanya batas 7-hari ke belakang yang dilewati (lewatiBatas): tanggalnya sudah
+      // tervalidasi saat pengajuan dikirim, jadi keputusan yang telat tetap bisa disetujui.
+      // Tanggal masa depan tetap ditolak — keputusan dilakukan pada hari itu sendiri.
       await keteranganBuat({
         user_id: p.user_id, tanggal: p.tanggal, status: p.jenis,
         keterangan: p.keterangan, oleh: pid,

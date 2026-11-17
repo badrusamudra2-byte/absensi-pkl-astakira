@@ -3,9 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { HttpError } = require('../utils/httpError');
-
-const dir = path.join(__dirname, '../../uploads/lampiran');
-fs.mkdirSync(dir, { recursive: true });
+const { lampiran: dir } = require('../utils/berkas');
 
 const MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 

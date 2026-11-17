@@ -1,0 +1,103 @@
+%% ERD — Basis Data Aplikasi Absensi PKL dan Jurnal Kegiatan (Astakira Media)
+%% Skema aktual database absensi_pkl (MySQL), diverifikasi dari information_schema
+%% dan kode aplikasi (models/index.js + migrations). Relasi ditegakkan di level
+%% aplikasi (Sequelize), bukan FOREIGN KEY constraint di level database.
+erDiagram
+    users {
+        int id PK
+        varchar nama
+        varchar username UK "nilai unik"
+        varchar email UK "nilai unik"
+        varchar password_hash "hash bcrypt"
+        enum role "peserta | pembimbing | admin"
+        varchar foto_url
+        boolean aktif
+        boolean setuju_live_tracking
+        char reset_token_hash
+        datetime reset_expires
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    peserta {
+        int id PK
+        int user_id FK "unik - 1:1 ke users"
+        varchar divisi
+        int pembimbing_id FK "merujuk users.id ber-role pembimbing"
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    pembimbing {
+        int id PK
+        int user_id FK "unik - 1:1 ke users"
+        varchar divisi
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    absensi {
+        int id PK
+        int user_id FK "peserta yang absen"
+        date tanggal "unik per (user_id, tanggal)"
+        enum jenis "masuk | pulang"
+        time jam "jam absen masuk"
+        time pulang_jam "jam absen pulang (boleh NULL)"
+        enum pulang_status "status absen pulang (boleh NULL)"
+        enum status "Hadir | Terlambat | Izin | Sakit | Tidak hadir"
+        varchar metode
+        text keterangan
+        int token_id FK "merujuk tabel qr_tokens (pendukung QR)"
+        int dikonfirmasi_oleh FK "users.id pembimbing yang memindai (opsional)"
+        double lat
+        double lng
+        double akurasi_m
+        double jarak_m
+        boolean di_dalam_area
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    pengajuan_izin {
+        int id PK
+        int user_id FK "peserta pengaju"
+        date tanggal
+        enum jenis "Izin | Sakit"
+        enum status "Menunggu | Disetujui | Ditolak"
+        text keterangan
+        varchar bukti "nama berkas bukti di uploads/pengajuan/"
+        int ditangani_oleh FK "users.id pembimbing pemutus (opsional)"
+        text catatan_putusan
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    jurnal {
+        int id PK
+        int user_id FK "penulis jurnal (peserta)"
+        date tanggal "unik per (user_id, tanggal)"
+        varchar judul
+        text uraian
+        text hasil
+        text kendala
+        text rencana
+        enum status "Draft | Dikirim | Revisi | Disetujui"
+        varchar lampiran "nama berkas di uploads/lampiran/ (opsional)"
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+    jurnal_review {
+        int id PK
+        int jurnal_id FK
+        int pembimbing_id FK "users.id pembimbing pereview"
+        enum keputusan "Disetujui | Revisi"
+        text catatan
+        datetime dibuat_pada
+        datetime diubah_pada
+    }
+
+    users ||--|| peserta : "user_id"
+    users ||--|| pembimbing : "user_id"
+    users ||--o{ peserta : "pembimbing_id (relasi bimbingan)"
+    users ||--o{ absensi : "user_id"
+    users |o--o{ absensi : "dikonfirmasi_oleh"
+    users ||--o{ pengajuan_izin : "user_id"
+    users |o--o{ pengajuan_izin : "ditangani_oleh"
+    users ||--o{ jurnal : "user_id"
+    users |o--o{ jurnal_review : "pembimbing_id"
+    jurnal ||--o{ jurnal_review : "jurnal_id"

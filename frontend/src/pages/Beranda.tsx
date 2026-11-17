@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../konteks/Auth';
 import type { Role } from '../lib/tipe';
 import { Kartu } from '../komponen/ui';
+import KartuProfil from '../komponen/KartuProfil';
 
 const TINDAKAN: Record<Role, { to: string; label: string; uraian: string }[]> = {
   peserta: [
@@ -25,6 +26,7 @@ export default function Beranda() {
 
   return (
     <>
+      <KartuProfil />
       <section className="bg-kartu border border-garis rounded-xl p-5 md:p-[18px] mb-4">
         <h2 className="text-lg font-extrabold mb-1">
           Selamat datang{user ? `, ${user.nama}` : ''}!

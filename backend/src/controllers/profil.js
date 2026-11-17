@@ -5,6 +5,7 @@ const { User } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { kuat, pesanSandi } = require('../utils/validasi');
 const audit = require('../utils/audit');
+const berkas = require('../utils/berkas');
 
 exports.password = asyncH(async (req, res) => {
   const { password_lama: lama, password_baru: baru } = req.body;
@@ -25,11 +26,14 @@ exports.foto = asyncH(async (req, res) => {
     await req.user.update({ foto_url: '/uploads/foto/' + req.file.filename });
   } catch (e) {
     // Gagal simpan: berkas baru jangan jadi yatim di disk
-    try { fs.unlinkSync(path.join(__dirname, '../../uploads/foto', req.file.filename)); } catch { /* sudah tak ada */ }
+    try { fs.unlinkSync(path.join(berkas.foto, req.file.filename)); } catch { /* sudah tak ada */ }
     throw e;
   }
   // Hapus berkas lama hanya bila path-nya memang milik folder foto profil
   // (jaga-jaga bila kolom foto_url pernah ternodai).
-  if (lama && lama.startsWith('/uploads/foto/')) fs.unlink(path.join(__dirname, '../..', lama), () => {});
+  if (lama && lama.startsWith('/uploads/foto/')) {
+    const p = berkas.urlKePath(lama);
+    if (p) fs.unlink(p, () => {});
+  }
   res.json({ foto_url: req.user.foto_url });
 });

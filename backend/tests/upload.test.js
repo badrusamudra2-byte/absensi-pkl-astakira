@@ -3,6 +3,7 @@ const app = require('../src/app');
 const { kosongkanDb, isiDasar, buatUser, tokenUntuk, SANDI_SEED } = require('./helper');
 const fs = require('fs');
 const path = require('path');
+const berkas = require('../src/utils/berkas');
 
 let tok;
 
@@ -10,9 +11,9 @@ beforeEach(async () => {
   await kosongkanDb();
   await isiDasar();
   tok = await tokenUntuk('rizal@astakira.id');
-  // Bersihkan isi folder foto, jangan hapus foldernya (dibuat saat modul upload termuat)
-  const fotoDir = path.join(__dirname, '../uploads/foto');
-  if (fs.existsSync(fotoDir)) for (const f of fs.readdirSync(fotoDir)) fs.rmSync(path.join(fotoDir, f), { force: true });
+  // Folder foto ada di UPLOAD_DIR milik tes (tests/env.js); bersihkan isinya
+  // agar tiap uji mulai bersih tanpa menyentuh folder unggahan asli.
+  if (fs.existsSync(berkas.foto)) for (const f of fs.readdirSync(berkas.foto)) fs.rmSync(path.join(berkas.foto, f), { force: true });
 });
 
 const unggah = (buffer, nama, mime) =>
@@ -34,7 +35,7 @@ describe('Unggah foto profil (validasi isi, bukan hanya MIME)', () => {
     const r = await unggah(png, 'botol.png', 'image/png');
     expect(r.status).toBe(200);
     expect(r.body.foto_url).toMatch(/^\/uploads\/foto\/[a-f0-9]{32}\.png$/);
-    expect(fs.existsSync(path.join(__dirname, '../', r.body.foto_url.slice(1)))).toBe(true);
+    expect(fs.existsSync(berkas.urlKePath(r.body.foto_url))).toBe(true);
   });
 
   test('JPEG diterima', async () => {

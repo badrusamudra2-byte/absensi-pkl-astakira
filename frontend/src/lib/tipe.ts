@@ -167,6 +167,26 @@ export interface JurnalDetail extends BarisJurnal {
   peserta?: { id: number; nama: string } | null;
 }
 
+/* ---------- Live tracking (tahap 2) ---------- */
+export interface StatusLive {
+  setuju: boolean;
+  sesi: { mulai_pada: string; tanggal: string } | null;
+}
+
+/** Baris peta live pembimbing/admin dari GET /live/peta. */
+export interface BarisPetaLive {
+  user_id: number;
+  nama: string;
+  foto_url: string | null;
+  status: 'Aktif' | 'Terputus' | 'Selesai';
+  lat: number | null;
+  lng: number | null;
+  akurasi_m: number | null;
+  diperbarui_pada: string | null;
+  menit_lalu: number | null;
+  sebab: 'pulang' | 'otomatis' | null;
+}
+
 /* ---------- Pembimbing (fase 5) ---------- */
 export interface RingkasanPembimbing {
   jumlah_peserta: number;

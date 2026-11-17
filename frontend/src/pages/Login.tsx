@@ -39,7 +39,7 @@ export default function Login() {
         <div className="bg-nv text-white p-8 flex flex-col justify-center gap-3">
           <h1 className="text-2xl font-extrabold leading-snug">
             Panel Absensi PKL<br />
-            SMKN 3 Banjar 
+            Astakira Media
           </h1>
           <p className="text-nv-t text-sm">
             Absen dengan QR atau wajah, tulis jurnal harian, dan pantau kehadiran dalam satu tempat.
