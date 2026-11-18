@@ -342,14 +342,30 @@ describe('Keputusan pengajuan yang telat diputuskan (lewatiBatas)', () => {
     expect(r.body.kode).toBe('VALIDASI');
   });
 
-  test('tanggal masa depan tetap ditolak lewat putuskan', async () => {
-    const telat = await M.PengajuanIzin.create({
+  test('pengajuan tanggal depan (dalam batas maksMaju) bisa disetujui dan hari terkunci', async () => {
+    const depan = await M.PengajuanIzin.create({
+      user_id: dasar.peserta.id, tanggal: TGL_DEPAN, jenis: 'Izin', keterangan: 'Keperluan keluarga di luar kota.', bukti: 'i.jpg',
+    });
+    const r = await request(app)
+      .put(`/api/pengajuan/izin/${depan.id}/putuskan`)
+      .set('Authorization', tokPmb)
+      .send({ putusan: 'Disetujui' });
+    expect(r.status).toBe(200);
+    expect(r.body.data.status).toBe('Disetujui');
+    const b = await M.Absensi.findOne({ where: { user_id: dasar.peserta.id, tanggal: TGL_DEPAN } });
+    expect(b).not.toBeNull();
+    expect(b.status).toBe('Izin');
+    expect(b.metode).toBe('Izin');
+  });
+
+  test('tanggal lebih maju dari batas maksMaju tetap ditolak lewat putuskan', async () => {
+    const jauh = await M.PengajuanIzin.create({
       user_id: dasar.peserta.id, tanggal: TGL_LAMBUAT, jenis: 'Izin', keterangan: 'Keperluan keluarga di luar kota.', bukti: 'i.jpg',
     });
-    // Lewatinya hanya batas maksBuka; kalender dan masa depan tetap diberlakukan
-    await telat.update({ tanggal: TGL_DEPAN });
+    // Lewatinya hanya batas maksBuka; kalender dan batas maksMaju tetap diberlakukan
+    await jauh.update({ tanggal: TGL_DEPAN2 });
     const r = await request(app)
-      .put(`/api/pengajuan/izin/${telat.id}/putuskan`)
+      .put(`/api/pengajuan/izin/${jauh.id}/putuskan`)
       .set('Authorization', tokPmb)
       .send({ putusan: 'Disetujui' });
     expect(r.status).toBe(400);

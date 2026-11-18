@@ -58,17 +58,6 @@ app.use(morgan((tokens, req, res) => {
   arusLog.write(baris + '\n');
   return baris;
 }));
-// SEMENTARA (diagnostik): catat isi respons scan QR agar alasan penolakan 409 terbaca.
-app.use((req, res, next) => {
-  if (req.method === 'POST' && req.originalUrl === '/api/absensi/scan') {
-    const j = res.json.bind(res);
-    res.json = (b) => {
-      arusLog.write('BODY-SCAN ' + JSON.stringify(b).slice(0, 300) + '\n');
-      return j(b);
-    };
-  }
-  next();
-});
 // 1mb: menampung foto wajah JPEG (maks FACE_FOTO_MAKS_BAIT, diperluas base64) pada /face/verify
 app.use(express.json({ limit: '1mb' }));
 

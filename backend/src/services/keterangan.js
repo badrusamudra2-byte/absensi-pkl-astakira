@@ -3,9 +3,10 @@ const { HttpError } = require('../utils/httpError');
 const { bagian } = require('../utils/waktu');
 const env = require('../config/env');
 
-// Tanggal YYYY-MM-DD: kalender sah, tidak boleh masa depan. lewatiBatas hanya
-// melewati batas mundur maksBuka (untuk pencatatan yang sudah tervalidasi saat
-// dibuat, mis. pengajuan izin telat diputuskan); masa depan tetap dilarang.
+// Tanggal YYYY-MM-DD: kalender sah. Batas mundur maksBuka; masa depan boleh
+// sampai maksMaju (batas sama dengan validasi saat pengajuan dikirim, lihat
+// controllers/pengajuan.js tanggalOk) karena layanan ini hanya dipakai alur
+// persetujuan pengajuan. Lebih maju dari itu tetap dilarang.
 const tanggalOk = (s, lewatiBatas = false) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
@@ -16,7 +17,14 @@ const tanggalOk = (s, lewatiBatas = false) => {
   if (!sah) throw new HttpError(400, 'Tanggal tidak valid.', 'VALIDASI');
   const kini = new Date(`${bagian().tanggal}T00:00:00Z`);
   const hari = new Date(Date.UTC(y, m - 1, h));
-  if (hari > kini) throw new HttpError(400, 'Tanggal catatan tidak boleh di masa depan.', 'VALIDASI');
+  const batasMaju = new Date(kini.getTime() + env.pengajuan.maksMaju * 86400000);
+  if (hari > batasMaju) {
+    throw new HttpError(
+      400,
+      `Catatan maksimal untuk ${env.pengajuan.maksMaju} hari ke depan.`,
+      'VALIDASI',
+    );
+  }
   if (!lewatiBatas) {
     const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
     if (hari < batas) {

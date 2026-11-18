@@ -189,7 +189,8 @@ exports.putuskan = asyncH(async (req, res) => {
       // Tulis baris absensi izin/sakit (hari terkunci dari QR/wajah); peserta lain tak sempat absen.
       // Hanya batas 7-hari ke belakang yang dilewati (lewatiBatas): tanggalnya sudah
       // tervalidasi saat pengajuan dikirim, jadi keputusan yang telat tetap bisa disetujui.
-      // Tanggal masa depan tetap ditolak — keputusan dilakukan pada hari itu sendiri.
+      // Tanggal depan boleh sampai batas pengajuan.maksMaju (dicek ulang di
+      // services/keterangan.js) — baris langsung dibuat dan mengunci hari itu.
       await keteranganBuat({
         user_id: p.user_id, tanggal: p.tanggal, status: p.jenis,
         keterangan: p.keterangan, oleh: pid,

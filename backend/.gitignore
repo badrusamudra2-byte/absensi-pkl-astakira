@@ -1,3 +1,11 @@
 node_modules
 .env
 uploads
+
+# Log runtime tidak di-commit
+logs/
+
+# Output debug/tes dan berkas cadangan
+*-output.txt
+test-out.txt
+*.bak
