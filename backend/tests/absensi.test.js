@@ -79,6 +79,7 @@ describe('menayangkan QR (/absensi/qr-saya)', () => {
 
   test('peserta menayangkan ulang jenis sama: token lama dipadamkan, yang baru aktif', async () => {
     const { admin, peserta } = await isiDasar();
+    await kerjakanHari();
     await setMode(await tokenUntuk(admin.email), 'qr'); // fokus ke mekanis token
     const t1 = await tayangkanQr(peserta.email);
     const t2 = await tayangkanQr(peserta.email);
@@ -95,6 +96,7 @@ describe('menayangkan QR (/absensi/qr-saya)', () => {
 
   test('QR tiap siswa berbeda dan milik masing-masing', async () => {
     const { admin, peserta } = await isiDasar();
+    await kerjakanHari();
     await setMode(await tokenUntuk(admin.email), 'qr');
     const lain = await buatUser({ nama: 'Bima Pratama', username: 'bima', email: 'bima@astakira.id', role: 'peserta' });
     await M.Peserta.create({ user_id: lain.id, divisi: 'Videografi', pembimbing_id: null });
@@ -189,16 +191,27 @@ describe('pembimbing memindai QR peserta (/absensi/scan)', () => {
     expect(await M.Absensi.count()).toBe(1);
   });
 
-  test('hari libur -> 422 HARI_LIBUR', async () => {
+  test('hari libur: QR tidak bisa tayang -> 422 HARI_LIBUR; jalur scan juga menolak', async () => {
     const { admin, peserta, pembimbing } = await isiDasar();
-    await kerjakanHari();
     const ws = await M.Workshift.findOne({ where: { hari: hariIni().hari } });
     await ws.update({ hari_kerja: false });
     await setMode(await tokenUntuk(admin.email), 'qr');
-    const { token } = await tayangkanQr(peserta.email);
-    const r = await pindai(await tokenUntuk(pembimbing.email), { token });
-    expect(r.status).toBe(422);
-    expect(r.body).toMatchObject({ kode: 'HARI_LIBUR' });
+    const minta = await request(app).post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email)).send({ jenis: 'masuk' });
+    expect(minta.status).toBe(422);
+    expect(minta.body).toMatchObject({ kode: 'HARI_LIBUR' });
+    expect(await M.QrToken.count()).toBe(0);
+
+    // Jalur pemindai tetap menolak hari libur bila token dibuat langsung di DB
+    const mentah = 'tes-token-hari-libur-1234';
+    await M.QrToken.create({
+      token_hash: sha256(mentah), user_id: peserta.id, jenis: 'masuk',
+      kedaluwarsa_pada: new Date(Date.now() + 30000),
+    });
+    const scan = await pindai(await tokenUntuk(pembimbing.email), { token: mentah });
+    expect(scan.status).toBe(422);
+    expect(scan.body).toMatchObject({ kode: 'HARI_LIBUR' });
+    expect(await M.Absensi.count()).toBe(0);
   });
 
   test('mode wajah: scan ditolak -> 409 MODE_QR_NONAKTIF', async () => {
@@ -443,13 +456,24 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
     expect(ulang.body).toMatchObject({ kode: 'SUDAH_ABSEN' });
   });
 
-  test('pindai QR pulang lebih awal dari 5 menit sebelum jam pulang -> 422 PULANG_BELUM_WAKTUNYA', async () => {
+  test('QR pulang lebih awal dari 5 menit sebelum jam pulang: tidak bisa tayang -> 422 PULANG_BELUM_WAKTUNYA', async () => {
     const { admin, peserta, pembimbing } = await isiDasar();
     await jadwalKerja();
     await setMode(await tokenUntuk(admin.email), 'qr'); // fokus ke aturan waktu, bukan wajah
     waktu.__jam('15:54'); // 1 menit sebelum pembukaan
-    const { token } = await tayangkanQr(peserta.email, 'pulang');
-    const r = await pindai(await tokenUntuk(pembimbing.email), { token });
+    const minta = await request(app).post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email)).send({ jenis: 'pulang' });
+    expect(minta.status).toBe(422);
+    expect(minta.body).toMatchObject({ kode: 'PULANG_BELUM_WAKTUNYA' });
+    expect(await M.QrToken.count()).toBe(0);
+
+    // Jalur pemindai tetap menolak sebelum jendela bila token dibuat langsung di DB
+    const mentah = 'tes-token-pulang-awal-1234';
+    await M.QrToken.create({
+      token_hash: sha256(mentah), user_id: peserta.id, jenis: 'pulang',
+      kedaluwarsa_pada: new Date(Date.now() + 30000),
+    });
+    const r = await pindai(await tokenUntuk(pembimbing.email), { token: mentah });
     expect(r.status).toBe(422);
     expect(r.body).toMatchObject({ kode: 'PULANG_BELUM_WAKTUNYA' });
     expect(r.body.pesan).toContain('15:55');
@@ -559,5 +583,46 @@ describe('hitungStatus (toleransi dihitung dari jam server, bukan klien)', () =>
 
   test('absen pulang selalu Hadir', () => {
     expect(hitungStatus('pulang', ws, { menit: menitDariJam('23:00') })).toBe('Hadir');
+  });
+});
+
+/* ---------- Template wajah tersimpan tidak sah harus fail-closed ---------- */
+describe('template wajah rusak -> 500 TEMPLATE_RUSAK (tidak lolos verifikasi)', () => {
+  const rusakkanTemplate = async (peserta) => {
+    const { enc } = require('../src/utils/crypto');
+    // Ciphertext sah (terdekripsi berhasil), tetapi bentuk vektornya salah
+    await M.FaceTemplate.update(
+      { embedding: enc([0.1, 0.2, 0.3]) },
+      { where: { user_id: peserta.id } },
+    );
+  };
+
+  test('absen wajah langsung: ditolak, tidak ada absensi tercatat', async () => {
+    const { admin, peserta } = await isiDasar();
+    await kerjakanHari();
+    await setMode(await tokenUntuk(admin.email), 'wajah');
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    await rusakkanTemplate(peserta);
+    const tan = await mintaTantangan(authz);
+    const r = await request(app).post('/api/absensi/wajah').set('Authorization', authz)
+      .send({ jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(500);
+    expect(r.body).toMatchObject({ kode: 'TEMPLATE_RUSAK' });
+    expect(await M.Absensi.count()).toBe(0);
+  });
+
+  test('verifikasi wajah (qr_wajah): ditolak, tidak ada verifikasi tercatat', async () => {
+    const { peserta } = await isiDasar();
+    await kerjakanHari();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    await rusakkanTemplate(peserta);
+    const tan = await mintaTantangan(authz);
+    const r = await request(app).post('/api/face/verify').set('Authorization', authz)
+      .send({ jenis: 'masuk', embedding: VEK(), nonce: tan.body.nonce });
+    expect(r.status).toBe(500);
+    expect(r.body).toMatchObject({ kode: 'TEMPLATE_RUSAK' });
+    expect(await M.FaceVerification.count()).toBe(0);
   });
 });

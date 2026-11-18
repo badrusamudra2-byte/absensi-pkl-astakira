@@ -11,6 +11,7 @@ export const PETA: Record<string, [string, string]> = {
   PERSETUJUAN_WAJIB: ['Persetujuan dibutuhkan', 'Beri tanda persetujuan penggunaan data wajah terlebih dahulu.'],
   TEMPLATE_ADA: ['Wajah sudah terdaftar', 'Template wajah sudah ada. Hubungi admin untuk mendaftar ulang.'],
   TEMPLATE_BELUM: ['Wajah belum terdaftar', 'Daftarkan wajah Anda terlebih dahulu dari menu Pendaftaran wajah.'],
+  TEMPLATE_RUSAK: ['Template wajah tidak sah', 'Data wajah tersimpan bermasalah. Hubungi admin untuk mendaftar ulang wajah.'],
   TANTANGAN_WAJIB: ['Tantangan belum selesai', 'Selesaikan gerakan yang diminta sebelum lanjut.'],
   TANTANGAN_TAK_ADA: ['Tantangan tidak dikenali', 'Minta tantangan baru lalu ulangi gerakan.'],
   TANTANGAN_KEDALUWARSA: ['Tantangan kedaluwarsa', 'Waktu Anda habis. Minta tantangan baru lalu ulangi gerakan.'],

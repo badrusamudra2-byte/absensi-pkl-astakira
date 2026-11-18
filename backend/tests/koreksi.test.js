@@ -44,6 +44,43 @@ describe('Koreksi absensi oleh admin', () => {
     expect((await M.Absensi.findByPk(absen.id)).status).toBe('Tidak hadir');
   });
 
+  test('status Izin/Sakit/Tidak hadir tidak boleh sekaligus punya jam pulang', async () => {
+    const tolak = await koreksi(tokAdmin, absen.id, {
+      status: 'Izin', pulang_jam: '17:00:00', alasan: 'Mencoba kombinasi mustahil.',
+    });
+    expect(tolak.status).toBe(400);
+    expect(tolak.body.kode).toBe('VALIDASI');
+    // Baris tidak berubah
+    const a = await M.Absensi.findByPk(absen.id);
+    expect(a.status).toBe('Terlambat');
+    expect(a.pulang_jam).toBeNull();
+  });
+
+  test('status diubah ke Tidak hadir: data pulang yang sudah ada ikut dikosongkan', async () => {
+    await koreksi(tokAdmin, absen.id, { pulang_jam: '17:05:00', alasan: 'Set pulang dahulu.' });
+    const r = await koreksi(tokAdmin, absen.id, { status: 'Tidak hadir', alasan: 'Ternyata tidak hadir.' });
+    expect(r.status).toBe(200);
+    const a = await M.Absensi.findByPk(absen.id);
+    expect(a.status).toBe('Tidak hadir');
+    expect(a.pulang_jam).toBeNull();
+    expect(a.pulang_status).toBeNull();
+  });
+
+  test('koreksi baris penanda otomatis mengubah metode jadi Koreksi', async () => {
+    const p = await M.Absensi.create({
+      user_id: dasar.nonaktif.id, tanggal: TGL_LAMPAU, jenis: 'masuk',
+      jam: '00:00:00', status: 'Tidak hadir', metode: 'Otomatis',
+    });
+    const r = await koreksi(tokAdmin, p.id, {
+      jam: '07:30:00', status: 'Terlambat', alasan: 'Peserta ternyata datang, penanda diganti.',
+    });
+    expect(r.status).toBe(200);
+    const a = await M.Absensi.findByPk(p.id);
+    expect(a.jam).toBe('07:30:00');
+    expect(a.status).toBe('Terlambat');
+    expect(a.metode).toBe('Koreksi'); // bukan lagi penanda sistem yang boleh ditimpa
+  });
+
   test('alasan wajib (minimal 3 karakter)', async () => {
     const tanpa = await koreksi(tokAdmin, absen.id, { jam: '08:00:00' });
     expect(tanpa.status).toBe(400);

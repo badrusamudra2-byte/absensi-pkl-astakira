@@ -107,9 +107,18 @@ exports.qrSaya = asyncH(async (req, res) => {
     }
   }
 
+  // Cek awal seperti scanPeserta — diletakkan setelah cek di atas agar SUDAH_ABSEN
+  // dan WAJAH_BELUM_VERIF tetap diutamakan: QR yang pasti ditolak saat pemindaian
+  // tidak perlu tayang — hari Izin/Sakit, hari libur, atau pulang sebelum jendelanya.
+  const w = bagian();
+  await cekTerkunci(uid, w.tanggal);
+  const ws = await jadwalHari(w.hari);
+  cekWaktuPulang(jen, ws, w);
+
   const now = new Date();
   // Lokasi peserta saat menayangkan QR: divalidasi server (Haversine) bila area
-  // kantor sudah diatur; bila belum, alur lama — QR tayang tanpa data lokasi.
+  // kantor sudah diatur; bila belum, koordinat tetap disimpan di token tanpa
+  // validasi radius (validasi menyusul saat scan dengan titik kantor terkini).
   const titik = bacaLokasi(req.body);
   const lok = sahkanLokasi(cfg, titik);
   await QrToken.update(
@@ -148,9 +157,11 @@ exports.wajah = asyncH(async (req, res) => {
   }
 
   const w = bagian();
+  // Sama dengan scanPeserta: hari tercatat Izin/Sakit dicek lebih dulu agar
+  // peserta menerima HARI_TERCATAT, bukan penjelasan teknis HARI_LIBUR.
+  await cekTerkunci(uid, w.tanggal);
   const ws = await jadwalHari(w.hari);
   cekWaktuPulang(jen, ws, w);
-  await cekTerkunci(uid, w.tanggal);
   const lama = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
   // Satu baris per hari: masuk ditolak bila baris nyata sudah ada; pulang ditolak
   // hanya bila pulang_jam sudah terisi — bukan sekadar karena baris masuk ada.
@@ -162,8 +173,14 @@ exports.wajah = asyncH(async (req, res) => {
     throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
   }
 
-  const jarakWajah = jarak(embedding, dec(tpl.embedding)); // jarak saja yang dicatat, bukan embedding
-  if (jarakWajah > env.face.threshold) {
+  // Template tersimpan harus berbentuk sah (array finite sepanjang dim). Tanpa ini,
+  // jarak bisa NaN dan `NaN > threshold` bernilai false -> verifikasi lolos tanpa cocok.
+  const tplVektor = dec(tpl.embedding); // jarak saja yang dicatat, bukan embedding
+  if (!valid(tplVektor)) {
+    throw new HttpError(500, 'Template wajah tidak sah. Hubungi admin untuk mendaftar ulang wajah.', 'TEMPLATE_RUSAK');
+  }
+  const jarakWajah = jarak(embedding, tplVektor);
+  if (!Number.isFinite(jarakWajah) || jarakWajah > env.face.threshold) {
     await audit(req, 'Absensi wajah gagal', jen, { jarak: Number(jarakWajah.toFixed(4)), ambang: env.face.threshold });
     throw new HttpError(422, 'Wajah tidak cocok dengan template yang terdaftar.', 'WAJAH_TIDAK_COCOK');
   }
@@ -300,6 +317,10 @@ exports.scanPeserta = asyncH(async (req, res) => {
       );
     }
     lok = sahkanLokasi(cfg, { lat: tok.lat, lng: tok.lng, akurasi_m: tok.akurasi_m }, 'peserta');
+  } else if (tok.lat !== null && tok.lat !== undefined) {
+    // Kantor belum diatur: tanpa validasi radius, tetapi koordinat peserta dari
+    // token tetap disimpan agar rekap memiliki data posisi.
+    lok = { lat: tok.lat, lng: tok.lng, akurasi_m: tok.akurasi_m ?? null };
   }
 
   const status = hitungStatus(jen, ws, w);
@@ -368,9 +389,9 @@ exports.scanPeserta = asyncH(async (req, res) => {
     if (e.name === 'SequelizeUniqueConstraintError') {
       throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
     }
-    if (e instanceof HttpError) throw e;
-    // Kirim error 422 dengan detail error agar tidak jadi 500 server error
-    throw new HttpError(422, e.message || 'Gagal catat absensi', e.kode || 'SERVER_ERROR');
+    // Sisanya (termasuk HttpError) dilempar apa adanya: error tak terduga ditangani
+    // middleware error pusat sebagai 500 yang aman — bukan 422 dengan pesan internal.
+    throw e;
   }
   await audit(req, `Absensi scan peserta ${jen}`, `${status} | pes#${uid} | oleh#${req.user.id}`,
     fV ? 'verifikasi wajah dari HP peserta' : null);

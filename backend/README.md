@@ -141,6 +141,7 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | PERSETUJUAN_WAJIB | 422 | Persetujuan penggunaan data wajah dibutuhkan |
 | TEMPLATE_ADA | 409 | Template wajah sudah terdaftar |
 | TEMPLATE_BELUM | 412 | Template wajah belum terdaftar |
+| TEMPLATE_RUSAK | 500 | Template wajah tersimpan tidak sah — hubungi admin untuk daftar ulang |
 | TANTANGAN_WAJIB | 422 | Hasil tantangan liveness belum dikirim |
 | TANTANGAN_TAK_ADA | 404 | Tantangan tidak dikenali |
 | TANTANGAN_KEDALUWARSA | 410 | Tantangan kedaluwarsa |

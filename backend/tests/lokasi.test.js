@@ -74,9 +74,11 @@ describe('utils/lokasi (unit)', () => {
     expect(err.kode).toBe('VALIDASI');
   });
 
-  test('sahkanLokasi: kantor belum diatur -> {} tanpa menuntut lokasi', () => {
+  test('sahkanLokasi: kantor belum diatur -> tanpa radius, koordinat tetap dikembalikan', () => {
     expect(sahkanLokasi({}, null)).toEqual({});
-    expect(sahkanLokasi({ lat_kantor: null, lng_kantor: null, radius_m: 100, akurasi_maks_m: 50 }, { lat: 0, lng: 0, akurasi_m: 10 })).toEqual({});
+    expect(
+      sahkanLokasi({ lat_kantor: null, lng_kantor: null, radius_m: 100, akurasi_maks_m: 50 }, { lat: 0, lng: 0, akurasi_m: 10 }),
+    ).toEqual({ lat: 0, lng: 0, akurasi_m: 10 });
   });
 
   test('sahkanLokasi: dalam radius -> jarak_m & di_dalam_area; luar & akurasi buruk -> 422', () => {
@@ -287,6 +289,25 @@ describe('QR: lokasi dikumpulkan saat qr-saya, dipakai saat scan', () => {
     expect(scan.status).toBe(200);
     const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
     expect(baris.lat).toBeNull();
+  });
+
+  test('kantor belum diatur: lokasi peserta tetap tersimpan di token dan absensi (tanpa validasi radius)', async () => {
+    const { admin, peserta, pembimbing } = await isiDasar();
+    await hariKerja();
+    await setMode(await tokenUntuk(admin.email), 'qr');
+    waktu.__jam('08:00');
+    const ok = await tayang(peserta, { lat: -6.2, lng: 106.816, akurasi_m: 15 });
+    expect(ok.status).toBe(201);
+    const tok = await M.QrToken.findOne({ where: { user_id: peserta.id } });
+    expect(tok.lat).toBe(-6.2);
+    expect(tok.lng).toBe(106.816);
+    const scan = await request(app).post('/api/absensi/scan')
+      .set('Authorization', await tokenUntuk(pembimbing.email)).send({ token: ok.body.token });
+    expect(scan.status).toBe(200);
+    const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
+    expect(baris.lat).toBe(-6.2);
+    expect(baris.jarak_m).toBeNull(); // tidak ada titik kantor pembanding
+    expect(baris.di_dalam_area).toBeNull();
   });
 
   test('radius kantor dikecilkan setelah QR tayang: scan memakai radius terkini', async () => {

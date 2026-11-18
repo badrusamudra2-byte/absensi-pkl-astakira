@@ -198,21 +198,17 @@ describe('Putusan pembimbing', () => {
     expect(b.keterangan).toBe('Menghadiri undangan keluarga.');
     expect(b.dikonfirmasi_oleh).toBe(dasar.pembimbing.id);
 
-    // QR jenis sama tetap bisa diminta (Izin dikecualikan dari SUDAH_ABSEN),
-    // tapi pindaiannya ditolak karena hari terkunci
+    // Hari terkunci: QR jenis mana pun tidak bisa tayang lagi — ditolak di awal
+    // (sebelumnya QR tetap tayang lalu ditolak saat pemindaian, membingungkan)
     await M.PengaturanAbsensi.findOrCreate({ where: { id: 1 }, defaults: { metode: 'qr' } });
     require('../src/services/pengaturan').segarkan();
     const minta = await request(app)
       .post('/api/absensi/qr-saya')
       .set('Authorization', tokPeserta)
       .send({ jenis: 'masuk' });
-    expect(minta.status).toBe(201);
-    const masuk = await request(app)
-      .post('/api/absensi/scan')
-      .set('Authorization', tokPmb)
-      .send({ token: minta.body.token });
-    expect(masuk.status).toBe(409);
-    expect(masuk.body.kode).toBe('HARI_TERCATAT');
+    expect(minta.status).toBe(409);
+    expect(minta.body.kode).toBe('HARI_TERCATAT');
+    expect(await M.QrToken.count()).toBe(0);
   });
 
   test('Disetujui Sakit: baris absensi Sakit dibuat dengan metode Sakit', async () => {

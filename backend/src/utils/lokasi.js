@@ -31,12 +31,13 @@ function bacaLokasi(badan = {}) {
 }
 
 /** Validasi jarak di server (sumber kebenaran waktu, status, dan kini juga lokasi).
- * Bila kantor belum diatur (lat/lng kantor NULL), lokasi tidak diwajibkan dan
- * dikembalikan kosong — alur absensi lama tidak berubah. */
+ * Bila kantor belum diatur (lat/lng kantor NULL), lokasi tidak diwajibkan:
+ * tanpa validasi radius, tetapi koordinat yang sah tetap dikembalikan agar
+ * tersimpan di token QR/baris absensi — data posisi peserta tidak hilang. */
 function sahkanLokasi(cfg, titik, subjek = 'Anda') {
   if (cfg.lat_kantor === null || cfg.lat_kantor === undefined ||
       cfg.lng_kantor === null || cfg.lng_kantor === undefined) {
-    return {};
+    return titik ? { lat: titik.lat, lng: titik.lng, akurasi_m: titik.akurasi_m } : {};
   }
   const radius = cfg.radius_m ?? 100;
   const ambang = cfg.akurasi_maks_m ?? 50;

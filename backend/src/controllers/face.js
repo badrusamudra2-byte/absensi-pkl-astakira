@@ -78,7 +78,13 @@ exports.verify = asyncH(async (req, res) => {
   if (!tpl) throw new HttpError(412, 'Template wajah belum terdaftar.', 'TEMPLATE_BELUM');
   if (!valid(embedding)) throw new HttpError(422, ...TIDAK_TERBACA);
 
-  const cocok = jarak(embedding, dec(tpl.embedding)) <= env.face.threshold;
+  // Template tersimpan harus berbentuk sah (array finite sepanjang dim) — sama
+  // dengan absensi wajah langsung; tanpa ini jarak bisa NaN tanpa pesan jelas.
+  const tplVektor = dec(tpl.embedding);
+  if (!valid(tplVektor)) {
+    throw new HttpError(500, 'Template wajah tidak sah. Hubungi admin untuk mendaftar ulang wajah.', 'TEMPLATE_RUSAK');
+  }
+  const cocok = jarak(embedding, tplVektor) <= env.face.threshold;
 
   // Urutan: pengecekan kecocokan dulu (gagal cepat), baru nonce dihabiskan.
   if (!cocok) {

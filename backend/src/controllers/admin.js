@@ -397,6 +397,28 @@ exports.koreksi = asyncH(async (req, res) => {
     throw new HttpError(400, 'Tidak ada perubahan yang dikirim (cek kolom jam/status/pulang_jam/pulang_status).', 'VALIDASI');
   }
 
+  // Konsistensi baris hasil koreksi:
+  // - Hari berstatus Izin/Sakit/Tidak hadir tidak punya absensi nyata (aturan yang
+  //   sama dengan cekTerkunci di alur absensi normal) — tidak boleh punya catatan pulang.
+  // - Baris penanda otomatis yang dikoreksi bukan lagi penanda sistem; metode diubah
+  //   agar logika penandaOtomatis (status Tidak hadir + metode Otomatis) tidak salah
+  //   menerapkannya sebagai penanda yang boleh ditimpa.
+  const statusBaru = f.status !== undefined ? f.status : a.status;
+  if (['Izin', 'Sakit', 'Tidak hadir'].includes(statusBaru)) {
+    if (f.pulang_jam !== undefined || f.pulang_status !== undefined) {
+      throw new HttpError(
+        400,
+        'Hari berstatus Izin/Sakit/Tidak hadir tidak boleh sekaligus punya jam pulang. Kosongkan pulang_jam/pulang_status dahulu.',
+        'VALIDASI',
+      );
+    }
+    if (a.pulang_jam) {
+      f.pulang_jam = null;
+      f.pulang_status = null;
+    }
+  }
+  if (a.metode === 'Otomatis') f.metode = 'Koreksi';
+
   const lama = { jenis: a.jenis, jam: a.jam, status: a.status, pulang_jam: a.pulang_jam, pulang_status: a.pulang_status, metode: a.metode };
   await a.update(f);
   const baru = { jenis: a.jenis, jam: a.jam, status: a.status, pulang_jam: a.pulang_jam, pulang_status: a.pulang_status, metode: a.metode };
