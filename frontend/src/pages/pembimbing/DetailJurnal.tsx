@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Badge, Label, Galat } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge, Label } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { waktuWib } from '../../komponen/umum';
+import { Ikon } from '../../komponen/Ikon';
 
 export default function DetailJurnal() {
   const { id } = useParams();
@@ -48,13 +49,23 @@ export default function DetailJurnal() {
 
   if (galat && !jub) {
     return (
-      <Kartu t="Detail jurnal">
-        <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
-        <div className="mt-2"><Tombol onClick={() => navigate('/pembimbing/jurnal')}>Kembali ke daftar</Tombol></div>
-      </Kartu>
+      <>
+        <JudulHalaman eyebrow="Pembimbing" judul="Detail jurnal" sub="Jurnal peserta bimbingan." />
+        <Kartu>
+          <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+          <div className="mt-2"><Tombol onClick={() => navigate('/pembimbing/jurnal')}>Kembali ke daftar</Tombol></div>
+        </Kartu>
+      </>
     );
   }
-  if (!jub) return <Kartu t="Detail jurnal"><p className="text-mu text-sm">Memuat…</p></Kartu>;
+  if (!jub) {
+    return (
+      <>
+        <JudulHalaman eyebrow="Pembimbing" judul="Detail jurnal" sub="Jurnal peserta bimbingan." />
+        <Kartu><p className="text-sm text-mu">Memuat jurnal&hellip;</p></Kartu>
+      </>
+    );
+  }
 
   const bisaReview = jub.status === 'Dikirim';
   const review = (jub.reviews ?? []).map((r) => ({
@@ -66,96 +77,148 @@ export default function DetailJurnal() {
 
   return (
     <>
-      <Kartu t={jub.judul}>
-        <div className="flex flex-wrap items-center gap-3 mb-1">
-          <Badge s={jub.status} />
-          <small className="text-mu">Kegiatan tanggal {jub.tanggal} — {jub.peserta?.nama ?? 'Peserta'}</small>
+      <JudulHalaman
+        eyebrow="Review jurnal"
+        judul={jub.judul}
+        sub={`Kegiatan tanggal ${jub.tanggal} — ${jub.peserta?.nama ?? 'Peserta'}`}
+        aksi={
+          <Link
+            to="/pembimbing/jurnal"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-garis bg-kartu px-3 py-2 text-xs font-bold text-pr no-underline transition hover:border-pr hover:bg-pl"
+          >
+            <Ikon nama="arrow" className="size-3.5 rotate-180" />
+            Kembali
+          </Link>
+        }
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-[1.55fr_1fr]">
+        <div className="order-2 flex flex-col gap-4 lg:order-1">
+          <Kartu t="Isi jurnal">
+            <dl className="grid gap-4">
+              {[
+                ['Uraian kegiatan', jub.uraian],
+                ['Hasil', jub.hasil],
+                ['Kendala', jub.kendala],
+                ['Rencana berikutnya', jub.rencana],
+              ].map(([a, b]) => (
+                <div key={a as string} className="rounded-xl border border-garis/80 bg-[#fbfcfe] p-3.5">
+                  <dt className="mb-1 text-[10px] font-extrabold uppercase tracking-[.5px] text-mu">{a}</dt>
+                  <dd className="text-sm leading-relaxed whitespace-pre-wrap">{b || <span className="text-mu">(tidak diisi)</span>}</dd>
+                </div>
+              ))}
+              <div className="rounded-xl border border-garis/80 bg-[#fbfcfe] p-3.5">
+                <dt className="mb-1 text-[10px] font-extrabold uppercase tracking-[.5px] text-mu">Lampiran kegiatan</dt>
+                <dd>
+                  {jub.lampiran ? (
+                    <button
+                      type="button"
+                      onClick={() => ubahBukaFoto(true)}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-pr no-underline hover:underline"
+                    >
+                      <Ikon nama="image" className="size-4" />
+                      Lihat lampiran
+                    </button>
+                  ) : (
+                    <span className="text-sm text-mu">(tidak ada lampiran)</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </Kartu>
+
+          {review.length ? (
+            <Kartu t="Riwayat review">
+              <ol className="relative m-0 flex list-none flex-col gap-4 p-0 before:absolute before:bottom-1 before:left-[11px] before:top-1 before:w-px before:bg-garis">
+                {review.map((r, i) => (
+                  <li key={i} className="relative pl-8">
+                    <span className="absolute left-0 top-0 grid size-[23px] place-items-center rounded-full border-2 border-kartu bg-pl text-pr">
+                      <Ikon nama={r.keputusan === 'Disetujui' ? 'check' : 'edit'} className="size-3" />
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <b className="text-sm">{r.keputusan}</b>
+                      <span className="text-[11px] text-mu">{r.nama}</span>
+                    </div>
+                    <small className="block text-[11px] text-mu">{r.waktu}</small>
+                    <p className="mt-1 text-sm leading-relaxed">{r.catatan || '(Tanpa catatan)'}</p>
+                  </li>
+                ))}
+              </ol>
+            </Kartu>
+          ) : null}
         </div>
 
-        {bisaReview ? (
-          <div className="mt-4 border-2 border-garis rounded-xl p-4">
-            <h3 className="font-bold text-sm mb-1">Keputusan review</h3>
-            <p className="text-mu text-sm mb-3">Setujui langsung, atau minta revisi dengan catatan.</p>
-            {galat ? <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /> : null}
-            {bukaRevisi ? (
+        <div className="order-1 flex flex-col gap-4 lg:order-2">
+          <Kartu t={bisaReview ? 'Keputusan review' : 'Status jurnal'}>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Badge s={jub.status} />
+              <span className="text-[11px] text-mu">Tanggal {jub.tanggal}</span>
+            </div>
+
+            {galat ? <div className="mb-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
+
+            {bisaReview ? (
               <>
-                <Label htmlFor="catatan_rev">
-                  Catatan revisi <span className="text-r">wajib</span> (agar peserta tahu yang perlu diperbaiki)
-                </Label>
-                <textarea
-                  id="catatan_rev"
-                  value={catatan}
-                  onChange={(e) => ubahCatatan(e.target.value)}
-                  rows={3}
-                  maxLength={2000}
-                  className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-                  placeholder="Misal: Uraian kegiatan terlalu singkat, tambahkan hasil kerja hari ini."
-                />
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <Tombol varian="dg" disabled={sedang || catatan.trim().length < 3} onClick={() => void putuskan('revisi')}>
-                    Kirim permintaan revisi
-                  </Tombol>
-                  <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaRevisi(false)}>Batal</Tombol>
-                </div>
+                <p className="mb-3 text-xs leading-relaxed text-mu">
+                  Setujui langsung bila isi jurnal sudah sesuai, atau minta revisi dengan catatan yang jelas.
+                </p>
+                {bukaRevisi ? (
+                  <>
+                    <Label htmlFor="catatan_rev">
+                      Catatan revisi <span className="text-r">wajib</span>
+                    </Label>
+                    <textarea
+                      id="catatan_rev"
+                      value={catatan}
+                      onChange={(e) => ubahCatatan(e.target.value)}
+                      rows={4}
+                      maxLength={2000}
+                      className="mt-1 block w-full rounded-[11px] border border-garis bg-kartu px-3 py-2.5 text-sm outline-none transition focus:border-pr focus:ring-4 focus:ring-pr/10"
+                      placeholder="Misal: Uraian kegiatan terlalu singkat, tambahkan hasil kerja hari ini."
+                    />
+                    <div className="mt-3 flex flex-col gap-2">
+                      <Tombol varian="dg" disabled={sedang || catatan.trim().length < 3} onClick={() => void putuskan('revisi')}>
+                        Kirim permintaan revisi
+                      </Tombol>
+                      <Tombol varian="gh" disabled={sedang} onClick={() => ubahBukaRevisi(false)}>Batal</Tombol>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Tombol disabled={sedang} onClick={() => void putuskan('setujui')}>
+                      <Ikon nama="check" className="size-4" />
+                      Setujui jurnal
+                    </Tombol>
+                    <Tombol varian="dg" disabled={sedang} onClick={() => ubahBukaRevisi(true)}>
+                      <Ikon nama="edit" className="size-4" />
+                      Minta revisi
+                    </Tombol>
+                  </div>
+                )}
               </>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                <Tombol disabled={sedang} onClick={() => void putuskan('setujui')}>Setujui jurnal</Tombol>
-                <Tombol varian="dg" disabled={sedang} onClick={() => ubahBukaRevisi(true)}>Minta revisi…</Tombol>
-              </div>
+              <>
+                <p className="text-xs leading-relaxed text-mu">
+                  Jurnal ini tidak lagi menunggu keputusan review. Riwayat keputusan tetap dapat dilihat.
+                </p>
+                <div className="mt-3">
+                  <Tombol varian="gh" onClick={() => navigate('/pembimbing/jurnal')}>Kembali ke daftar</Tombol>
+                </div>
+              </>
             )}
-          </div>
-        ) : (
-          <p className="mt-3"><Tombol varian="gh" onClick={() => navigate('/pembimbing/jurnal')}>Kembali ke daftar</Tombol></p>
-        )}
-      </Kartu>
+          </Kartu>
 
-      <Kartu t="Isi jurnal">
-        <dl className="grid gap-4">
-          {[
-            ['Uraian kegiatan', jub.uraian],
-            ['Hasil', jub.hasil],
-            ['Kendala', jub.kendala],
-            ['Rencana berikutnya', jub.rencana],
-          ].map(([a, b]) => (
-            <div key={a as string}>
-              <dt className="text-[13px] font-semibold mb-0.5">{a}</dt>
-              <dd className="text-sm whitespace-pre-wrap">{b || <span className="text-mu">(tidak diisi)</span>}</dd>
+          <div className="rounded-kartu border border-[#c7dbff] bg-gradient-to-r from-[#eaf2ff] to-[#f5f9ff] p-4">
+            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[1px] text-pr">
+              <Ikon nama="info" className="size-3.5" />
+              Catatan
             </div>
-          ))}
-          <div>
-            <dt className="text-[13px] font-semibold mb-0.5">Lampiran kegiatan</dt>
-            <dd>
-              {jub.lampiran ? (
-                <button
-                  type="button"
-                  onClick={() => ubahBukaFoto(true)}
-                  className="text-pr underline"
-                >
-                  Lihat lampiran
-                </button>
-              ) : (
-                <span className="text-mu text-sm">(tidak ada lampiran)</span>
-              )}
-            </dd>
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-mu">
+              Peserta menerima hasil review dan dapat mengirim ulang jurnal setelah diperbaiki.
+            </p>
           </div>
-        </dl>
-      </Kartu>
-
-      {review.length ? (
-        <Kartu t="Riwayat review">
-          <ul className="flex flex-col gap-2">
-            {review.map((r, i) => (
-              <li key={i} className="border-2 border-y rounded-lg px-[14px] py-3 bg-[#a1620712]">
-                <b className="block text-sm">{r.keputusan} — {r.nama}</b>
-                <small className="block text-mu mb-1">{r.waktu}</small>
-                <p className="text-sm">{r.catatan || '(Tanpa catatan)'}</p>
-              </li>
-            ))}
-          </ul>
-        </Kartu>
-      ) : null}
-      <div className="sm:hidden"><Galat pesan={null} /></div>
+        </div>
+      </div>
 
       <PenampilFoto
         buka={bukaFoto}

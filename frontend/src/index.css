@@ -17,6 +17,44 @@
   --color-o: #c2410c;
   --color-r: #b91c1c;
   --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --radius-kartu: 14px;
+  --shadow-kartu: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 28px -22px rgba(15, 23, 42, .25);
+}
+
+.sisi-grad {
+  background:
+    radial-gradient(420px 260px at 6% -4%, rgba(59, 130, 246, .28), transparent 68%),
+    radial-gradient(300px 220px at 110% 108%, rgba(29, 78, 216, .34), transparent 70%),
+    linear-gradient(168deg, #0c2257 0%, #0a1c45 46%, #071430 100%);
+}
+
+.login-bg {
+  background:
+    radial-gradient(700px 460px at 12% 8%, #e3ecff 0%, transparent 60%),
+    radial-gradient(600px 420px at 92% 92%, #e8effa 0%, transparent 60%),
+    #eef3fa;
+}
+
+.login-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(#c8d6ea 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: .34;
+  pointer-events: none;
+}
+
+.login-grad {
+  background:
+    radial-gradient(420px 300px at 8% 0%, rgba(59, 130, 246, .34), transparent 64%),
+    radial-gradient(360px 280px at 100% 100%, rgba(37, 99, 235, .35), transparent 66%),
+    linear-gradient(160deg, #0c2257, #081735);
+}
+
+.kamera-latar {
+  background:
+    radial-gradient(120% 90% at 50% 8%, #3b4d6b 0%, #24324a 52%, #131c2c 100%);
 }
 
 html {

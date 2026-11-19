@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { Ikon } from './Ikon';
 
 type Jenis = 'ok' | 'warn';
 const ToastCtx = createContext<(m: string, j?: Jenis) => void>(() => {});
@@ -19,17 +20,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         id="toasts"
-        className="fixed right-4 bottom-4 flex flex-col gap-2 z-50"
+        className="fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-[360px] flex-col gap-2"
         aria-live="polite"
       >
         {daftar.map((t) => (
           <div
             key={t.id}
-            className={`bg-kartu border border-garis rounded-lg px-[14px] py-[10px] shadow-lg max-w-[320px] font-semibold text-sm border-l-4 ${
-              t.j === 'ok' ? 'border-l-g' : 'border-l-y'
+            className={`flex items-start gap-2.5 rounded-xl border border-garis bg-kartu p-3.5 shadow-[0_18px_40px_-20px_rgba(11,31,77,.45)] ${
+              t.j === 'ok' ? 'border-l-4 border-l-g' : 'border-l-4 border-l-y'
             }`}
           >
-            {t.m}
+            <span className={`grid size-6 shrink-0 place-items-center rounded-full ${t.j === 'ok' ? 'bg-[#15803d18] text-g' : 'bg-[#a1620716] text-y'}`}>
+              <Ikon nama={t.j === 'ok' ? 'checkCircle' : 'alert'} className="size-3.5" />
+            </span>
+            <p className="min-w-0 pt-0.5 text-sm font-semibold leading-snug">{t.m}</p>
           </div>
         ))}
       </div>

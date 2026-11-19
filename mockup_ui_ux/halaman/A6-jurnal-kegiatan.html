@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A6 — Halaman Jurnal Kegiatan</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/jurnal">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Jurnal kegiatan"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Peserta PKL</div>
+            <h1>Jurnal Kegiatan</h1>
+            <p class="sub">Daftar jurnal harian Anda, mengikuti tanggal absensi masuk.</p>
+          </div>
+          <div class="head-actions">
+            <span class="badge dikirim plain">1 jurnal menunggu review</span>
+          </div>
+        </div>
+
+        <section class="card pad-sm">
+          <div class="flex ai-c wrap gap-12">
+            <div>
+              <label class="tiny strong muted" for="st" style="display:block;margin-bottom:4px">STATUS</label>
+              <div class="select" id="st" style="width:158px">Semua status</div>
+            </div>
+            <div>
+              <label class="tiny strong muted" for="dr" style="display:block;margin-bottom:4px">DARI</label>
+              <div class="input" style="width:150px" id="dr">01/11/2026</div>
+            </div>
+            <div>
+              <label class="tiny strong muted" for="sp" style="display:block;margin-bottom:4px">SAMPAI</label>
+              <div class="input" style="width:150px" id="sp">18/11/2026</div>
+            </div>
+            <button class="btn btn-primary" type="button" style="margin-top:18px">Tampilkan</button>
+            <div style="flex:1"></div>
+            <div class="flex gap-6 wrap" style="margin-top:16px">
+              <span class="badge disetujui">Disetujui 5</span>
+              <span class="badge dikirim">Dikirim 1</span>
+              <span class="badge revisi">Revisi 1</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card mt-14">
+          <div class="card-head">
+            <div>
+              <h2>Daftar jurnal</h2>
+              <span class="tiny muted">Setiap tanggal absensi masuk muncul di sini. Tekan <b>Isi</b> untuk menulis jurnal.</span>
+            </div>
+            <span class="tiny muted">9 catatan</span>
+          </div>
+
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="width:17%">Tanggal</th>
+                <th style="width:15%">Absensi</th>
+                <th style="width:40%">Judul</th>
+                <th style="width:15%">Status</th>
+                <th style="width:13%">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Rabu, 18/11/2026</b></td>
+                <td><span class="num">07.52</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Penyusunan aset desain feed Instagram</b></td>
+                <td><span class="badge dikirim">Dikirim</span></td>
+                <td><span class="aksi">Buka <span data-icon="chevron" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span></span></td>
+              </tr>
+              <tr>
+                <td><b>Selasa, 17/11/2026</b></td>
+                <td><span class="num">07.48</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Revisi layout katalog produk</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Senin, 16/11/2026</b></td>
+                <td><span class="num">08.14</span> <span class="badge terlambat">Terlambat</span></td>
+                <td><b>Eksplorasi konsep visual campaign</b></td>
+                <td><span class="badge revisi">Perlu revisi</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Jumat, 13/11/2026</b></td>
+                <td><span class="num">07.55</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Desain banner promosi akhir tahun</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Kamis, 12/11/2026</b></td>
+                <td><span class="badge izin">Izin</span></td>
+                <td><span class="muted">Tidak perlu jurnal pada hari izin</span></td>
+                <td><span class="muted">—</span></td>
+                <td><span class="muted">—</span></td>
+              </tr>
+              <tr>
+                <td><b>Rabu, 11/11/2026</b></td>
+                <td><span class="num">07.50</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Riset referensi tipografi brand</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Selasa, 10/11/2026</b></td>
+                <td><span class="num">07.46</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Produksi konten video pendek</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Senin, 09/11/2026</b></td>
+                <td><span class="num">08.21</span> <span class="badge terlambat">Terlambat</span></td>
+                <td><b>Penyusunan moodboard klien</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+              <tr>
+                <td><b>Jumat, 06/11/2026</b></td>
+                <td><span class="num">07.58</span> <span class="badge hadir">Hadir</span></td>
+                <td><b>Finalisasi aset media sosial</b></td>
+                <td><span class="badge disetujui">Disetujui</span></td>
+                <td><span class="aksi">Buka</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="table-foot">
+            <span>Daftar mengikuti absensi Anda pada rentang tanggal yang dipilih.</span>
+            <span>Jurnal yang sudah dikirim tidak dapat diubah sampai ditinjau pembimbing.</span>
+          </div>
+        </section>
+
+        <div class="grid g2 mt-14">
+          <div class="notice">
+            <span data-icon="info"></span>
+            <div><b>Jurnal perlu revisi?</b><span>Buka jurnal berstatus <b>Perlu revisi</b>, perbaiki isian, lalu kirim ulang.</span></div>
+          </div>
+          <div class="notice ok">
+            <span data-icon="checkCircle"></span>
+            <div><b>5 jurnal telah disetujui.</b><span>Pastikan jurnal diisi setiap hari kerja agar rekap PKL Anda lengkap.</span></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

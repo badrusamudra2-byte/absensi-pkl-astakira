@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { HasilScan, MetodeAbsensi } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useOnline } from '../../komponen/Offline';
+import { Ikon } from '../../komponen/Ikon';
 
 type Tahap = 'mulai' | 'qr' | 'beres';
 
@@ -60,61 +61,103 @@ export default function Scan() {
 
   return (
     <>
-      <Kartu t="Pindai QR peserta">
-        {galat ? (
-          <div className="mb-3">
-            <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
-            <div className="mt-2">
-              <Tombol varian="gh" onClick={ulang}>Scan ulang</Tombol>
-            </div>
+      <JudulHalaman
+        eyebrow="Pembimbing"
+        judul="Scan QR peserta"
+        sub="Pindai QR absensi yang ditayangkan peserta untuk mencatat kehadiran."
+      />
+
+      {galat ? (
+        <div className="mb-4">
+          <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+          <div className="mt-2">
+            <Tombol varian="gh" onClick={ulang}>Scan ulang</Tombol>
           </div>
-        ) : null}
-
-        {tahap === 'beres' && hasil ? (
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <h2 className="text-lg font-extrabold mb-1">Absensi <b>{hasil.nama}</b> tercatat</h2>
-            <p>
-              Tercatat <b aria-live="polite">{hasil.jam.slice(0, 5)}</b> &mdash; <Badge s={hasil.status} />
-            </p>
-            <p className="text-mu text-sm mt-1">Metode {hasil.metode}.</p>
-            <div className="mt-3 flex gap-2 justify-center">
-              <Tombol varian="gh" onClick={ulang}>Scan peserta berikutnya</Tombol>
-              <Tombol onClick={() => navigate('/')}>Selesai</Tombol>
-            </div>
-          </div>
-        ) : null}
-
-        {tahap === 'mulai' ? (
-          <>
-            <p className="text-mu text-sm">
-              {metode === 'wajah'
-                ? 'Metode absensi saat ini tidak memakai QR (MODE_QR_NONAKTIF). Absensi dicatat langsung dari HP peserta.'
-                : 'Tekan tombol di bawah lalu arahkan kamera HP ke QR yang ditayangkan peserta di HP-nya.'}
-            </p>
-            <div className="mt-3">
-              <Tombol onClick={() => { ubahGalat(null); ubahTahap('qr'); }} disabled={!daring || metode === null}>
-                Buka kamera
-              </Tombol>
-            </div>
-            <p className="text-xs text-mu mt-2">
-              QR milik peserta berganti tiap 30 detik. Bila QR kedaluwarsa, scan ulang QR terbaru —
-              absensi dihitung dari saat server menerima pindaian.
-              {metode === 'qr_wajah' ? ' Pada metode QR+Wajah, peserta wajib lolos verifikasi wajah di HP-nya lebih dulu.' : ''}
-            </p>
-          </>
-        ) : null}
-
-        {tahap === 'qr' ? <TahapQr onToken={(t) => { void prosesToken(t); }} /> : null}
-      </Kartu>
-      {tahap === 'beres' && hasil ? (
-        <p className="text-xs text-mu mt-1">
-          <Link to="/pembimbing/rekap" className="underline">Buka rekap periode</Link>
-        </p>
+        </div>
       ) : null}
-      {merekam ? <p className="text-mu text-sm mt-1" role="status" aria-live="polite">Merekam absensi&hellip;</p> : null}
+
+      {tahap === 'beres' && hasil ? (
+        <>
+          <Kartu>
+            <div className="flex flex-col items-center px-4 py-6 text-center">
+              <span className="grid size-16 place-items-center rounded-full bg-[#15803d18] text-g">
+                <Ikon nama="checkCircle" className="size-8" />
+              </span>
+              <h2 className="mt-3 text-lg font-extrabold tracking-tight">Absensi {hasil.nama} tercatat</h2>
+              <p className="mt-1 flex flex-wrap items-center justify-center gap-2 text-sm text-mu">
+                Tercatat <b className="text-teks" aria-live="polite">{hasil.jam.slice(0, 5)}</b>
+                <Badge s={hasil.status} />
+              </p>
+              <p className="mt-1 text-xs text-mu">Metode {hasil.metode}.</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Tombol varian="gh" onClick={ulang}>Scan peserta berikutnya</Tombol>
+                <Tombol onClick={() => navigate('/')}>Selesai</Tombol>
+              </div>
+            </div>
+          </Kartu>
+          <p className="mt-1 text-xs text-mu">
+            <Link to="/pembimbing/rekap" className="font-semibold text-pr underline">Buka rekap periode</Link>
+          </p>
+        </>
+      ) : null}
+
+      {tahap === 'mulai' ? (
+        <div className="grid items-start gap-4 lg:grid-cols-[1.2fr_1fr]">
+          <Kartu t="Pindai QR peserta">
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-[#c7d5e8] bg-[#fbfcfe] px-4 py-7 text-center">
+              <span className="grid size-14 place-items-center rounded-2xl bg-pl text-pr">
+                <Ikon nama="scan" className="size-7" />
+              </span>
+              <p className="mt-3 max-w-[360px] text-xs leading-relaxed text-mu">
+                {metode === 'wajah'
+                  ? 'Metode absensi saat ini tidak memakai QR (MODE_QR_NONAKTIF). Absensi dicatat langsung dari HP peserta.'
+                  : 'Tekan tombol di bawah lalu arahkan kamera HP ke QR yang ditayangkan peserta di HP-nya.'}
+              </p>
+              <div className="mt-4">
+                <Tombol onClick={() => { ubahGalat(null); ubahTahap('qr'); }} disabled={!daring || metode === null}>
+                  <Ikon nama="camera" className="size-4" />
+                  Buka kamera
+                </Tombol>
+              </div>
+              {metode === null ? <p className="mt-2 text-[11px] text-mu">Memuat metode absensi&hellip;</p> : null}
+            </div>
+          </Kartu>
+
+          <Kartu t="Petunjuk">
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {[
+                'Minta peserta membuka halaman Tayangkan QR absen di HP-nya.',
+                'Arahkan kamera ke QR hingga sistem membaca kode secara otomatis.',
+                'Absensi dihitung saat server menerima pindaian; QR berganti tiap 30 detik.',
+                'Bila QR kedaluwarsa, minta peserta memperbarui lalu scan ulang.',
+              ].map((p, i) => (
+                <li key={p} className="flex items-start gap-2.5 text-[11.5px] leading-snug text-[#4a5a72]">
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-pl text-[10px] font-extrabold text-pr">{i + 1}</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+            {metode === 'qr_wajah' ? (
+              <div className="mt-4 rounded-xl border border-[#c7dbff] bg-[#eaf2ff] p-3">
+                <p className="flex items-start gap-2 text-[11px] leading-relaxed text-pr">
+                  <Ikon nama="shield" className="mt-0.5 size-3.5 shrink-0" />
+                  Pada metode QR+Wajah, peserta wajib lolos verifikasi wajah di HP-nya sebelum QR tayang.
+                </p>
+              </div>
+            ) : null}
+          </Kartu>
+        </div>
+      ) : null}
+
+      {tahap === 'qr' ? (
+        <Kartu t="Arahkan kamera ke QR peserta">
+          <TahapQr onToken={(t) => { void prosesToken(t); }} />
+        </Kartu>
+      ) : null}
+
+      {merekam ? <p className="mt-2 text-sm text-mu" role="status" aria-live="polite">Merekam absensi&hellip;</p> : null}
       {!daring ? (
-        <p className="text-r text-sm mt-1 font-semibold" role="alert">
+        <p className="mt-2 text-sm font-semibold text-r" role="alert">
           Anda sedang luring — pemindaian perlu internet.
         </p>
       ) : null}
@@ -219,13 +262,21 @@ function TahapQr({ onToken }: { onToken: (token: string) => void }) {
 
   return (
     <>
-      <p role="status">Arahkan kamera ke QR di layar HP peserta&hellip;</p>
-      <video
-        ref={videoRef}
-        className="w-full max-w-[460px] rounded-xl border border-garis bg-black mx-auto"
-        playsInline
-        muted
-      />
+      <p className="mb-2 flex items-center gap-2 text-sm text-mu" role="status">
+        <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-g" aria-hidden="true" />
+        Arahkan kamera ke QR di layar HP peserta&hellip;
+      </p>
+      <div className="kamera-latar relative mx-auto aspect-[4/3] w-full max-w-[480px] overflow-hidden rounded-[14px] border border-[#1e3a6e]">
+        <video
+          ref={videoRef}
+          className="h-full w-full object-cover"
+          playsInline
+          muted
+        />
+        <div className="pointer-events-none absolute inset-0 grid place-items-center">
+          <div className="h-[62%] w-[62%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_999px_rgba(4,12,28,.34)]" />
+        </div>
+      </div>
     </>
   );
 }

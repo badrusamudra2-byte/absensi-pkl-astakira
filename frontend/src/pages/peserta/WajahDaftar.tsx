@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import { ambilLandmarker, cekKondisi, hitungEmbedding, PESAN_KONDISI, type Kondisi } from '../../lib/wajah';
-import { Kartu, Tombol, Pemberitahuan } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { useToast } from '../../komponen/Toast';
 
 const KUNCI_SETUJU = 'astakira_setuju_wajah';
@@ -14,17 +15,15 @@ export default function WajahDaftar() {
   const [setuju, setujuUlah] = useState(() => localStorage.getItem(KUNCI_SETUJU) === '1');
   const [pesan, ubahPesan] = useState('Menghidupkan kamera…');
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
-  const [menyusun, ubahMenyusun] = useState(0); // 0..12 frame terkumpul
+  const [menyusun, ubahMenyusun] = useState(0);
   const [kirim, ubahKirim] = useState(false);
   const [beres, ubahBeres] = useState(false);
-  // Naikkan untuk memulai ulang kamera dari awal (tombol "Coba lagi")
   const [percobaan, ubahPercobaan] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hentikanRef = useRef<(() => void) | null>(null);
   const setujuRef = useRef(setuju);
   setujuRef.current = setuju;
-  // Kondisi dikendalikan dari luar loop rAF (state dalam closure effect akan basi):
   const kirimRef = useRef(false);
   const gagalRef = useRef(false);
 
@@ -43,7 +42,7 @@ export default function WajahDaftar() {
       toast('Template wajah terdaftar.');
     } catch (e) {
       const err = e as ApiError;
-      gagalRef.current = true; // berhenti mengirim ulang otomatis sampai pengguna menekan tombol
+      gagalRef.current = true;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
     } finally {
       kirimRef.current = false;
@@ -85,7 +84,6 @@ export default function WajahDaftar() {
                 ubahMenyusun(antarFrame.length);
                 ubahPesan('Jaga wajah tetap di dalam bingkai…');
                 if (antarFrame.length === 12) {
-                  // Rata-rata frame agar stabil; kirim sekali lalu kosongkan buffer
                   const em = antarFrame[0].map((_, i) => antarFrame.reduce((s, f) => s + f[i], 0) / antarFrame.length);
                   antarFrame = [];
                   ubahMenyusun(0);
@@ -115,62 +113,143 @@ export default function WajahDaftar() {
 
   return (
     <>
-      <Kartu t="Pendaftaran wajah">
-        {galat ? (
-          <div className="mb-3">
-            <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
-            <div className="mt-2">
-              <Tombol
-                varian="gh"
-                onClick={() => {
-                  ubahGalat(null);
-                  gagalRef.current = false;
-                  ubahPesan('Menghidupkan kamera…');
-                  ubahPercobaan((n) => n + 1); // jalankan ulang effect kamera dari awal
-                }}
-              >
-                Coba lagi
-              </Tombol>
-            </div>
-          </div>
-        ) : null}
-        <p className="text-mu text-sm mb-2">
-          Bergerak melalui deteksi di perangkat Anda: tiket gambar wajah tidak pernah dikirim ke server. Yang
-          disimpan hanya berupa vektor angka (embedding, terenkripsi AES-256-GCM) untuk pencocokan.
-        </p>
-        <label className="flex items-center gap-2 my-2 max-w-fit">
-          <input
-            type="checkbox"
-            checked={setuju}
-            onChange={(e) => setujuUlah(e.target.checked)}
-          />
-          Saya setuju data wajah saya dipakai untuk pencilan absensi (tersimpan terenkripsi).
-        </label>
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul="Pendaftaran Wajah"
+        sub="Daftarkan wajah sekali untuk verifikasi saat absensi."
+      />
 
-        {beres ? (
-          <div className="text-center py-3">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <b className="block mb-1">Pendaftaran berhasil</b>
-            <p className="text-mu text-sm mb-2">Sekarang Anda bisa melakukan verifikasi wajah untuk absen.</p>
-            <Tombol onClick={() => navigate('/absensi')}>Ke halaman absensi</Tombol>
-          </div>
-        ) : (
-          <>
-            <div className="relative w-fit mx-auto">
-              <video ref={videoRef} className="rounded-xl border border-garis bg-black max-w-full" playsInline muted />
-              <div
-                aria-hidden="true"
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-pr rounded-[50%] w-[min(60vw,240px)] h-[min(78vw,310px)] pointer-events-none"
-              />
+      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
+        <Kartu className="!p-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-garis">
+            <div className="flex items-center gap-2">
+              <span className="size-8 rounded-lg bg-pl text-pr grid place-items-center">
+                <Ikon nama="camera" className="size-4" />
+              </span>
+              <b className="text-[12.5px] font-extrabold">Kamera pendaftaran</b>
             </div>
-            <p className="mt-3" role="status" aria-live="polite">{pesan}</p>
-            <p className="text-xs text-mu mt-1" aria-live="polite">
-              {menyusun > 0 ? `Mengumpulkan sampel ${menyusun}/12…` : ''}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[10px] font-semibold text-mu">
+              <span className="size-1.5 rounded-full bg-[#15803d]" aria-hidden="true" />
+              Deteksi lokal
+            </span>
+          </div>
+
+          {galat ? (
+            <div className="p-4 pb-0">
+              <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+              <div className="mt-2">
+                <Tombol
+                  varian="gh"
+                  onClick={() => {
+                    ubahGalat(null);
+                    gagalRef.current = false;
+                    ubahPesan('Menghidupkan kamera…');
+                    ubahPercobaan((n) => n + 1);
+                  }}
+                >
+                  Coba lagi
+                </Tombol>
+              </div>
+            </div>
+          ) : null}
+
+          {beres ? (
+            <div className="text-center px-4 py-12">
+              <div className="size-20 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">
+                <Ikon nama="checkCircle" className="size-10" />
+              </div>
+              <b className="block text-lg font-extrabold mb-1">Pendaftaran berhasil</b>
+              <p className="text-mu text-[12px] mb-4">Sekarang Anda bisa melakukan verifikasi wajah untuk absen.</p>
+              <Tombol onClick={() => navigate('/absensi')}>Ke halaman absensi</Tombol>
+            </div>
+          ) : (
+            <>
+              <div className="kamera-latar p-4 md:p-6 grid place-items-center">
+                <div className="relative w-full max-w-[520px]">
+                  <video
+                    ref={videoRef}
+                    className="block w-full h-auto rounded-xl border border-white/10 bg-black"
+                    playsInline
+                    muted
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-[#93c5fd] rounded-[50%] w-[52%] h-[78%] pointer-events-none shadow-[0_0_0_999px_rgba(10,16,28,.28)]"
+                  />
+                  <div className="absolute left-3 bottom-3 inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur px-2.5 py-1 text-[10px] font-semibold text-white">
+                    <Ikon nama="face" className="size-3.5" />
+                    Posisikan wajah di dalam bingkai
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3.5 border-t border-garis">
+                <p className="text-[12px] font-semibold" role="status" aria-live="polite">{pesan}</p>
+                <div className="flex items-center gap-2.5 mt-2">
+                  <div className="h-1.5 flex-1 rounded-full bg-[#e2e8f0] overflow-hidden" aria-hidden="true">
+                    <div
+                      className="h-full bg-pr rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (menyusun / 12) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-mu whitespace-nowrap" aria-live="polite">
+                    {menyusun}/12 sampel
+                  </span>
+                </div>
+                {kirim ? (
+                  <p className="text-[10.5px] text-mu mt-2 flex items-center gap-1.5">
+                    <Ikon nama="refresh" className="size-3.5 animate-spin" />
+                    Mengirim ke server…
+                  </p>
+                ) : null}
+                {!setuju ? (
+                  <p className="text-[10.5px] text-y font-semibold mt-2">
+                    Centang persetujuan di samping agar pendaftaran dapat disimpan.
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
+        </Kartu>
+
+        <div>
+          <Kartu t="Persetujuan dan privasi">
+            <label
+              className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition ${
+                setuju ? 'border-[#bfdbfe] bg-[#f5f9ff]' : 'border-garis bg-[#fbfcfe]'
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-[#1d4ed8]"
+                checked={setuju}
+                onChange={(e) => setujuUlah(e.target.checked)}
+              />
+              <span className="text-[11.5px] leading-snug text-[#334155]">
+                Saya setuju data wajah saya dipakai untuk pencocokan absensi (tersimpan terenkripsi).
+              </span>
+            </label>
+            <p className="text-[11px] text-mu leading-relaxed mt-3">
+              Deteksi berjalan di perangkat Anda: gambar wajah tidak pernah dikirim ke server. Yang disimpan
+              hanya vektor angka (embedding, terenkripsi AES-256-GCM) untuk pencocokan.
             </p>
-            {kirim ? <p className="text-mu text-sm">Mengirim ke server…</p> : null}
-          </>
-        )}
-      </Kartu>
+          </Kartu>
+
+          <Kartu t="Tips pendaftaran">
+            <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
+              {[
+                { i: 'face' as const, t: 'Hadap lurus ke kamera dengan wajah memenuhi bingkai.' },
+                { i: 'image' as const, t: 'Pastikan pencahayaan cukup dan tidak ada wajah lain.' },
+                { i: 'refresh' as const, t: 'Tahan posisi sampai 12 sampel terkumpul.' },
+              ].map((x) => (
+                <li key={x.t} className="flex items-start gap-2 text-[11px] text-[#4a5a72] leading-snug">
+                  <Ikon nama={x.i} className="size-3.5 text-pr shrink-0 mt-0.5" />
+                  <span>{x.t}</span>
+                </li>
+              ))}
+            </ul>
+          </Kartu>
+        </div>
+      </div>
     </>
   );
 }

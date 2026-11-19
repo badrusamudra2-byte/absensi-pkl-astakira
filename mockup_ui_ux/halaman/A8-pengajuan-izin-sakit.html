@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A8 — Halaman Pengajuan Izin/Sakit</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/pengajuan">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Pengajuan izin/sakit"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Peserta PKL</div>
+            <h1>Pengajuan Izin / Sakit</h1>
+            <p class="sub">Ajukan ketidakhadiran beserta bukti foto, lalu pantau statusnya.</p>
+          </div>
+          <div class="head-actions">
+            <span class="badge izin plain">1 pengajuan disetujui bulan ini</span>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: .96fr 1.04fr">
+          <section class="card">
+            <div class="card-head">
+              <h2>Kirim pengajuan izin / sakit</h2>
+              <span class="badge netral">Formulir</span>
+            </div>
+            <p class="tiny muted" style="line-height:1.6;margin-bottom:12px">Tidak bisa absen QR atau wajah hari itu? Ajukan izin/sakit dengan bukti foto. Setelah pembimbing menyetujui, tanggal tersebut terekam dan terkunci dari absensi.</p>
+
+            <fieldset style="border:0;padding:0;margin:0 0 11px">
+              <div class="label" style="font-size:11.5px;font-weight:700;margin-bottom:6px">Jenis pengajuan</div>
+              <div class="radio-row">
+                <span class="radio on"><i></i>Izin</span>
+                <span class="radio"><i></i>Sakit</span>
+              </div>
+            </fieldset>
+
+            <div class="form-grid c2">
+              <div class="field">
+                <label>Tanggal <span class="req">*</span></label>
+                <div class="input"><span data-icon="calendar" style="display:inline-block;width:13px;height:13px;margin-right:7px"></span>19/11/2026</div>
+                <span class="hint">Boleh 1 hari ke depan, maksimal 7 hari ke belakang.</span>
+              </div>
+              <div class="field">
+                <label>Bukti foto <span class="req">*</span></label>
+                <div class="upload" style="padding:8px 10px">
+                  <div class="ico" style="width:28px;height:28px;border-radius:7px"><span data-icon="image"></span></div>
+                  <div style="min-width:0"><b style="font-size:10.5px">surat-izin.jpg</b><small>JPG · 620 KB</small></div>
+                </div>
+                <span class="hint">JPG/PNG/WebP, maksimal 5 MB.</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Keterangan <span class="req">*</span></label>
+              <div class="textarea" style="height:82px">Keperluan keluarga di luar kota yang tidak dapat ditinggalkan. Surat izin tertulis dari orang tua terlampir pada bukti foto.</div>
+              <div class="counter">124/1000</div>
+            </div>
+
+            <div class="notice" style="margin-top:2px">
+              <span data-icon="info"></span>
+              <div><b>Persetujuan pembimbing diperlukan.</b><span>Setelah disetujui, hari tersebut tercatat sebagai Izin dan Anda tidak perlu absen.</span></div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="button">Kirim pengajuan izin</button>
+              <button class="btn btn-ghost" type="button">Batal</button>
+            </div>
+            <p class="tiny muted" style="margin-top:9px">Bukti foto wajib diunggah agar pengajuan dapat diperiksa pembimbing.</p>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h2>Riwayat pengajuan saya</h2>
+                <span class="tiny muted">3 pengajuan terakhir</span>
+              </div>
+              <span class="tiny muted">Semua periode</span>
+            </div>
+
+            <div class="sub-card">
+              <div class="sub-top">
+                <b>Kamis, 12/11/2026</b>
+                <span class="badge izin">Izin</span>
+                <span class="badge disetujui">Disetujui</span>
+              </div>
+              <div class="sub-body">Mengikuti acara keluarga di luar kota. Surat izin orang tua telah dilampirkan.</div>
+              <div class="flex ai-c jc-b" style="margin-top:7px">
+                <span class="proof"><span class="thumb"><span data-icon="image"></span></span>Lihat bukti foto</span>
+                <span class="tiny" style="color:var(--green);font-weight:700">Disetujui · tidak perlu absen</span>
+              </div>
+            </div>
+
+            <div class="sub-card">
+              <div class="sub-top">
+                <b>Rabu, 05/11/2026</b>
+                <span class="badge sakit">Sakit</span>
+                <span class="badge ditolak">Ditolak</span>
+              </div>
+              <div class="sub-body">Demam dan sakit tenggorokan sejak pagi. Foto surat dokter dilampirkan.</div>
+              <div class="review-note" style="margin-top:7px"><b>Alasan penolakan</b>Bukti foto tidak jelas, mohon unggah ulang surat dokter yang terbaca.</div>
+              <div class="flex ai-c jc-b" style="margin-top:7px">
+                <span class="proof"><span class="thumb"><span data-icon="image"></span></span>Lihat bukti foto</span>
+              </div>
+            </div>
+
+            <div class="sub-card">
+              <div class="sub-top">
+                <b>Kamis, 23/10/2026</b>
+                <span class="badge sakit">Sakit</span>
+                <span class="badge disetujui">Disetujui</span>
+              </div>
+              <div class="sub-body">Sakit demam, surat keterangan dokter terlampir.</div>
+              <div class="flex ai-c jc-b" style="margin-top:7px">
+                <span class="proof"><span class="thumb"><span data-icon="image"></span></span>Lihat bukti foto</span>
+                <span class="tiny" style="color:var(--green);font-weight:700">Terekam sebagai Sakit</span>
+              </div>
+            </div>
+
+            <div class="notice ok" style="margin-top:11px;padding:8px 10px">
+              <span data-icon="checkCircle"></span>
+              <div><b>Pengajuan disetujui otomatis mengunci absensi.</b><span>Tanggal tersebut tidak memerlukan verifikasi wajah atau QR.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card mt-14">
+          <div class="card-head">
+            <h2>Ketentuan pengajuan</h2>
+            <span class="tiny muted">Berlaku untuk seluruh peserta PKL</span>
+          </div>
+          <div class="grid g3" style="gap:14px">
+            <div class="flex gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center;flex:none"><span data-icon="calendar"></span></div>
+              <div><b style="font-size:11.5px">Batas waktu pengajuan</b><div class="tiny muted" style="margin-top:2px">Maksimal 1 hari ke depan dan 7 hari ke belakang dari tanggal pengajuan.</div></div>
+            </div>
+            <div class="flex gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center;flex:none"><span data-icon="image"></span></div>
+              <div><b style="font-size:11.5px">Bukti foto wajib</b><div class="tiny muted" style="margin-top:2px">Format JPG, PNG, atau WebP dengan ukuran maksimal 5 MB.</div></div>
+            </div>
+            <div class="flex gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center;flex:none"><span data-icon="checkCircle"></span></div>
+              <div><b style="font-size:11.5px">Putusan pembimbing</b><div class="tiny muted" style="margin-top:2px">Pembimbing menyetujui atau menolak disertai alasan yang dapat Anda baca.</div></div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

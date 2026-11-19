@@ -5,7 +5,8 @@ import { teksKode } from '../../lib/petaKode';
 import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import { ambilLandmarker, cekKondisi, hitungEmbedding, keJpeg, MesinGerakan, PESAN_KONDISI } from '../../lib/wajah';
 import type { Absensi, Jenis, StatusAbsensi, Tantangan, Pengaturan } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Badge, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { isoHariIni, tercatatPada } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
@@ -31,6 +32,8 @@ export default function WajahPeriksa() {
   const [sudah, ubahSudah] = useState<{ jam: string; status: StatusAbsensi } | null | undefined>(undefined);
   // Hari ini tercatat Izin/Sakit (pengajuan disetujui) -> absensi dan verifikasi ditutup
   const [terkunciIzin, ubahTerkunciIzin] = useState<Absensi | null>(null);
+  // Status hari ini sudah diketahui dari server: kamera baru boleh tampil setelah ini
+  const [dimuat, ubahDimuat] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hentikanRef = useRef<(() => void) | null>(null);
@@ -165,10 +168,14 @@ export default function WajahPeriksa() {
           ubahPesan('');
           ubahGalat(null);
         }
+        ubahDimuat(true);
       })
       .catch(() => {
         // Gagal diketahui: biarkan; server tetap menolak dobel saat pengiriman
-        if (hidup) ubahSudah(null);
+        if (hidup) {
+          ubahSudah(null);
+          ubahDimuat(true);
+        }
       });
     return () => {
       hidup = false;
@@ -333,79 +340,148 @@ export default function WajahPeriksa() {
 
   return (
     <>
-      <Kartu t={scan ? 'Verifikasi wajah untuk absen QR' : `Absen ${jenis} dengan wajah`}>
-        {terkunciIzin ? (
-          // Hari ini tercatat Izin/Sakit — tampilkan pengajuan peserta, bukan layar verifikasi
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <h2 className="text-lg font-extrabold mb-2">Anda sudah mengajukan {terkunciIzin.status.toLowerCase()}</h2>
-            <p>
-              Hari ini tercatat <Badge s={terkunciIzin.status} /> &mdash; absensi tidak perlu dan tidak bisa dilakukan.
-            </p>
-            <div className="mt-3 flex gap-2 justify-center">
-              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
-              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
-            </div>
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul={scan ? 'Verifikasi Wajah' : `Absen ${jenis === 'masuk' ? 'Masuk' : 'Pulang'} dengan Wajah`}
+        sub={
+          scan
+            ? 'Verifikasi wajah untuk membuka QR absensi yang dipindai pembimbing.'
+            : 'Hadapkan wajah ke kamera, ikuti instruksi hingga absensi tercatat.'
+        }
+      />
+      <Kartu className="!p-0 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-garis">
+          <div className="flex items-center gap-2">
+            <span className="size-8 rounded-lg bg-pl text-pr grid place-items-center">
+              <Ikon nama="face" className="size-4" />
+            </span>
+            <b className="text-[12.5px] font-extrabold">{scan ? 'Verifikasi wajah untuk absen QR' : `Absen ${jenis} dengan wajah`}</b>
           </div>
-        ) : galat ? (
-          <div className="mb-3">
-            <Pemberitahuan
-              jenis="er"
-              judul={galat[0]}
-              uraian={galat[1]}
-              aksi={galat[0] === teksKode('TEMPLATE_BELUM')[0] ? (
-                <Link to="/wajah/daftar" className="underline font-semibold">Daftarkan wajah sekarang</Link>
-              ) : undefined}
-            />
-          </div>
-        ) : null}
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[10px] font-semibold text-mu">
+            <Ikon nama={livenessAktif ? 'activity' : 'eye'} className="size-3" />
+            {livenessAktif === false ? 'Tanpa liveness' : 'Liveness'}
+          </span>
+        </div>
 
-        {langsungBeres && beres ? (
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} tercatat</h2>
-            <p>
-              Tercatat <b aria-live="polite">{beres.jam.slice(0, 5)}</b> &mdash; <Badge s={beres.status} />
-            </p>
-            <div className="mt-3 flex gap-2 justify-center">
-              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
-              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+        <div className="p-4 md:p-5">
+          {terkunciIzin ? (
+            <div className="text-center py-4">
+              <div className="size-20 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">
+                <Ikon nama="checkCircle" className="size-10" />
+              </div>
+              <h2 className="text-lg font-extrabold mb-2">Anda sudah mengajukan {terkunciIzin.status.toLowerCase()}</h2>
+              <p className="text-[12.5px] text-[#4a5a72]">
+                Hari ini tercatat <Badge s={terkunciIzin.status} /> &mdash; absensi tidak perlu dan tidak bisa dilakukan.
+              </p>
+              <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+                <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+              </div>
             </div>
-          </div>
-        ) : sudah !== null && sudah !== undefined ? (
-          // Absensi jenis ini sudah tercatat hari ini — verifikasi & QR tidak dibuka lagi
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} sudah tercatat</h2>
-            <p>
-              Tercatat <b aria-live="polite">{sudah.jam.slice(0, 5)}</b> &mdash; <Badge s={sudah.status} />
-            </p>
-            <p className="text-mu text-sm mt-1">Cukup sekali absen per jenis per hari.</p>
-            <div className="mt-3 flex gap-2 justify-center">
-              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
-              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
-            </div>
-          </div>
-        ) : templateAda === false ? null : (
-          <>
-            <div className="relative w-fit mx-auto">
-              <video ref={videoRef} className="rounded-xl border border-garis bg-black max-w-full" playsInline muted />
-              <div
-                aria-hidden="true"
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-pr rounded-[50%] w-[min(60vw,240px)] h-[min(78vw,310px)] pointer-events-none"
+          ) : galat ? (
+            <div className="mb-3">
+              <Pemberitahuan
+                jenis="er"
+                judul={galat[0]}
+                uraian={galat[1]}
+                aksi={galat[0] === teksKode('TEMPLATE_BELUM')[0] ? (
+                  <Link to="/wajah/daftar" className="underline font-semibold">Daftarkan wajah sekarang</Link>
+                ) : undefined}
               />
             </div>
-            <p className="mt-2 font-bold" role="status" aria-live="polite">{instruksi ?? ''}</p>
-            <p className="text-mu text-sm mt-1" aria-live="polite">{pesan}</p>
-            <div className="h-1.5 max-w-[460px] bg-[#0f172a20] rounded mt-2 overflow-hidden" aria-hidden="true">
-              <div className="h-full bg-pr rounded transition-all" style={{ width: `${maju * 100}%` }} />
+          ) : null}
+
+          {terkunciIzin ? null : !dimuat ? (
+            <div className="text-center py-10" role="status" aria-live="polite">
+              <Ikon nama="refresh" className="size-6 text-pr animate-spin mx-auto mb-2" />
+              <p className="text-mu text-sm">Memeriksa status absensi hari ini…</p>
             </div>
-            <p className="text-xs text-mu mt-2">
-              Kamera aktif hanya selama halaman ini dibuka.{livenessAktif ? ' Instruksi berubah setiap tantangan baru.' : ' Tanpa instruksi gerakan — cukup wajah lurus.'}
-              {scan ? ' Begitu verifikasi lolos, QR absensi Anda ditayangkan untuk dipindai pembimbing.' : ''}
-            </p>
-          </>
-        )}
+          ) : langsungBeres && beres ? (
+            <div className="text-center py-4">
+              <div className="size-20 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">
+                <Ikon nama="checkCircle" className="size-10" />
+              </div>
+              <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} tercatat</h2>
+              <p className="text-[12.5px] text-[#4a5a72]">
+                Tercatat <b aria-live="polite">{beres.jam.slice(0, 5)}</b> &mdash; <Badge s={beres.status} />
+              </p>
+              <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+                <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+              </div>
+            </div>
+          ) : sudah !== null && sudah !== undefined ? (
+            <div className="text-center py-4">
+              <div className="size-20 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">
+                <Ikon nama="checkCircle" className="size-10" />
+              </div>
+              <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} sudah tercatat</h2>
+              <p className="text-[12.5px] text-[#4a5a72]">
+                Tercatat <b aria-live="polite">{sudah.jam.slice(0, 5)}</b> &mdash; <Badge s={sudah.status} />
+              </p>
+              <p className="text-mu text-[11.5px] mt-1">Cukup sekali absen per jenis per hari.</p>
+              <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+                <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
+              </div>
+            </div>
+          ) : templateAda === false ? null : (
+            <div className="grid lg:grid-cols-[1.5fr_1fr] gap-4 items-start">
+              <div>
+                <div className="kamera-latar rounded-xl p-3 md:p-4 grid place-items-center">
+                  <div className="relative w-full max-w-[560px]">
+                    <video
+                      ref={videoRef}
+                      className="block w-full h-auto rounded-lg bg-black"
+                      playsInline
+                      muted
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-[#93c5fd] rounded-[50%] w-[52%] h-[78%] pointer-events-none shadow-[0_0_0_999px_rgba(10,16,28,.28)]"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[12px] font-extrabold" role="status" aria-live="polite">{instruksi ?? 'Bersiap…'}</p>
+                    <span className="text-[10px] font-bold text-mu">{Math.round(maju * 100)}%</span>
+                  </div>
+                  <p className="text-mu text-[11.5px] mt-0.5" aria-live="polite">{pesan}</p>
+                  <div className="h-1.5 w-full bg-[#e2e8f0] rounded-full mt-2 overflow-hidden" aria-hidden="true">
+                    <div className="h-full bg-pr rounded-full transition-all" style={{ width: `${maju * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-garis bg-[#fbfcfe] p-3.5">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-pr mb-2">
+                  <Ikon nama="info" className="size-3.5" />
+                  Petunjuk
+                </div>
+                <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
+                  {[
+                    livenessAktif === false
+                      ? 'Cukup hadap lurus ke kamera tanpa gerakan.'
+                      : 'Ikuti instruksi gerakan yang muncul di layar.',
+                    'Pastikan wajah berada di dalam bingkai dan pencahayaan cukup.',
+                    scan
+                      ? 'Setelah verifikasi lolos, QR absensi akan ditayangkan.'
+                      : 'Absensi tercatat otomatis setelah wajah cocok.',
+                  ].map((t) => (
+                    <li key={t} className="flex items-start gap-2 text-[11px] text-[#4a5a72] leading-snug">
+                      <Ikon nama="checkCircle" className="size-3.5 text-pr shrink-0 mt-0.5" />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-mu leading-relaxed mt-3 pt-2.5 border-t border-garis">
+                  Kamera aktif hanya selama halaman ini dibuka. Foto verifikasi hanya dipakai untuk rekap absensi.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </Kartu>
     </>
   );

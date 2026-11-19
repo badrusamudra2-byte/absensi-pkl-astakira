@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { Absensi } from '../../lib/tipe';
-import { Kartu, Tabel, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, Tabel, Tombol, Pemberitahuan, Badge, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { gunakanTerbaru } from '../../komponen/umum';
 
 const isoHariIni = () => new Intl.DateTimeFormat('sv', { timeZone: 'Asia/Jakarta' }).format(new Date()).slice(0, 10);
@@ -49,21 +50,28 @@ export default function Riwayat() {
 
   return (
     <>
-      <Kartu t="Riwayat absensi saya">
-        <div className="flex flex-wrap items-end gap-3">
-          <p className="w-full">
-            <label htmlFor="dari" className="block text-[13px] font-semibold mb-1">Dari</label>
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul="Riwayat Absensi"
+        sub="Rekap absensi masuk dan pulang Anda pada rentang tanggal tertentu."
+      />
+
+      <Kartu>
+        <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+          <div>
+            <label htmlFor="dari" className="block text-[10px] font-extrabold uppercase tracking-[1px] text-mu mb-1.5">Dari</label>
             <input id="dari" type="date" value={dari} onChange={(e) => ubahDari(e.target.value)}
-              className="px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-          </p>
-          <p className="w-full">
-            <label htmlFor="sampai" className="block text-[13px] font-semibold mb-1">Sampai</label>
+              className="w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
+          </div>
+          <div>
+            <label htmlFor="sampai" className="block text-[10px] font-extrabold uppercase tracking-[1px] text-mu mb-1.5">Sampai</label>
             <input id="sampai" type="date" value={sampai} onChange={(e) => ubahSampai(e.target.value)}
-              className="px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-          </p>
-          <p>
-            <Tombol onClick={() => void muatUlang()} disabled={muat}>Tampilkan</Tombol>
-          </p>
+              className="w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
+          </div>
+          <Tombol onClick={() => void muatUlang()} disabled={muat} className="!h-[38px] w-full sm:w-auto">
+            <Ikon nama="filter" className="size-3.5" />
+            {muat ? 'Memuat…' : 'Tampilkan'}
+          </Tombol>
         </div>
         {galat ? (
           <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div>
@@ -71,19 +79,29 @@ export default function Riwayat() {
       </Kartu>
 
       <Kartu t="Daftar absensi">
+        <p className="text-[11px] text-mu -mt-1 mb-3">
+          {muat ? 'Memuat data…' : `${data?.length ?? 0} catatan pada rentang tanggal ini.`}
+        </p>
         {muat ? (
-          <p className="text-mu text-sm">Memuat…</p>
+          <div className="flex items-center gap-2 text-mu text-sm py-3">
+            <Ikon nama="refresh" className="size-4 animate-spin" />
+            Memuat…
+          </div>
         ) : (
           <Tabel
             h={['Tanggal', 'Masuk', 'Pulang', 'Metode']}
             rows={(data ?? []).map((a) => [
-              `${namaHari(a.tanggal)}, ${a.tanggal}`,
+              <span key="t" className="whitespace-nowrap">
+                <b className="block font-semibold">{namaHari(a.tanggal)}</b>
+                <small className="text-[10.5px] text-mu">{a.tanggal}</small>
+              </span>,
               <span key="m"><b>{a.jam.slice(0, 5)}</b> <Badge s={a.status} /></span>,
               a.pulang_jam && a.pulang_status ? (
                 <span key="p"><b>{a.pulang_jam.slice(0, 5)}</b> <Badge s={a.pulang_status} /></span>
-              ) : '-',
+              ) : <span key="p" className="text-mu">—</span>,
               a.metode,
             ])}
+            em="Belum ada absensi pada rentang tanggal ini."
           />
         )}
       </Kartu>

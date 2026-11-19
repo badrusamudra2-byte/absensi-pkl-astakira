@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
+import { Ikon } from './Ikon';
 
 /** Ekstensi berkas mengikuti jenis isi blob, bukan tebalan klien. */
 const ekstensi = (jenis: string): string => {
@@ -72,49 +73,65 @@ export function PenampilFoto({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#07152e]/75 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={judul}
       onClick={tutup}
     >
       <div
-        className="bg-kartu border border-garis rounded-xl p-3 max-w-full max-h-full flex flex-col gap-3"
+        className="flex max-h-full w-full max-w-[900px] flex-col gap-3 rounded-2xl border border-garis bg-kartu p-3 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3">
-          <b className="text-sm truncate">{judul}</b>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-pl text-pr">
+              <Ikon nama="image" className="size-3.5" />
+            </span>
+            <b className="truncate text-sm">{judul}</b>
+          </div>
           <button
             type="button"
             ref={tombolTutup}
             onClick={tutup}
             aria-label="Tutup foto"
-            className="h-8 w-8 grid place-items-center rounded-lg border border-garis text-mu hover:text-teks cursor-pointer bg-transparent shrink-0"
+            className="grid size-8 shrink-0 place-items-center rounded-lg border border-garis bg-kartu text-mu transition hover:border-pr/40 hover:text-teks"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            <Ikon nama="x" className="size-4" />
           </button>
         </div>
 
-        {sedang ? <p className="text-mu text-sm" aria-live="polite">Memuat foto…</p> : null}
-        {galat ? (
-          <p className="text-r text-sm font-semibold" role="alert" aria-live="polite">{galat}</p>
+        {sedang ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-mu" aria-live="polite">
+            <span className="size-4 animate-spin rounded-full border-2 border-pr/20 border-t-pr" aria-hidden="true" />
+            Memuat foto&hellip;
+          </div>
         ) : null}
+
+        {galat ? (
+          <div className="flex items-start gap-2 rounded-lg border border-r bg-[#b91c1c10] px-3 py-2.5 text-r" role="alert" aria-live="polite">
+            <Ikon nama="alert" className="mt-0.5 size-4 shrink-0" />
+            <p className="text-sm font-semibold">{galat}</p>
+          </div>
+        ) : null}
+
         {url ? (
-          <img
-            src={url}
-            alt={judul}
-            className="max-h-[70vh] max-w-full rounded-lg border border-garis object-contain"
-          />
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-[#0b1f4d] p-2">
+            <img
+              src={url}
+              alt={judul}
+              className="max-h-[70vh] max-w-full rounded-lg object-contain"
+            />
+          </div>
         ) : null}
 
         {url ? (
           <a
             href={url}
             download={namaUnduh}
-            className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold border border-garis text-pr cursor-pointer hover:brightness-110"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-garis bg-kartu px-4 py-2 text-sm font-semibold text-pr transition hover:border-pr hover:bg-pl"
           >
+            <Ikon nama="download" className="size-4" />
             Unduh foto ({namaUnduh})
           </a>
         ) : null}

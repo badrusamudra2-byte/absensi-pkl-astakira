@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { BarisAdminUser } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Label, Masukan, Badge } from '../../komponen/ui';
 import { FxDaftar } from '../../komponen/umum';
 import { useToast } from '../../komponen/Toast';
+import { Ikon } from '../../komponen/Ikon';
 
 interface FormNilai {
   id?: number;
@@ -102,72 +103,134 @@ export default function Peserta() {
     }
   };
 
+  const total = rows?.length ?? null;
+  const aktif = rows?.filter((b) => b.aktif).length ?? null;
+  const nonaktif = rows?.filter((b) => !b.aktif).length ?? null;
+
   return (
     <>
-      <Kartu t="Kelola peserta">
-        {galat ? <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /> : null}
+      <JudulHalaman
+        eyebrow="Admin"
+        judul="Kelola peserta"
+        sub="Tambah, ubah, nonaktifkan, atau hapus data peserta PKL."
+        aksi={
+          form ? (
+            <Tombol varian="gh" onClick={() => ubahForm(null)} disabled={sedang}>Tutup form</Tombol>
+          ) : (
+            <Tombol onClick={() => ubahForm({ ...kosong })}>
+              <Ikon nama="plus" className="size-4" />
+              Tambah peserta
+            </Tombol>
+          )
+        }
+      />
+
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        {[
+          { label: 'Total peserta', nilai: total, warna: 'text-teks' },
+          { label: 'Aktif', nilai: aktif, warna: 'text-g' },
+          { label: 'Nonaktif', nilai: nonaktif, warna: 'text-mu' },
+        ].map((s) => (
+          <div key={s.label} className="rounded-kartu border border-garis bg-kartu p-3 shadow-kartu md:p-4">
+            <p className="text-[9.5px] font-extrabold uppercase tracking-[.6px] text-mu md:text-[10px]">{s.label}</p>
+            <p className={`mt-1 text-2xl font-extrabold leading-none ${s.warna}`}>{s.nilai ?? '…'}</p>
+          </div>
+        ))}
+      </div>
+
+      <Kartu t="Daftar peserta">
+        {galat ? <div className="mb-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
+
         {form ? (
-          <form onSubmit={simpan} className="mb-5 border-2 border-garis rounded-xl p-4 max-w-[560px]">
-            <h3 className="font-bold text-sm mb-1">{form.id ? 'Edit peserta' : 'Tambah peserta'}</h3>
-            <p className="text-mu text-sm mb-2">
-              {form.id ? 'Kosongkan kolom yang tidak berubah untuk mempertahankan nilai lama.' : 'Email boleh buatan admin; kata sandi awal di bawah dipakai peserta untuk login pertama.'}
-            </p>
-            <Label htmlFor="psr_nama">Nama lengkap</Label>
-            <input id="psr_nama" required maxLength={100} value={form.nama} onChange={(e) => ubahForm({ ...form, nama: e.target.value })}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
-            <Label htmlFor="psr_email">Email</Label>
-            <input id="psr_email" required type="email" maxLength={120} value={form.email} onChange={(e) => ubahForm({ ...form, email: e.target.value })}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
-            {form.id ? null : (
-              <>
-                <Label htmlFor="psr_sandi">Kata sandi awal</Label>
-                <input
-                  id="psr_sandi" required type="password" autoComplete="new-password" minLength={8} maxLength={72}
-                  value={form.password} onChange={(e) => ubahForm({ ...form, password: e.target.value })}
-                  className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-                />
-                <small className="text-mu text-xs">Minimal 8 karakter, mengandung huruf dan angka. Peserta sebaiknya menggantinya setelah login pertama.</small>
-              </>
-            )}
-            <Label htmlFor="psr_divisi">Divisi</Label>
-            <input id="psr_divisi" maxLength={80} value={form.divisi} onChange={(e) => ubahForm({ ...form, divisi: e.target.value })}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
-            <Label htmlFor="psr_pmb">Pembimbing</Label>
-            <select id="psr_pmb" value={form.pembimbing_id} onChange={(e) => ubahForm({ ...form, pembimbing_id: e.target.value ? Number(e.target.value) : '' })}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg">
-              <option value="">— belum ditentukan —</option>
-              {pembimbing.map((p) => (
-                <option key={p.id} value={p.id}>{p.nama}</option>
-              ))}
-            </select>
-            <div className="flex gap-2 mt-4">
-              <Tombol type="submit" disabled={sedang}>Simpan</Tombol>
-              <Tombol varian="gh" onClick={() => ubahForm(null)} disabled={sedang}>Batal</Tombol>
+          <div className="mb-5 rounded-[14px] border border-[#c7dbff] bg-[#f8fbff] p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-pr shadow-sm">
+                <Ikon nama={form.id ? 'edit' : 'plus'} className="size-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-extrabold">{form.id ? 'Edit peserta' : 'Tambah peserta'}</h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-mu">
+                  {form.id
+                    ? 'Kosongkan kolom yang tidak berubah untuk mempertahankan nilai lama.'
+                    : 'Email boleh buatan admin; kata sandi awal dipakai peserta untuk login pertama.'}
+                </p>
+              </div>
             </div>
-          </form>
-        ) : (
-          <p className="mb-4"><Tombol onClick={() => ubahForm({ ...kosong })}>Tambah peserta</Tombol></p>
-        )}
+            <form onSubmit={simpan} className="max-w-[640px]">
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="psr_nama" className="mt-0">Nama lengkap</Label>
+                  <Masukan id="psr_nama" required maxLength={100} value={form.nama} onChange={(e) => ubahForm({ ...form, nama: e.target.value })} />
+                </div>
+                <div>
+                  <Label htmlFor="psr_email" className="mt-0">Email</Label>
+                  <Masukan id="psr_email" required type="email" maxLength={120} value={form.email} onChange={(e) => ubahForm({ ...form, email: e.target.value })} />
+                </div>
+                {form.id ? null : (
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="psr_sandi">Kata sandi awal</Label>
+                    <Masukan
+                      id="psr_sandi" required type="password" autoComplete="new-password" minLength={8} maxLength={72}
+                      value={form.password} onChange={(e) => ubahForm({ ...form, password: e.target.value })}
+                    />
+                    <small className="mt-1 block text-[11px] text-mu">Minimal 8 karakter, mengandung huruf dan angka. Peserta sebaiknya menggantinya setelah login pertama.</small>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="psr_divisi">Divisi</Label>
+                  <Masukan id="psr_divisi" maxLength={80} value={form.divisi} onChange={(e) => ubahForm({ ...form, divisi: e.target.value })} />
+                </div>
+                <div>
+                  <Label htmlFor="psr_pmb">Pembimbing</Label>
+                  <select
+                    id="psr_pmb"
+                    value={form.pembimbing_id}
+                    onChange={(e) => ubahForm({ ...form, pembimbing_id: e.target.value ? Number(e.target.value) : '' })}
+                    className="mt-1 block h-[38px] w-full rounded-lg border border-garis bg-bg px-[11px] text-sm outline-none focus:border-pr focus:ring-4 focus:ring-pr/10"
+                  >
+                    <option value="">— belum ditentukan —</option>
+                    {pembimbing.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Tombol type="submit" disabled={sedang}>
+                  <Ikon nama="check" className="size-4" />
+                  Simpan
+                </Tombol>
+                <Tombol varian="gh" onClick={() => ubahForm(null)} disabled={sedang}>Batal</Tombol>
+              </div>
+            </form>
+          </div>
+        ) : null}
 
         <FxDaftar
           rows={rows}
+          em="Belum ada peserta terdaftar."
           kolom={[
             {
               t: 'Nama',
               isi: (b) => (
-                <b>
-                  {b.nama}
-                  {!b.aktif ? <Badge s="Nonaktif" /> : null}
-                </b>
+                <span className="flex items-center gap-2.5">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-pl text-[11px] font-extrabold text-pr">
+                    {b.nama.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <b className="block leading-tight">{b.nama}</b>
+                    {!b.aktif ? <span className="mt-1 inline-block"><Badge s="Nonaktif" /></span> : null}
+                  </span>
+                </span>
               ),
             },
-            { t: 'Email', isi: (b) => b.email },
+            { t: 'Email', isi: (b) => <span className="text-mu">{b.email}</span> },
             { t: 'Divisi', isi: (b) => b.peserta?.divisi || '-' },
             { t: 'Pembimbing', isi: (b) => b.peserta?.pembimbing?.nama || '-' },
             {
               t: 'Aksi',
               isi: (b) => (
-                <span className="flex flex-wrap gap-2">
+                <span className="flex flex-wrap gap-1.5">
                   <button
                     onClick={() =>
                       ubahForm({
@@ -175,14 +238,23 @@ export default function Peserta() {
                         pembimbing_id: b.peserta?.pembimbing_id ?? '',
                       })
                     }
-                    className="text-pr underline text-sm cursor-pointer bg-transparent border-0 p-0"
+                    className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-pr transition hover:border-pr hover:bg-pl"
                   >
+                    <Ikon nama="edit" className="size-3" />
                     Edit
                   </button>
-                  <button onClick={() => void toggling(b)} className="text-y underline text-sm cursor-pointer bg-transparent border-0 p-0">
+                  <button
+                    onClick={() => void toggling(b)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-y transition hover:border-y/50 hover:bg-[#a1620712]"
+                  >
+                    <Ikon nama={b.aktif ? 'x' : 'check'} className="size-3" />
                     {b.aktif ? 'Nonaktifkan' : 'Aktifkan'}
                   </button>
-                  <button onClick={() => void hapus(b)} className="text-r underline text-sm cursor-pointer bg-transparent border-0 p-0">
+                  <button
+                    onClick={() => void hapus(b)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-r transition hover:border-r/40 hover:bg-[#b91c1c0d]"
+                  >
+                    <Ikon nama="x" className="size-3" />
                     Hapus
                   </button>
                 </span>
@@ -190,7 +262,8 @@ export default function Peserta() {
             },
           ]}
         />
-        <p className="text-xs text-mu mt-3">
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-snug text-mu">
+          <Ikon nama="info" className="mt-0.5 size-3.5 shrink-0" />
           Hapus hanya untuk data yang belum dipakai sama sekali (tanpa riwayat absensi/jurnal).
           Peserta yang sudah aktif sebaiknya cukup dinonaktifkan agar riwayat tetap utuh.
         </p>

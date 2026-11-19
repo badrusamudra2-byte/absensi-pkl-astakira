@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A2 — Dashboard Peserta</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Beranda"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Peserta PKL</div>
+            <h1>Beranda Peserta</h1>
+            <p class="sub">Ringkasan kehadiran dan kegiatan PKL Anda hari ini.</p>
+          </div>
+          <div class="head-actions">
+            <span class="badge hadir plain">Aktif · Semester Ganjil 2026</span>
+          </div>
+        </div>
+
+        <section class="card" style="padding:17px 20px">
+          <div class="flex ai-c gap-12">
+            <div class="avatar" style="width:58px;height:58px;font-size:21px">NP</div>
+            <div style="flex:1">
+              <div class="tiny muted strong" style="letter-spacing:.4px">SELAMAT DATANG KEMBALI</div>
+              <h2 style="font-size:19px;font-weight:800;letter-spacing:-.4px;margin-top:2px">Nabila Putri Ramadhani</h2>
+              <p class="small muted" style="margin-top:1px">Peserta PKL · Divisi Desain Grafis · Pembimbing Rizky Pratama</p>
+            </div>
+            <div class="badge hadir plain" style="padding:5px 11px">Sudah absen masuk 07.52</div>
+          </div>
+          <div class="divider" style="margin:14px 0 12px"></div>
+          <div class="grid g3">
+            <div>
+              <div class="tiny muted strong">STATUS HARI INI</div>
+              <div class="flex ai-c gap-6" style="margin-top:3px"><b style="font-size:15px">Hadir</b><span class="badge hadir">Tepat waktu</span></div>
+            </div>
+            <div style="border-left:1px solid var(--line);padding-left:18px">
+              <div class="tiny muted strong">JAM KERJA</div>
+              <div style="margin-top:3px"><b style="font-size:15px">08.00 – 16.00</b> <span class="tiny muted">WIB</span></div>
+            </div>
+            <div style="border-left:1px solid var(--line);padding-left:18px">
+              <div class="tiny muted strong">JURNAL HARI INI</div>
+              <div class="flex ai-c gap-6" style="margin-top:3px"><b style="font-size:15px">Sudah diisi</b><span class="badge dikirim">Dikirim</span></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid g3 mt-14">
+          <div class="card pad-sm">
+            <div class="quick plain" style="border:0;padding:0">
+              <div class="q-ico"><span data-icon="absen"></span></div>
+              <div class="q-txt"><b>Absen masuk / pulang</b><small>Verifikasi wajah dan QR absensi</small></div>
+              <div class="arrow"><span data-icon="chevron"></span></div>
+            </div>
+          </div>
+          <div class="card pad-sm">
+            <div class="quick plain" style="border:0;padding:0">
+              <div class="q-ico"><span data-icon="clock"></span></div>
+              <div class="q-txt"><b>Riwayat absensi</b><small>Rekap masuk dan pulang Anda</small></div>
+              <div class="arrow"><span data-icon="chevron"></span></div>
+            </div>
+          </div>
+          <div class="card pad-sm">
+            <div class="quick plain" style="border:0;padding:0">
+              <div class="q-ico"><span data-icon="book"></span></div>
+              <div class="q-txt"><b>Jurnal kegiatan</b><small>Tulis laporan kegiatan harian</small></div>
+              <div class="arrow"><span data-icon="chevron"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid g-2-1 mt-14">
+          <section class="card">
+            <div class="card-head">
+              <h2>Absensi hari ini</h2>
+              <span class="small muted">Rabu, 18 November 2026</span>
+            </div>
+            <div class="grid g2" style="gap:10px">
+              <div style="border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#f8fbf9">
+                <div class="flex ai-c jc-b">
+                  <span class="tiny muted strong">ABSEN MASUK</span>
+                  <span class="badge hadir">Hadir</span>
+                </div>
+                <div style="font-size:23px;font-weight:800;letter-spacing:-.5px;margin-top:6px">07.52</div>
+                <div class="tiny muted" style="margin-top:1px">Metode QR + Wajah · dalam radius kantor</div>
+              </div>
+              <div style="border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#f8fafc">
+                <div class="flex ai-c jc-b">
+                  <span class="tiny muted strong">ABSEN PULANG</span>
+                  <span class="badge netral">Belum tercatat</span>
+                </div>
+                <div style="font-size:23px;font-weight:800;letter-spacing:-.5px;margin-top:6px;color:#94a3b8">— — : — —</div>
+                <div class="tiny muted" style="margin-top:1px">Dibuka 5 menit sebelum jam pulang</div>
+              </div>
+            </div>
+            <div class="flex ai-c jc-b" style="margin-top:14px">
+              <div class="notice" style="padding:8px 11px;flex:1;margin-right:12px">
+                <span data-icon="info"></span>
+                <div><b>Absensi hanya tercatat sekali per jenis per hari.</b><span>Pastikan wajah dan QR Anda siap sebelum memulai.</span></div>
+              </div>
+              <button class="btn btn-primary" type="button">Absen pulang</button>
+            </div>
+            <div class="divider" style="margin:13px 0 9px"></div>
+            <div class="grid g3" style="gap:0">
+              <div class="info-row" style="border:0;padding:0;display:block"><span class="tiny muted">Metode absensi</span><b style="display:block;margin-top:1px">QR + Wajah</b></div>
+              <div class="info-row" style="border:0;padding:0 0 0 16px;display:block;border-left:1px solid var(--line)"><span class="tiny muted">Lokasi saat absen</span><b style="display:block;margin-top:1px;color:var(--green)">Dalam radius · 18 m</b></div>
+              <div class="info-row" style="border:0;padding:0 0 0 16px;display:block;border-left:1px solid var(--line)"><span class="tiny muted">Perangkat</span><b style="display:block;margin-top:1px">Android · Chrome</b></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Jurnal terbaru</h2>
+              <span class="link">Semua jurnal <span data-icon="chevron"></span></span>
+            </div>
+            <div class="jrow">
+              <div class="date"><b>18</b><small>Nov</small></div>
+              <div class="j-txt"><b>Penyusunan aset desain feed Instagram</b><small>Absensi 07.52 · QR + Wajah</small></div>
+              <span class="badge dikirim">Dikirim</span>
+            </div>
+            <div class="jrow">
+              <div class="date"><b>17</b><small>Nov</small></div>
+              <div class="j-txt"><b>Revisi layout katalog produk</b><small>Disetujui pembimbing</small></div>
+              <span class="badge disetujui">Disetujui</span>
+            </div>
+            <div class="jrow">
+              <div class="date"><b>16</b><small>Nov</small></div>
+              <div class="j-txt"><b>Eksplorasi konsep visual campaign</b><small>Perlu perbaikan uraian</small></div>
+              <span class="badge revisi">Revisi</span>
+            </div>
+            <div class="notice ok" style="margin-top:12px;padding:8px 11px">
+              <span data-icon="checkCircle"></span>
+              <div><b>3 jurnal disetujui bulan ini.</b><span>Terus lengkapi jurnal setiap hari kerja.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="grid g3 mt-14">
+          <section class="card pad-sm">
+            <div class="flex ai-c gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center"><span data-icon="clock"></span></div>
+              <div><div class="tiny muted strong">JAM KERJA HARI INI</div><b style="font-size:13px">08.00 – 16.00 WIB</b><div class="tiny muted">Toleransi 15 menit</div></div>
+            </div>
+          </section>
+          <section class="card pad-sm">
+            <div class="flex ai-c gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center"><span data-icon="face"></span></div>
+              <div><div class="tiny muted strong">PENDAFTARAN WAJAH</div><b style="font-size:13px">Terdaftar</b><div class="tiny muted">Template wajah aktif</div></div>
+            </div>
+          </section>
+          <section class="card pad-sm">
+            <div class="flex ai-c gap-10">
+              <div class="q-ico" style="width:32px;height:32px;border-radius:9px;background:#eff4ff;color:var(--primary);display:grid;place-items:center"><span data-icon="file"></span></div>
+              <div><div class="tiny muted strong">PENGAJUAN IZIN / SAKIT</div><b style="font-size:13px">Tidak ada pengajuan aktif</b><div class="tiny muted">Ajukan bila berhalangan hadir</div></div>
+            </div>
+          </section>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

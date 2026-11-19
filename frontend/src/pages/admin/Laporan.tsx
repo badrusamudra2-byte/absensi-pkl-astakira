@@ -2,17 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { LaporanData } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
 import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo } from '../../komponen/umum';
 import { unduhBerkas, type FormatLaporan } from '../../lib/unduh';
+import { Ikon } from '../../komponen/Ikon';
 
 type Tab = 'rekap' | 'absensi' | 'jurnal';
 
-const TAB: { id: Tab; label: string }[] = [
-  { id: 'rekap', label: 'Rekap per peserta' },
-  { id: 'absensi', label: 'Absensi' },
-  { id: 'jurnal', label: 'Jurnal' },
+const TAB: { id: Tab; label: string; ikon: 'chart' | 'absen' | 'book' }[] = [
+  { id: 'rekap', label: 'Rekap per peserta', ikon: 'chart' },
+  { id: 'absensi', label: 'Absensi', ikon: 'absen' },
+  { id: 'jurnal', label: 'Jurnal', ikon: 'book' },
 ];
 
 const jumlah = (n: number) => (n === 0 ? '0' : <b>{n}</b>);
@@ -73,10 +74,18 @@ export default function Laporan() {
 
   return (
     <>
-      <Kartu t="Laporan absensi & jurnal">
+      <JudulHalaman
+        eyebrow="Admin"
+        judul="Laporan"
+        sub="Rekap kehadiran dan jurnal per periode, siap diunduh."
+      />
+
+      <Kartu t="Filter laporan">
         <FilterTanggal dari={dari} sampai={sampai} ubahDari={ubahDari} ubahSampai={ubahSampai} aksi={() => void muat(dari, sampai, uid)} />
-        <p className="mt-3">
-          <Label htmlFor="lap_psr">Peserta (opsional)</Label>
+        <div className="mt-3">
+          <label htmlFor="lap_psr" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.04em] text-mu">
+            Peserta (opsional)
+          </label>
           <select
             id="lap_psr"
             value={uid}
@@ -85,38 +94,54 @@ export default function Laporan() {
               ubahUid(u);
               void muat(dari, sampai, u);
             }}
-            className="px-[11px] py-2 border border-garis rounded-lg bg-bg max-w-full"
+            className="h-[42px] w-full rounded-[11px] border border-garis bg-kartu px-3 text-sm outline-none transition focus:border-pr focus:ring-4 focus:ring-pr/10 sm:max-w-[360px]"
           >
             <option value="">— semua peserta —</option>
             {peserta.map((p) => (
               <option key={p.id} value={p.id}>{p.nama}</option>
             ))}
           </select>
-        </p>
+        </div>
+
         {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
 
-        <p className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Bagian laporan">
+        <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Bagian laporan">
           {TAB.map((t) => (
-            <Tombol
+            <button
               key={t.id}
-              varian={tab === t.id ? 'utama' : 'gh'}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => ubahTab(t.id)}
-              aria-pressed={tab === t.id}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                tab === t.id
+                  ? 'border-pr bg-pr text-white shadow-sm'
+                  : 'border-garis bg-kartu text-mu hover:border-pr/50 hover:text-pr'
+              }`}
             >
+              <Ikon nama={t.ikon} className="size-3.5" />
               {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-garis pt-3">
+          <span className="mr-1 text-[10px] font-extrabold uppercase tracking-[.6px] text-mu">Unduh</span>
+          {([
+            ['csv', 'CSV'],
+            ['xlsx', 'Excel'],
+            ['pdf', 'PDF'],
+          ] as const).map(([format, label]) => (
+            <Tombol key={format} varian="gh" onClick={() => void unduh(format)} disabled={sedang}>
+              <Ikon nama="download" className="size-4" />
+              {label}
             </Tombol>
           ))}
+        </div>
+        <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-mu">
+          <Ikon nama="info" className="mt-0.5 size-3.5 shrink-0" />
+          Berkas mengikuti filter di atas dan memuat tiga bagian: rekap per peserta, absensi, dan jurnal.
         </p>
-      </Kartu>
-
-      <Kartu t="Unduh laporan">
-        <p className="text-mu text-sm mb-3">Berkas mengikuti filter di atas (rentang dan peserta).</p>
-        <p className="flex flex-wrap gap-2">
-          <Tombol varian="gh" onClick={() => void unduh('csv')} disabled={sedang}>Unduh CSV</Tombol>
-          <Tombol varian="gh" onClick={() => void unduh('xlsx')} disabled={sedang}>Unduh Excel</Tombol>
-          <Tombol varian="gh" onClick={() => void unduh('pdf')} disabled={sedang}>Unduh PDF</Tombol>
-        </p>
-        <p className="text-mu text-xs mt-3">CSV, Excel, dan PDF memuat tiga bagian: Rekap per peserta, Absensi, dan Jurnal.</p>
       </Kartu>
 
       {tab === 'rekap' ? (
@@ -132,7 +157,7 @@ export default function Laporan() {
               { t: 'Tidak hadir', isi: (k) => jumlah(k.tidak_hadir) },
               {
                 t: 'Jurnal (Disetujui/Dikirim/Revisi)',
-                isi: (k) => `${k.jurnal_disetujui}/${k.jurnal_dikirim}/${k.jurnal_revisi}`,
+                isi: (k) => <span className="whitespace-nowrap tabular-nums">{k.jurnal_disetujui}/{k.jurnal_dikirim}/{k.jurnal_revisi}</span>,
               },
             ]}
           />
@@ -144,12 +169,12 @@ export default function Laporan() {
           <FxDaftar
             rows={data?.absensi ?? null}
             kolom={[
-              { t: 'Tanggal', utama: (a) => tglIndo(a.tanggal), isi: (a) => tglIndo(a.tanggal) },
+              { t: 'Tanggal', utama: (a) => tglIndo(a.tanggal), isi: (a) => <span className="whitespace-nowrap font-semibold">{tglIndo(a.tanggal)}</span> },
               { t: 'Peserta', isi: (a) => a.peserta?.nama ?? '-' },
               { t: 'Jenis', isi: (a) => <b className="capitalize">{a.jenis}</b> },
-              { t: 'Jam', isi: (a) => a.jam.slice(0, 5) },
+              { t: 'Jam', isi: (a) => <span className="tabular-nums">{a.jam.slice(0, 5)}</span> },
               { t: 'Status', isi: (a) => (a.status === 'Tidak hadir' && a.metode === 'Otomatis' ? <span className="text-mu">Penanda otomatis</span> : <Badge s={a.status} />) },
-              { t: 'Metode', isi: (a) => a.metode },
+              { t: 'Metode', isi: (a) => <span className="text-xs text-mu">{a.metode}</span> },
             ]}
           />
         </Kartu>
@@ -160,7 +185,7 @@ export default function Laporan() {
           <FxDaftar
             rows={data?.jurnal ?? null}
             kolom={[
-              { t: 'Tanggal', utama: (j) => tglIndo(j.tanggal), isi: (j) => tglIndo(j.tanggal) },
+              { t: 'Tanggal', utama: (j) => tglIndo(j.tanggal), isi: (j) => <span className="whitespace-nowrap font-semibold">{tglIndo(j.tanggal)}</span> },
               { t: 'Peserta', isi: (j) => j.peserta?.nama ?? '-' },
               { t: 'Judul', isi: (j) => <b>{j.judul}</b> },
               { t: 'Status', isi: (j) => <Badge s={j.status} /> },

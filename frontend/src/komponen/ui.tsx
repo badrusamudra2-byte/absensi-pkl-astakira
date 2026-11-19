@@ -2,14 +2,39 @@ import { useState, type ReactNode } from 'react';
 
 export function Kartu({ t, children, className = '' }: { t?: string; children: ReactNode; className?: string }) {
   return (
-    <section className={`bg-kartu border border-garis rounded-xl p-4 md:p-[18px] mb-4 ${className}`}>
-      {t ? <h2 className="text-base font-bold mb-3">{t}</h2> : null}
+    <section className={`bg-kartu border border-garis rounded-kartu shadow-kartu p-4 md:p-[18px] mb-4 ${className}`}>
+      {t ? <h2 className="text-[14px] font-extrabold tracking-tight mb-3">{t}</h2> : null}
       {children}
     </section>
   );
 }
 
-type TombolVarian = 'utama' | 'gh' | 'dg' | 'dg2';
+export function JudulHalaman({
+  eyebrow,
+  judul,
+  sub,
+  aksi,
+}: {
+  eyebrow?: string;
+  judul: string;
+  sub?: string;
+  aksi?: ReactNode;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+      <div>
+        {eyebrow ? (
+          <div className="text-[10px] font-extrabold tracking-[1.4px] uppercase text-pr mb-1">{eyebrow}</div>
+        ) : null}
+        <h1 className="text-xl md:text-[21px] font-extrabold tracking-tight leading-tight">{judul}</h1>
+        {sub ? <p className="text-xs text-mu mt-1">{sub}</p> : null}
+      </div>
+      {aksi ? <div className="flex items-center gap-2 flex-wrap">{aksi}</div> : null}
+    </div>
+  );
+}
+
+type TombolVarian = 'utama' | 'gh' | 'soft' | 'dg' | 'dg2';
 export function Tombol({
   varian = 'utama',
   type = 'button', // bawaan: bukan submit — tombol di dalam form tidak ikut terkirim
@@ -20,12 +45,14 @@ export function Tombol({
   const dasar = 'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold border cursor-pointer transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed';
   const warna =
     varian === 'utama'
-      ? 'bg-pr border-pr text-pr-t'
+      ? 'bg-pr border-pr text-pr-t shadow-[0_7px_16px_-10px_rgba(29,78,216,.85)]'
       : varian === 'gh'
-        ? 'bg-transparent text-pr border-garis'
-        : varian === 'dg'
-          ? 'bg-transparent text-r border-garis'
-          : 'bg-r border-r text-white';
+        ? 'bg-kartu text-pr border-garis'
+        : varian === 'soft'
+          ? 'bg-pl border-transparent text-pr'
+          : varian === 'dg'
+            ? 'bg-transparent text-r border-garis'
+            : 'bg-r border-r text-white';
   return (
     <button type={type} className={`${dasar} ${warna} ${className}`} {...rest}>
       {children}
@@ -42,18 +69,22 @@ export function Galat({ pesan }: { pesan: string | null }) {
   );
 }
 
-export function Label({ children, ...rest }: { children: ReactNode } & React.LabelHTMLAttributes<HTMLLabelElement>) {
+export function Label({
+  children,
+  className = '',
+  ...rest
+}: { children: ReactNode } & React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className="block text-[13px] font-semibold mt-3" {...rest}>
+    <label className={`block text-[13px] font-semibold mt-3 ${className}`} {...rest}>
       {children}
     </label>
   );
 }
 
-export function Masukan(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Masukan({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg text-teks font-normal"
+      className={`block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg text-teks font-normal ${className}`}
       {...props}
     />
   );
@@ -61,13 +92,13 @@ export function Masukan(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 /** Kolom kata sandi dengan tombol lihatmacam/kunci (ikon mata).
  * Default terkunci; saklar hanya memindah jenis kolom, isi tidak berubah. */
-export function MasukanSandi(props: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+export function MasukanSandi({ className = '', ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
   const [tampil, ubahTampil] = useState(false);
   return (
     <div className="relative mt-1">
       <input
         type={tampil ? 'text' : 'password'}
-        className="block w-full px-[11px] py-[9px] pr-14 border border-garis rounded-lg bg-bg text-teks font-normal"
+        className={`block w-full px-[11px] py-[9px] pr-14 border border-garis rounded-lg bg-bg text-teks font-normal ${className}`}
         {...props}
       />
       <button
@@ -122,8 +153,11 @@ export function Badge({ s }: { s: string }) {
     Diterima: 'text-g bg-[#15803d20]',
     Disetujui: 'text-g bg-[#15803d20]',
     Ditolak: 'text-r bg-[#b91c1c20]',
+    Dikirim: 'text-y bg-[#a1620724]',
+    Revisi: 'text-o bg-[#c2410c20]',
     Menunggu: 'text-s bg-[#47556920]',
     Diperiksa: 'text-pr bg-pl',
+    'Hari ini': 'text-pr bg-pl',
   };
   return (
     <span className={`inline-block px-[10px] py-0.5 rounded-full font-semibold text-xs whitespace-nowrap ${warna[s] ?? warna.Menunggu}`}>
@@ -139,7 +173,10 @@ export function Tabel({ h, rows, em = 'Tidak ada data pada rentang ini.' }: { h:
         <thead>
           <tr>
             {h.map((x) => (
-              <th key={x} className="text-left text-xs text-mu font-semibold px-[10px] py-2 border-b border-garis">
+              <th
+                key={x}
+                className="text-left text-[10.5px] text-mu font-extrabold uppercase tracking-[.45px] px-[10px] py-2 border-b border-garis bg-[#f8fafc]"
+              >
                 {x}
               </th>
             ))}

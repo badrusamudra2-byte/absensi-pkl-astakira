@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { PengajuanIzin } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Label, Badge, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { useToast } from '../../komponen/Toast';
 import { isoHariIni, tglIndo } from '../../komponen/umum';
 
@@ -109,100 +110,178 @@ export default function PengajuanIzin() {
 
   return (
     <>
-      <Kartu t="Kirim pengajuan izin / sakit">
-        <p className="text-mu text-sm mb-1 max-w-[560px]">
-          Tidak bisa absen QR atau wajah hari itu? Ajukan Izin/Sakit dengan bukti foto. Setelah
-          pembimbing menyetujui, tanggal tersebut terekam dan terkunci — Anda tidak perlu absen lagi.
-        </p>
-        <form onSubmit={kirim} className="max-w-[560px]">
-          <fieldset className="mt-2">
-            <legend className="text-[13px] font-semibold">Jenis pengajuan</legend>
-            <div className="flex gap-4 mt-1">
-              {(['Izin', 'Sakit'] as const).map((s) => (
-                <label key={s} className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="radio" name="pj_jenis" checked={jenis === s} onChange={() => ubahJenis(s)} />
-                  {s}
-                </label>
-              ))}
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul="Pengajuan Izin / Sakit"
+        sub="Ajukan ketidakhadiran beserta bukti foto, lalu pantau statusnya."
+      />
+
+      <div className="grid lg:grid-cols-[1.45fr_1fr] gap-4 items-start">
+        <Kartu className="!p-0 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-garis">
+            <span className="size-8 rounded-lg bg-pl text-pr grid place-items-center">
+              <Ikon nama="file" className="size-4" />
+            </span>
+            <b className="text-[12.5px] font-extrabold">Formulir pengajuan</b>
+          </div>
+          <form onSubmit={kirim} className="p-4 md:p-5">
+            <p className="text-[11.5px] text-mu leading-relaxed mb-4">
+              Tidak bisa absen QR atau wajah hari itu? Ajukan Izin/Sakit dengan bukti foto. Setelah
+              pembimbing menyetujui, tanggal tersebut terekam dan terkunci dari absensi.
+            </p>
+
+            <fieldset className="m-0 p-0 border-0">
+              <legend className="text-[10px] font-extrabold uppercase tracking-[1px] text-mu mb-1.5">Jenis pengajuan</legend>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(['Izin', 'Sakit'] as const).map((s) => (
+                  <label
+                    key={s}
+                    className={`flex items-center gap-2.5 rounded-xl border-2 px-3 py-2.5 cursor-pointer transition ${
+                      jenis === s ? 'border-pr bg-pl' : 'border-garis bg-[#fbfcfe] hover:border-[#b8c9e8]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="pj_jenis"
+                      className="size-4 accent-[#1d4ed8]"
+                      checked={jenis === s}
+                      onChange={() => ubahJenis(s)}
+                    />
+                    <span className={`size-7 rounded-lg grid place-items-center ${jenis === s ? 'bg-pr text-white' : 'bg-[#eef2f8] text-[#5b6c85]'}`}>
+                      <Ikon nama={s === 'Sakit' ? 'activity' : 'file'} className="size-3.5" />
+                    </span>
+                    <span className="text-[11.5px] font-bold">{s}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="mt-3">
+              <Label htmlFor="pj_tgl" className="!mt-0">
+                Tanggal <span className="text-r">wajib</span>
+              </Label>
+              <input
+                id="pj_tgl"
+                type="date"
+                required
+                max={isoMaju()}
+                min={isoBatas()}
+                value={tanggal}
+                onChange={(e) => ubahTanggal(e.target.value)}
+                className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <small className="block text-mu text-[10px] mt-1">
+                Boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang.
+              </small>
             </div>
-          </fieldset>
-          <p>
-            <Label htmlFor="pj_tgl">
-              Tanggal (boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang)
-            </Label>
-            <input
-              id="pj_tgl"
-              type="date"
-              required
-              max={isoMaju()}
-              min={isoBatas()}
-              value={tanggal}
-              onChange={(e) => ubahTanggal(e.target.value)}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            />
-          </p>
-          <p>
-            <Label htmlFor="pj_ket">
-              Keterangan <span className="text-r">wajib</span> (3–1000 karakter)
-            </Label>
-            <textarea
-              id="pj_ket"
-              required
-              minLength={3}
-              maxLength={1000}
-              rows={3}
-              value={keterangan}
-              onChange={(e) => ubahKet(e.target.value)}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-              placeholder="Misal: Demam sejak subuh, surat dokter menyusul."
-            />
-          </p>
-          <p>
-            <Label htmlFor="pj_bukti">
-              Bukti foto <span className="text-r">wajib</span> (JPG/PNG/WebP, maksimal 5 MB)
-            </Label>
-            <input
-              id="pj_bukti"
-              ref={unggahRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              required
-              onChange={(e) => pilihBerkas(e.target.files?.[0] ?? null)}
-              className="block w-full mt-1 px-[11px] py-[7px] border border-garis rounded-lg bg-bg text-sm"
-            />
-            {berkas ? (
-              <small className="block mt-1 text-mu">{berkas.name} ({Math.round(berkas.size / 1024)} KB)</small>
-            ) : null}
-          </p>
-          {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
-          <p className="mt-4">
-            <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas}>
-              {sedang ? 'Mengirim…' : `Kirim pengajuan ${jenis.toLowerCase()}`}
-            </Tombol>
-          </p>
-        </form>
-      </Kartu>
+
+            <div className="mt-3">
+              <Label htmlFor="pj_ket" className="!mt-0">
+                Keterangan <span className="text-r">wajib</span>
+              </Label>
+              <textarea
+                id="pj_ket"
+                required
+                minLength={3}
+                maxLength={1000}
+                rows={3}
+                value={keterangan}
+                onChange={(e) => ubahKet(e.target.value)}
+                className="block w-full px-3 py-2 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+                placeholder="Misal: Demam sejak subuh, surat dokter menyusul."
+              />
+              <div className="flex justify-between gap-2 text-[10px] text-mu mt-1">
+                <span>Minimal 3 karakter.</span>
+                <span>{keterangan.length}/1000</span>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <Label htmlFor="pj_bukti" className="!mt-0">
+                Bukti foto <span className="text-r">wajib</span>
+              </Label>
+              <input
+                id="pj_bukti"
+                ref={unggahRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required
+                onChange={(e) => pilihBerkas(e.target.files?.[0] ?? null)}
+                className="block w-full px-3 py-[7px] border border-garis rounded-lg bg-bg text-[11.5px] file:mr-2 file:px-3 file:py-1 file:rounded-md file:border-0 file:bg-pl file:text-pr file:text-[10.5px] file:font-bold file:cursor-pointer"
+              />
+              {berkas ? (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] px-2.5 py-1.5">
+                  <Ikon nama="image" className="size-3.5 text-[#15803d]" />
+                  <span className="text-[10.5px] text-[#166534] truncate">{berkas.name}</span>
+                  <span className="text-[10px] text-[#4d7c5f] ml-auto whitespace-nowrap">{Math.round(berkas.size / 1024)} KB</span>
+                </div>
+              ) : (
+                <small className="block text-mu text-[10px] mt-1">JPG/PNG/WebP, maksimal 5 MB.</small>
+              )}
+            </div>
+
+            {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
+
+            <div className="mt-4 pt-4 border-t border-garis flex flex-wrap items-center gap-2">
+              <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas}>
+                {sedang ? 'Mengirim…' : `Kirim pengajuan ${jenis.toLowerCase()}`}
+              </Tombol>
+              <span className="text-[10px] text-mu">Persetujuan pembimbing diperlukan.</span>
+            </div>
+          </form>
+        </Kartu>
+
+        <div>
+          <Kartu t="Ketentuan pengajuan">
+            <ul className="list-none p-0 m-0 flex flex-col gap-3">
+              {[
+                { i: 'calendar' as const, t: 'Batas waktu', u: `Maksimal ${MAKS_MAJU} hari ke depan dan ${BATAS_HARI} hari ke belakang.` },
+                { i: 'image' as const, t: 'Bukti foto wajib', u: 'Format JPG, PNG, atau WebP maksimal 5 MB.' },
+                { i: 'users' as const, t: 'Putusan pembimbing', u: 'Disetujui atau ditolak disertai alasan yang dapat Anda baca.' },
+                { i: 'lock' as const, t: 'Mengunci absensi', u: 'Tanggal yang disetujui tidak memerlukan verifikasi wajah atau QR.' },
+              ].map((x) => (
+                <li key={x.t} className="flex items-start gap-2.5">
+                  <span className="size-7 rounded-lg bg-pl text-pr grid place-items-center shrink-0">
+                    <Ikon nama={x.i} className="size-3.5" />
+                  </span>
+                  <div>
+                    <b className="block text-[11px] font-extrabold">{x.t}</b>
+                    <p className="text-[10.5px] text-mu mt-0.5 leading-snug">{x.u}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Kartu>
+        </div>
+      </div>
 
       <Kartu t="Riwayat pengajuan saya">
+        <p className="text-[11px] text-mu -mt-1 mb-3">
+          {daftar === null ? 'Memuat pengajuan…' : `${daftar.length} pengajuan tercatat.`}
+        </p>
         {daftar === null ? (
-          <p className="text-mu text-sm">Memuat pengajuan&hellip;</p>
+          <div className="flex items-center gap-2 text-mu text-sm py-2">
+            <Ikon nama="refresh" className="size-4 animate-spin" />
+            Memuat pengajuan…
+          </div>
         ) : daftar.length === 0 ? (
-          <p className="text-mu text-sm mb-0">Belum ada pengajuan. Kirim lewat form di atas bila perlu.</p>
+          <p className="text-mu text-sm mb-0">Belum ada pengajuan. Kirim lewat formulir di atas bila perlu.</p>
         ) : (
-          <ul className="list-none p-0 m-0 flex flex-col gap-3">
+          <ul className="list-none p-0 m-0 grid md:grid-cols-2 gap-3">
             {daftar.map((p) => (
-              <li key={p.id} className="border border-garis rounded-xl p-3">
+              <li key={p.id} className="border border-garis rounded-xl p-3.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <b className="text-sm">{tglIndo(p.tanggal)}</b>
+                  <b className="text-[11.5px]">{tglIndo(p.tanggal)}</b>
                   <Badge s={p.jenis} />
                   <Badge s={p.status} />
                 </div>
-                <p className="text-sm mt-1.5 mb-1 whitespace-pre-line">{p.keterangan}</p>
+                <p className="text-[11.5px] mt-1.5 mb-2 whitespace-pre-line text-[#334155] leading-relaxed">{p.keterangan}</p>
                 <button
                   type="button"
                   onClick={() => { void bukaBukti(p); }}
-                  className="text-pr text-sm font-semibold no-underline hover:underline"
+                  className="inline-flex items-center gap-1.5 text-pr text-[11px] font-semibold no-underline hover:underline"
                 >
+                  <Ikon nama="eye" className="size-3.5" />
                   Lihat bukti foto
                 </button>
                 {p.status === 'Ditolak' && p.catatan_putusan ? (
@@ -211,10 +290,10 @@ export default function PengajuanIzin() {
                   </div>
                 ) : null}
                 {p.status === 'Menunggu' ? (
-                  <p className="text-mu text-xs mt-2 mb-0">Menunggu putusan pembimbing.</p>
+                  <p className="text-mu text-[10.5px] mt-2 mb-0">Menunggu putusan pembimbing.</p>
                 ) : null}
                 {p.status === 'Disetujui' ? (
-                  <p className="text-g text-xs font-semibold mt-2 mb-0">
+                  <p className="text-g text-[10.5px] font-semibold mt-2 mb-0">
                     Disetujui — tanggal tersebut terekam {p.jenis.toLowerCase()} dan tidak perlu absen.
                   </p>
                 ) : null}

@@ -1,5 +1,6 @@
 import { useCallback, useRef, type ReactNode } from 'react';
 import type { Absensi, Jenis } from '../lib/tipe';
+import { Ikon } from './Ikon';
 
 /** Baris "Tidak hadir" (metode Otomatis) dari job tutup hari hanyalah penanda,
  * bukan absensi sungguhan — peserta telat datang tetap bisa absen dan penanda
@@ -87,23 +88,22 @@ export function FilterTanggal({
   aksi: () => void; sedang?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <p>
-        <label htmlFor="f_dari" className="block text-[13px] font-semibold mb-1">Dari</label>
+    <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div>
+        <label htmlFor="f_dari" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.04em] text-mu">Dari tanggal</label>
         <input id="f_dari" type="date" value={dari} onChange={(e) => ubahDari(e.target.value)}
-          className="px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-      </p>
-      <p>
-        <label htmlFor="f_sampai" className="block text-[13px] font-semibold mb-1">Sampai</label>
+          className="h-[42px] w-full rounded-[11px] border border-garis bg-kartu px-3 text-sm outline-none transition focus:border-pr focus:ring-4 focus:ring-pr/10" />
+      </div>
+      <div>
+        <label htmlFor="f_sampai" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.04em] text-mu">Sampai tanggal</label>
         <input id="f_sampai" type="date" value={sampai} onChange={(e) => ubahSampai(e.target.value)}
-          className="px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-      </p>
-      <p>
-        <button onClick={aksi} disabled={sedang}
-          className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold border bg-pr border-pr text-pr-t cursor-pointer disabled:opacity-60">
-          Tampilkan
-        </button>
-      </p>
+          className="h-[42px] w-full rounded-[11px] border border-garis bg-kartu px-3 text-sm outline-none transition focus:border-pr focus:ring-4 focus:ring-pr/10" />
+      </div>
+      <button onClick={aksi} disabled={sedang}
+        className="inline-flex h-[42px] items-center justify-center gap-2 rounded-[11px] border border-pr bg-pr px-4 text-sm font-bold text-pr-t shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60">
+        <Ikon nama="search" className="h-4 w-4" />
+        Tampilkan
+      </button>
     </div>
   );
 }
@@ -117,26 +117,39 @@ type Kolom<T> = {
 
 /** Tabel di desktop; menjadi daftar kartu di layar sempit (< 640px). */
 export function FxDaftar<T>({ kolom, rows, em = 'Tidak ada data pada rentang ini.' }: { kolom: Kolom<T>[]; rows: T[] | null; em?: string }) {
-  if (rows === null) return <p className="text-mu text-sm">Memuat…</p>;
-  if (!rows.length) return <p className="text-mu text-sm">{em}</p>;
+  if (rows === null) {
+    return (
+      <p className="flex items-center gap-2 py-3 text-sm text-mu">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-pr/25 border-t-pr" aria-hidden="true" />
+        Memuat data&hellip;
+      </p>
+    );
+  }
+  if (!rows.length) {
+    return (
+      <div className="rounded-[12px] border border-dashed border-garis px-4 py-8 text-center">
+        <p className="text-sm text-mu">{em}</p>
+      </div>
+    );
+  }
 
   return (
     <>
       {/* Tabel desktop */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full border-collapse min-w-[520px]">
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[520px] border-collapse">
           <thead>
-            <tr>
+            <tr className="bg-[#f8fafc]">
               {kolom.map((k) => (
-                <th key={k.t} className="text-left text-xs text-mu font-semibold px-[10px] py-2 border-b border-garis">{k.t}</th>
+                <th key={k.t} className="border-b border-garis px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-mu">{k.t}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((b, i) => (
-              <tr key={i}>
+              <tr key={i} className="transition-colors hover:bg-[#f8fafc]/70">
                 {kolom.map((k, j) => (
-                  <td key={j} className="px-[10px] py-[9px] border-b border-garis align-top text-sm">{k.isi(b)}</td>
+                  <td key={j} className="border-b border-garis/70 px-3 py-3 align-top text-sm last:border-b-0">{k.isi(b)}</td>
                 ))}
               </tr>
             ))}
@@ -144,14 +157,16 @@ export function FxDaftar<T>({ kolom, rows, em = 'Tidak ada data pada rentang ini
         </table>
       </div>
       {/* Kartu HP */}
-      <ul className="sm:hidden flex flex-col gap-3">
+      <ul className="flex flex-col gap-3 sm:hidden">
         {rows.map((b, i) => (
-          <li key={i} className="border border-garis rounded-xl p-3">
-            <p className="font-semibold text-sm mb-1">{kolom[0].isi(b)}</p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <li key={i} className="rounded-[13px] border border-garis bg-kartu p-3.5">
+            <div className="mb-2 border-b border-garis/70 pb-2 text-sm font-bold">
+              {kolom[0].utama ? kolom[0].utama(b) : kolom[0].isi(b)}
+            </div>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
               {kolom.slice(1).map((k) => (
                 <div key={k.t} className="contents">
-                  <dt className="text-mu text-xs pt-0.5">{k.t}</dt>
+                  <dt className="pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-mu">{k.t}</dt>
                   <dd>{k.isi(b)}</dd>
                 </div>
               ))}

@@ -7,8 +7,9 @@ import Shell from './komponen/Shell';
 
 /** Fallback selama potongan halaman dimuat — teks ringan seirama gaya halaman. */
 const Fallback = () => (
-  <div className="py-16 text-center text-mu text-sm" role="status" aria-live="polite">
-    Memuat halaman&hellip;
+  <div className="flex flex-col items-center gap-3 py-16 text-center" role="status" aria-live="polite">
+    <span className="size-8 animate-spin rounded-full border-[3px] border-pr/20 border-t-pr" aria-hidden="true" />
+    <p className="text-xs font-semibold text-mu">Memuat halaman&hellip;</p>
   </div>
 );
 

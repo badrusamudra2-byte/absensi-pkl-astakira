@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A7 — Form Pengisian Jurnal</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/jurnal">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Jurnal kegiatan"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Jurnal kegiatan · Peserta PKL</div>
+            <h1>Form Pengisian Jurnal</h1>
+            <p class="sub">Isi kegiatan harian Anda, lampirkan foto bila ada, lalu kirim ke pembimbing.</p>
+          </div>
+          <div class="head-actions">
+            <span class="badge netral plain">Status: Draft</span>
+          </div>
+        </div>
+
+        <div class="grid g-2-1">
+          <section class="card">
+            <div class="card-head">
+              <h2>Jurnal baru</h2>
+              <span class="tiny muted">Tanggal terkunci sesuai absensi · Rabu, 18 November 2026</span>
+            </div>
+
+            <div class="form-grid c2">
+              <div class="field">
+                <label>Tanggal kegiatan <span class="req">*</span></label>
+                <div class="input" style="background:#eef2f7;color:#5b6b84"><span data-icon="calendar" style="display:inline-block;width:13px;height:13px;margin-right:7px"></span>18/11/2026</div>
+                <span class="hint">Terkunci mengikuti tanggal absensi masuk Anda.</span>
+              </div>
+              <div class="field">
+                <label>Status jurnal</label>
+                <div style="display:flex;align-items:center;gap:9px;height:37px;border:1px solid var(--line);border-radius:9px;padding:0 11px;background:#f8fafc">
+                  <span class="badge netral">Draft</span>
+                  <span class="tiny muted">Belum dikirim ke pembimbing</span>
+                </div>
+                <span class="hint">Draft dapat diubah kapan saja.</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Judul kegiatan <span class="req">*</span></label>
+              <div class="input">Penyusunan aset desain feed Instagram</div>
+              <div class="counter">48/150</div>
+            </div>
+
+            <div class="field">
+              <label>Uraian kegiatan <span class="req">*</span></label>
+              <div class="textarea" style="height:78px">Menyusun 6 aset feed Instagram untuk kampanye akhir tahun, meliputi penentuan grid, pemilihan tipografi, dan penyelarasan warna dengan panduan brand. Aset dibuat menggunakan Figma dan diekspor dalam format PNG.</div>
+              <div class="counter">312/5000</div>
+            </div>
+
+            <div class="form-grid c2">
+              <div class="field">
+                <label>Hasil</label>
+                <div class="textarea" style="height:58px">6 aset feed siap ditinjau pembimbing dan sudah diunggah ke folder tim.</div>
+                <div class="counter">76/5000</div>
+              </div>
+              <div class="field">
+                <label>Kendala</label>
+                <div class="textarea" style="height:58px">Beberapa foto stok beresolusi rendah sehingga perlu alternatif.</div>
+                <div class="counter">69/5000</div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Rencana berikutnya</label>
+              <div class="textarea" style="height:52px">Revisi aset berdasarkan masukan pembimbing dan menyiapkan format carousel.</div>
+              <div class="counter">78/5000</div>
+            </div>
+
+            <div class="field" style="margin-bottom:0">
+              <label>Lampiran foto kegiatan <span class="muted" style="font-weight:500">(opsional)</span></label>
+              <div class="upload">
+                <div class="ico"><span data-icon="upload"></span></div>
+                <div style="flex:1"><b>aset-feed-instagram.png</b><small>PNG · 1,8 MB · siap diunggah bersama jurnal</small></div>
+                <button class="btn btn-ghost btn-sm" type="button">Ganti</button>
+              </div>
+              <span class="hint">JPG, PNG, atau WebP, maksimal 5 MB.</span>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-ghost" type="button">Simpan draft</button>
+              <button class="btn btn-primary" type="button">Kirim jurnal</button>
+              <span class="tiny muted" style="align-self:center;margin-left:2px">Jurnal yang dikirim tidak dapat diubah sampai ditinjau.</span>
+            </div>
+          </section>
+
+          <div>
+            <section class="card">
+              <div class="card-title-row"><span data-icon="activity"></span>Alur jurnal</div>
+              <div style="display:flex;flex-direction:column;gap:0">
+                <div class="flex gap-10">
+                  <div style="display:flex;flex-direction:column;align-items:center">
+                    <div style="width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:9px;font-weight:800">1</div>
+                    <div style="width:1.5px;height:30px;background:var(--line)"></div>
+                  </div>
+                  <div style="padding-top:2px"><b style="font-size:11px">Draft</b><div class="tiny muted">Isian tersimpan, belum dikirim.</div></div>
+                </div>
+                <div class="flex gap-10">
+                  <div style="display:flex;flex-direction:column;align-items:center">
+                    <div style="width:22px;height:22px;border-radius:50%;background:#eef2f7;border:1px solid var(--line);color:#64748b;display:grid;place-items:center;font-size:9px;font-weight:800">2</div>
+                    <div style="width:1.5px;height:30px;background:var(--line)"></div>
+                  </div>
+                  <div style="padding-top:2px"><b style="font-size:11px">Dikirim</b><div class="tiny muted">Menunggu review pembimbing.</div></div>
+                </div>
+                <div class="flex gap-10">
+                  <div style="display:flex;flex-direction:column;align-items:center">
+                    <div style="width:22px;height:22px;border-radius:50%;background:#eef2f7;border:1px solid var(--line);color:#64748b;display:grid;place-items:center;font-size:9px;font-weight:800">3</div>
+                    <div style="width:1.5px;height:30px;background:var(--line)"></div>
+                  </div>
+                  <div style="padding-top:2px"><b style="font-size:11px">Disetujui / Revisi</b><div class="tiny muted">Pembimbing memberi keputusan.</div></div>
+                </div>
+                <div class="flex gap-10">
+                  <div style="width:22px;height:22px;border-radius:50%;background:#dcfce7;color:var(--green);display:grid;place-items:center;font-size:9px;font-weight:800">4</div>
+                  <div style="padding-top:2px"><b style="font-size:11px">Selesai</b><div class="tiny muted">Jurnal masuk rekap PKL.</div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card mt-14">
+              <div class="card-title-row"><span data-icon="info"></span>Panduan pengisian</div>
+              <ul style="display:flex;flex-direction:column;gap:9px">
+                <li class="tiny" style="display:flex;gap:8px"><span style="color:var(--primary);flex:none">•</span><span><b>Uraikan pekerjaan secara spesifik</b><br><span class="muted">Sebutkan tugas, alat, dan hasil yang dicapai.</span></span></li>
+                <li class="tiny" style="display:flex;gap:8px"><span style="color:var(--primary);flex:none">•</span><span><b>Isi kendala secara jujur</b><br><span class="muted">Membantu pembimbing memberi arahan yang tepat.</span></span></li>
+                <li class="tiny" style="display:flex;gap:8px"><span style="color:var(--primary);flex:none">•</span><span><b>Lampirkan bukti kegiatan</b><br><span class="muted">Foto hasil kerja memperkuat laporan PKL Anda.</span></span></li>
+                <li class="tiny" style="display:flex;gap:8px"><span style="color:var(--primary);flex:none">•</span><span><b>Kirim sebelum akhir hari kerja</b><br><span class="muted">Jurnal hanya dapat diisi untuk tanggal absensi Anda.</span></span></li>
+              </ul>
+            </section>
+
+            <section class="card mt-14">
+              <div class="card-head">
+                <h2>Ulasan terakhir</h2>
+                <span class="badge disetujui">Disetujui</span>
+              </div>
+              <div class="tiny muted" style="margin-bottom:7px">17 November 2026 · Rizky Pratama</div>
+              <div style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:10px;padding:10px 12px;font-size:10.5px;color:#166534;line-height:1.55">
+                <b style="display:block;font-size:11px;margin-bottom:2px">Catatan pembimbing</b>
+                Uraian kegiatan sudah jelas dan bukti foto lengkap. Pertahankan kerapian dokumentasi hasil kerja.
+              </div>
+            </section>
+
+            <div class="notice warn mt-14">
+              <span data-icon="alert"></span>
+              <div><b>Perhatikan sebelum mengirim</b><span>Setelah dikirim, isi jurnal terkunci sampai pembimbing menyetujui atau meminta revisi.</span></div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

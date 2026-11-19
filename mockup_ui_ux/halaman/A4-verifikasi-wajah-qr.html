@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A4 — Verifikasi Wajah dan QR Code</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/absensi">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Absensi"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Peserta PKL · Absen pulang</div>
+            <h1>Verifikasi Wajah &amp; QR Code</h1>
+            <p class="sub">Selesaikan verifikasi wajah, lalu tunjukkan QR kepada pembimbing.</p>
+          </div>
+          <div class="head-actions">
+            <span class="badge hadir plain">Rabu, 18 November 2026 · 16.02 WIB</span>
+          </div>
+        </div>
+
+        <section class="card pad-sm" style="padding:12px 18px">
+          <div class="steps">
+            <div class="step on">
+              <div class="n">1</div>
+              <div><div class="t">Verifikasi wajah</div><div class="d">Liveness dan kecocokan wajah</div></div>
+            </div>
+            <div class="step-line" style="flex:1"></div>
+            <div class="step">
+              <div class="n">2</div>
+              <div><div class="t">QR dipindai</div><div class="d">Pembimbing memindai QR Anda</div></div>
+            </div>
+            <div class="step-line" style="flex:1"></div>
+            <div class="step">
+              <div class="n">3</div>
+              <div><div class="t">Absensi tercatat</div><div class="d">Muncul di riwayat</div></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid g2 mt-14">
+          <section class="card">
+            <div class="card-head">
+              <h2>Verifikasi wajah</h2>
+              <span class="badge dikirim">Langkah 1 dari 2</span>
+            </div>
+
+            <div class="camera">
+              <svg class="face-silhouette" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+                <circle cx="100" cy="76" r="40" fill="#8b9ab1" opacity=".55"/>
+                <path d="M36 186c0-35 28-58 64-58s64 23 64 58" fill="#8b9ab1" opacity=".45"/>
+                <circle cx="86" cy="72" r="3.4" fill="#e2e8f0" opacity=".8"/>
+                <circle cx="114" cy="72" r="3.4" fill="#e2e8f0" opacity=".8"/>
+                <path d="M88 92c4 3 8 4.5 12 4.5s8-1.5 12-4.5" stroke="#e2e8f0" stroke-width="2.4" opacity=".65" stroke-linecap="round"/>
+              </svg>
+              <div class="face-oval"></div>
+              <div class="cam-top">
+                <span class="cam-live">Kamera aktif</span>
+                <span class="cam-ico"><span data-icon="camera"></span></span>
+              </div>
+              <div class="cam-instr">
+                <div class="instr-t">Kedipkan mata Anda</div>
+                <div class="instr-s">Jaga wajah tetap di dalam bingkai · tantangan 1 dari 2</div>
+                <div class="cam-progress"><i></i></div>
+              </div>
+            </div>
+
+            <div class="grid g3 mt-10" style="gap:8px">
+              <div style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:7px 9px">
+                <span style="color:var(--green);display:grid;place-items:center"><span data-icon="checkCircle"></span></span>
+                <span class="tiny strong">Wajah terdeteksi</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:7px 9px">
+                <span style="color:var(--green);display:grid;place-items:center"><span data-icon="checkCircle"></span></span>
+                <span class="tiny strong">Pencahayaan cukup</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:7px 9px">
+                <span style="color:var(--green);display:grid;place-items:center"><span data-icon="checkCircle"></span></span>
+                <span class="tiny strong">Tanpa penutup wajah</span>
+              </div>
+            </div>
+            <p class="tiny muted" style="margin-top:9px;line-height:1.55">Kamera aktif hanya selama halaman ini dibuka. Instruksi bergerak berubah setiap tantangan baru untuk memastikan wajah benar-benar hidup.</p>
+            <div class="divider" style="margin:11px 0 7px"></div>
+            <div class="info-row"><span>Kecocokan wajah</span><b style="color:var(--green)">Cocok · 98%</b></div>
+            <div class="info-row"><span>Uji liveness</span><b style="color:var(--green)">Lolos · 2 tantangan</b></div>
+            <div class="info-row"><span>Template wajah</span><b>Terdaftar · 10/08/2026</b></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>QR absensi Anda</h2>
+              <span class="badge hadir">Verifikasi berhasil</span>
+            </div>
+
+            <div class="qr-panel" style="padding:2px 0 0">
+              <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);margin-bottom:9px">
+                <span class="badge hadir plain" style="font-size:9.5px">Absen pulang</span>
+                <span>Nabila Putri Ramadhani · 18/11/2026</span>
+              </div>
+              <div class="qr-box" data-qr></div>
+              <div class="qr-timer"><span data-icon="clock"></span>QR berlaku 24 detik</div>
+              <p class="small" style="text-align:center;margin-top:11px;font-weight:700">Tunjukkan QR ini kepada pembimbing.</p>
+              <p class="tiny muted" style="text-align:center;max-width:290px;margin-top:3px">QR berganti otomatis setiap 30 detik. Bila pindaian berhasil, halaman ini akan menampilkan konfirmasi absensi.</p>
+              <button class="btn btn-ghost btn-sm" type="button" style="margin-top:10px">Ganti QR sekarang</button>
+            </div>
+
+            <div class="divider" style="margin:12px 0 10px"></div>
+            <div class="info-row"><span>Metode</span><b>QR + Wajah</b></div>
+            <div class="info-row"><span>Lokasi</span><b style="color:var(--green)">Dalam radius kantor · 18 m</b></div>
+            <div class="info-row"><span>Verifikasi wajah</span><b style="color:var(--green)">Cocok · 16.01 WIB</b></div>
+          </section>
+        </div>
+
+        <div class="grid g2 mt-14">
+          <div class="notice">
+            <span data-icon="shield"></span>
+            <div><b>Foto wajah tersimpan terenkripsi</b><span>Foto hanya dipakai untuk rekap pembuktian kehadiran dan dapat ditinjau admin.</span></div>
+          </div>
+          <div class="notice warn">
+            <span data-icon="alert"></span>
+            <div><b>QR hanya berlaku sekali pindai</b><span>Absensi tercatat sekali per jenis per hari. Jangan bagikan QR Anda kepada orang lain.</span></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Ikon } from './Ikon';
 
 /** Status daring/luring browser, memakai event online/offline (bukan sekadar baca sekali). */
 export function useOnline(): boolean {
@@ -24,10 +25,14 @@ export default function BannerLuring() {
     <div
       role="status"
       aria-live="polite"
-      className="bg-[#fef3c7] border-b border-[#a16207] text-[#713f12] px-4 py-2 text-sm font-semibold flex items-center gap-2"
+      className="flex items-center gap-2.5 border-b border-[#f0c36b] bg-[#fffbeb] px-4 py-2.5 text-[#713f12]"
     >
-      <span aria-hidden="true">&#9888;</span>
-      Anda sedang luring. Absen, kirim jurnal, dan pembacaan data butuh koneksi internet.
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#a1620716] text-y">
+        <Ikon nama="alert" className="size-3.5" />
+      </span>
+      <p className="text-xs font-semibold leading-snug">
+        Anda sedang luring. Absen, kirim jurnal, dan pembacaan data membutuhkan koneksi internet.
+      </p>
     </div>
   );
 }

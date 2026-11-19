@@ -4,8 +4,9 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import { ambilLokasi } from '../../lib/lokasi';
 import type { MetodeAbsensi, Pengaturan } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Tabel } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Tabel, Label, Masukan } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
+import { Ikon } from '../../komponen/Ikon';
 
 const SESUAI: { metode: MetodeAbsensi; label: string; uraian: string }[] = [
   { metode: 'qr_wajah', label: 'QR + wajah', uraian: 'Peserta memverifikasi wajahnya sendiri di HP-nya (foto wajah saat absensi tersimpan terenkripsi untuk rekap), lalu menayangkan QR; pembimbing cukup memindai QR-nya.' },
@@ -138,126 +139,172 @@ export default function Pengaturan() {
     }
   }, [pilih, toast]);
 
+  const labelMetode = SESUAI.find((s) => s.metode === isi?.metode)?.label ?? isi?.metode ?? '-';
+
   return (
     <>
-      <Kartu t="Pengaturan absensi">
+      <JudulHalaman
+        eyebrow="Admin"
+        judul="Pengaturan"
+        sub="Atur metode absensi, validasi lokasi kantor, dan template wajah peserta."
+      />
+
+      <Kartu t="Metode absensi">
         <fieldset disabled={sedang}>
-          <legend className="text-sm font-semibold mb-2">Metode absensi untuk semua peserta</legend>
-          {SESUAI.map((k) => (
-            <label key={k.metode} className="flex items-start gap-2 my-2">
-              <input
-                type="radio"
-                name="metode"
-                value={k.metode}
-                checked={metode === k.metode}
-                onChange={() => ubahMetode(k.metode)}
-                className="mt-1"
-              />
-              <span>
-                <b>{k.label}</b>
-                <small className="block text-mu">{k.uraian}</small>
-              </span>
-            </label>
-          ))}
-          <label className="flex items-center gap-2 mt-3">
-            <input type="checkbox" checked={liveness} onChange={(e) => ubahLiveness(e.target.checked)} />
-            Liveness aktif (tantangan gerakan: kedip / tengok / buka mulut)
+          <legend className="mb-3 text-xs leading-relaxed text-mu">
+            Metode berlaku untuk semua peserta.
+          </legend>
+          <div className="grid gap-2.5">
+            {SESUAI.map((k) => {
+              const aktif = metode === k.metode;
+              return (
+                <label
+                  key={k.metode}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                    aktif ? 'border-pr bg-pl/40' : 'border-garis bg-kartu hover:border-pr/40'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="metode"
+                    value={k.metode}
+                    checked={aktif}
+                    onChange={() => ubahMetode(k.metode)}
+                    className="mt-0.5 size-4 shrink-0 accent-pr"
+                  />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <b className="text-sm">{k.label}</b>
+                      {aktif ? <span className="rounded-full bg-pr/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-pr">Aktif</span> : null}
+                    </span>
+                    <small className="mt-0.5 block text-[11px] leading-relaxed text-mu">{k.uraian}</small>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-garis bg-[#fbfcfe] p-3">
+            <input type="checkbox" checked={liveness} onChange={(e) => ubahLiveness(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-pr" />
+            <span>
+              <b className="block text-xs">Liveness aktif</b>
+              <small className="text-[11px] leading-relaxed text-mu">Tantangan gerakan: kedip / tengok / buka mulut.</small>
+            </span>
           </label>
-          <div className="mt-3 flex items-center gap-3">
-            <Tombol onClick={() => void simpan()} disabled={sedang || !diubahIsi}>Simpan pengaturan</Tombol>
-            {!diubahIsi && isi ? <small className="text-mu">Perubahan sejak: {isi.metode}</small> : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Tombol onClick={() => void simpan()} disabled={sedang || !diubahIsi}>
+              <Ikon nama="check" className="size-4" />
+              Simpan pengaturan
+            </Tombol>
+            {!diubahIsi && isi ? (
+              <small className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-mu">
+                <Ikon nama="checkCircle" className="size-3.5 text-g" />
+                Tersimpan: {labelMetode}
+              </small>
+            ) : null}
           </div>
           {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
         </fieldset>
       </Kartu>
 
       <Kartu t="Lokasi kantor">
-        <p className="text-mu text-sm">
-          Ketika koordinat kantor diisi, peserta wajib berada di dalam radius ini saat absen (QR maupun wajah).
-          Kosongkan garis lintang dan garis bujur untuk menonaktifkan validasi lokasi.
-        </p>
-        <fieldset disabled={sedangLok || sedang} className="mt-2">
-          <p className="grid gap-2 sm:grid-cols-2 max-w-[640px]">
-            <p>
-              <label htmlFor="ktr_lat" className="block text-[13px] font-semibold mb-1">Garis lintang (latitude)</label>
-              <input id="ktr_lat" type="number" step="0.000001" min={-90} max={90} value={fLat}
-                onChange={(e) => ubahFLat(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg"
-                placeholder="Misal: -6.200000" />
-            </p>
-            <p>
-              <label htmlFor="ktr_lng" className="block text-[13px] font-semibold mb-1">Garis bujur (longitude)</label>
-              <input id="ktr_lng" type="number" step="0.000001" min={-180} max={180} value={fLng}
-                onChange={(e) => ubahFLng(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg"
-                placeholder="Misal: 106.816000" />
-            </p>
-            <p>
-              <label htmlFor="ktr_rad" className="block text-[13px] font-semibold mb-1">Radius area (meter, 20–10000)</label>
-              <input id="ktr_rad" type="number" step={10} min={20} max={10000} value={fRadius}
-                onChange={(e) => ubahFRadius(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-            </p>
-            <p>
-              <label htmlFor="ktr_akr" className="block text-[13px] font-semibold mb-1">Akurasi GPS maksimal (meter, 5–500)</label>
-              <input id="ktr_akr" type="number" step={5} min={5} max={500} value={fAkurasi}
-                onChange={(e) => ubahFAkurasi(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-            </p>
+        <div className="flex items-start gap-3 rounded-xl border border-[#c7dbff] bg-[#f8fbff] p-3.5">
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-pr shadow-sm">
+            <Ikon nama="pin" className="size-4" />
+          </span>
+          <p className="text-[11.5px] leading-relaxed text-mu">
+            Ketika koordinat kantor diisi, peserta wajib berada di dalam radius ini saat absen (QR maupun wajah).
+            Kosongkan garis lintang dan garis bujur untuk menonaktifkan validasi lokasi.
           </p>
-          <p className="mt-3 flex flex-wrap gap-2 items-center">
-            <Tombol onClick={() => void isiLokasi()} disabled={sedangLok || sedang}>Gunakan lokasi perangkat ini…</Tombol>
+        </div>
+
+        <fieldset disabled={sedangLok || sedang}>
+          <div className="mt-3 grid max-w-[680px] gap-x-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="ktr_lat" className="mt-0">Garis lintang (latitude)</Label>
+              <Masukan id="ktr_lat" type="number" step="0.000001" min={-90} max={90} value={fLat}
+                onChange={(e) => ubahFLat(e.target.value)} placeholder="Misal: -6.200000" />
+            </div>
+            <div>
+              <Label htmlFor="ktr_lng" className="mt-0">Garis bujur (longitude)</Label>
+              <Masukan id="ktr_lng" type="number" step="0.000001" min={-180} max={180} value={fLng}
+                onChange={(e) => ubahFLng(e.target.value)} placeholder="Misal: 106.816000" />
+            </div>
+            <div>
+              <Label htmlFor="ktr_rad">Radius area (meter, 20–10000)</Label>
+              <Masukan id="ktr_rad" type="number" step={10} min={20} max={10000} value={fRadius}
+                onChange={(e) => ubahFRadius(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="ktr_akr">Akurasi GPS maksimal (meter, 5–500)</Label>
+              <Masukan id="ktr_akr" type="number" step={5} min={5} max={500} value={fAkurasi}
+                onChange={(e) => ubahFAkurasi(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Tombol varian="gh" onClick={() => void isiLokasi()} disabled={sedangLok || sedang}>
+              <Ikon nama="pin" className="size-4" />
+              Gunakan lokasi perangkat ini
+            </Tombol>
             <Tombol onClick={() => void simpanLokasi()} disabled={sedangLok || sedang || isi === null || !diubahLok(isi)}>
               Simpan lokasi kantor
             </Tombol>
-          </p>
-          <p className="text-mu text-xs mt-1">
+          </div>
+          <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-mu">
+            <Ikon nama="info" className="mt-0.5 size-3.5 shrink-0" />
             “Gunakan lokasi perangkat ini” mengisi koordinat dari GPS browser — jalankan di perangkat yang benar-benar berada di kantor.
           </p>
           {galatLok ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galatLok[0]} uraian={galatLok[1]} /></div> : null}
         </fieldset>
       </Kartu>
 
-      <Kartu t="Reset template wajah peserta">
-        <p className="text-mu text-sm mb-2">
+      <Kartu t="Reset template wajah">
+        <p className="max-w-[620px] text-xs leading-relaxed text-mu">
           Menghapus template wajah peserta supaya mereka dapat mendaftar ulang.
         </p>
         {daftar === null ? (
-          <p className="text-mu text-sm">Daftar peserta gagal dimuat — pastikan server aktif.</p>
+          <p className="mt-3 text-sm text-mu">Daftar peserta gagal dimuat — pastikan server aktif.</p>
         ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void resetWajah();
             }}
-            className="flex flex-wrap items-end gap-2"
+            className="mt-3 flex flex-wrap items-end gap-2"
           >
-            <p>
-              <label htmlFor="pil_psr" className="block text-[13px] font-semibold mb-1">Pilih peserta</label>
+            <div className="min-w-[220px] flex-1 sm:max-w-[420px]">
+              <Label htmlFor="pil_psr" className="mt-0">Pilih peserta</Label>
               <select
                 id="pil_psr"
                 value={pilih ?? ''}
                 onChange={(e) => ubahPilih(e.target.value ? Number(e.target.value) : null)}
-                className="px-[11px] py-2 border border-garis rounded-lg bg-bg"
+                className="mt-1 h-[38px] w-full rounded-lg border border-garis bg-bg px-[11px] text-sm outline-none focus:border-pr focus:ring-4 focus:ring-pr/10"
               >
                 <option value="">— pilih —</option>
                 {daftar.map((d) => (
                   <option key={d.id} value={d.id}>{d.nama} ({d.email})</option>
                 ))}
               </select>
-            </p>
-            <p>
-              <Tombol type="submit" varian="dg" disabled={pilih === null || sedang}>Reset template wajah</Tombol>
-            </p>
+            </div>
+            <Tombol type="submit" varian="dg" disabled={pilih === null || sedang}>
+              <Ikon nama="refresh" className="size-4" />
+              Reset template wajah
+            </Tombol>
           </form>
         )}
-        <div className="mt-3">
+        <div className="mt-4">
           <Tabel
             h={['Nama', 'Email']}
             rows={(daftar ?? []).map((d) => [d.nama, d.email])}
             em="Tidak ada peserta terdaftar."
           />
-          <p className="mt-2"><Link to="/" className="text-pr underline text-sm">Kembali ke beranda</Link></p>
+          <p className="mt-2">
+            <Link to="/" className="inline-flex items-center gap-1 text-xs font-semibold text-pr">
+              <Ikon nama="arrow" className="size-3 rotate-180" />
+              Kembali ke beranda
+            </Link>
+          </p>
         </div>
       </Kartu>
     </>

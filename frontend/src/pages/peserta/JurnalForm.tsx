@@ -3,7 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Masukan, Galat } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Masukan, Galat, Badge, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { useToast } from '../../komponen/Toast';
 import { useOnline } from '../../komponen/Offline';
 import { PenampilFoto } from '../../komponen/PenampilFoto';
@@ -148,124 +149,175 @@ export default function JurnalForm() {
   };
 
   if (muat) {
-    return <Kartu t="Jurnal"><p className="text-mu text-sm">Memuat jurnal…</p></Kartu>;
+    return (
+      <>
+        <JudulHalaman eyebrow="Peserta PKL" judul="Jurnal" sub="Memuat isi jurnal…" />
+        <Kartu>
+          <div className="flex items-center gap-2 text-mu text-sm py-2">
+            <Ikon nama="refresh" className="size-4 animate-spin" />
+            Memuat jurnal…
+          </div>
+        </Kartu>
+      </>
+    );
   }
 
   const revisi = statusLama === 'Revisi';
+  const judulHalaman = editMode ? (revisi ? 'Perbaiki Jurnal' : 'Ubah Jurnal') : 'Jurnal Baru';
 
   return (
     <>
-      <Kartu t={editMode ? (revisi ? 'Perbaiki jurnal (Perlu revisi)' : 'Ubah jurnal') : 'Jurnal baru'}>
-        {galat ? (
-          <div className="mb-3">
-            <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
-          </div>
-        ) : null}
-        {revisi ? (
-          <Pemberitahuan jenis="warn" judul="Jurnal perlu revisi" uraian="Ubah isian di bawah lalu tekan Perbaiki dan kirim ulang." />
-        ) : null}
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul={judulHalaman}
+        sub={revisi ? 'Perbaiki isian sesuai catatan pembimbing, lalu kirim ulang.' : 'Tulis kegiatan harian PKL Anda dengan lengkap.'}
+      />
 
-        <p>
-          <label htmlFor="tgl" className="block text-[13px] font-semibold mt-3">Tanggal kegiatan</label>
-          <input
-            id="tgl" type="date" value={isi.tanggal}
-            disabled={!!tanggalTerkunci}
-            max={hariBatas(0)}
-            onChange={(e) => ubahIsi({ ...isi, tanggal: e.target.value })}
-            className="block mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg disabled:text-mu disabled:cursor-not-allowed"
-          />
-          <small className="text-mu text-xs">
-            {tanggalTerkunci
-              ? 'Tanggal terkunci sesuai absensi Anda — isi jurnal untuk hari itu.'
-              : 'Tanpa masa depan. Hanya tanggal yang Anda absen masuk yang bisa diisi.'}
-          </small>
-        </p>
-        <p>
-          <label htmlFor="jdl" className="block text-[13px] font-semibold mt-3">Judul kegiatan</label>
-          <Masukan
-            id="jdl" value={isi.judul} maxLength={150}
-            onChange={(e) => ubahIsi({ ...isi, judul: e.target.value })}
-            placeholder="Contoh: Membuat wireframe halaman utama"
-          />
-          <span className="flex justify-between mt-1"><Galat pesan={judulErr} /><Hitung leng={isi.judul.length} maks={150} /></span>
-        </p>
-        <p>
-          <label htmlFor="ura" className="block text-[13px] font-semibold mt-3">Uraian kegiatan (wajib)</label>
-          <textarea
-            id="ura" value={isi.uraian} maxLength={MAKS_TEKS} rows={4}
-            onChange={(e) => ubahIsi({ ...isi, uraian: e.target.value })}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            placeholder="Rincian kegiatan yang Anda kerjakan pada tanggal tersebut"
-          />
-          <span className="block text-right"><Hitung leng={isi.uraian.length} maks={MAKS_TEKS} /></span>
-        </p>
-        <p>
-          <label htmlFor="hsl" className="block text-[13px] font-semibold">Hasil</label>
-          <textarea id="hsl" value={isi.hasil} maxLength={MAKS_TEKS} rows={3}
-            onChange={(e) => ubahIsi({ ...isi, hasil: e.target.value })}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            placeholder="Capaian atau output kegiatan (boleh kosong)" />
-          <span className="block text-right"><Hitung leng={isi.hasil.length} maks={MAKS_TEKS} /></span>
-        </p>
-        <p>
-          <label htmlFor="kdl" className="block text-[13px] font-semibold">Kendala</label>
-          <textarea id="kdl" value={isi.kendala} maxLength={MAKS_TEKS} rows={3}
-            onChange={(e) => ubahIsi({ ...isi, kendala: e.target.value })}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            placeholder="Hambatan yang ditemui (boleh kosong)" />
-          <span className="block text-right"><Hitung leng={isi.kendala.length} maks={MAKS_TEKS} /></span>
-        </p>
-        <p>
-          <label htmlFor="rnc" className="block text-[13px] font-semibold">Rencana berikutnya</label>
-          <textarea id="rnc" value={isi.rencana} maxLength={MAKS_TEKS} rows={3}
-            onChange={(e) => ubahIsi({ ...isi, rencana: e.target.value })}
-            className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-            placeholder="Langkah lanjutan (boleh kosong)" />
-          <span className="block text-right"><Hitung leng={isi.rencana.length} maks={MAKS_TEKS} /></span>
-        </p>
-
-        {/* Lampiran foto kegiatan: opsional. Diunggah setelah jurnal tersimpan. */}
-        <p className="mt-3">
-          <label htmlFor="lmp" className="block text-[13px] font-semibold">Lampiran foto kegiatan (opsional)</label>
-          {lampiranLama ? (
-            <span className="block text-sm mt-1">
-              Lampiran saat ini:{' '}
-              <button type="button" onClick={() => ubahBukaFoto(true)} className="text-pr underline">Lihat</button>
-              {' · '}
-              <button type="button" onClick={() => void hapusLampiran()} className="text-r underline">Hapus</button>
+      <Kartu className="!p-0 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-garis">
+          <div className="flex items-center gap-2">
+            <span className="size-8 rounded-lg bg-pl text-pr grid place-items-center">
+              <Ikon nama="book" className="size-4" />
             </span>
-          ) : null}
-          <input
-            id="lmp" type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => ubahBerkas(e.target.files?.[0] ?? null)}
-            className="block mt-1 text-sm text-mu file:mr-2 file:px-3 file:py-[6px] file:rounded-lg file:border file:border-garis file:bg-bg file:text-sm file:cursor-pointer"
-          />
-          <small className="text-mu text-xs">JPG, PNG, atau WebP, maksimal 5 MB. Foto hasil kegiatan, dokumen, dsb.</small>
-        </p>
+            <b className="text-[12.5px] font-extrabold">{editMode ? (revisi ? 'Perbaiki jurnal' : 'Ubah jurnal') : 'Jurnal baru'}</b>
+          </div>
+          {statusLama ? <Badge s={statusLama} /> : null}
+        </div>
 
-        {konfirm ? (
-          <div className="mt-4 border border-y rounded-lg px-[14px] py-3" role="dialog" aria-label="Konfirmasi kirim jurnal">
-            <b className="block mb-1">Kirim jurnal sekarang?</b>
-            <p className="text-sm mb-2">Jurnal terkirim dan tidak bisa diubah sampai pembimbing menyetujui atau minta revisi.</p>
-            <div className="flex gap-2">
-              <Tombol onClick={() => void simpan(true)} disabled={sedang}>Ya, kirim</Tombol>
-              <Tombol varian="gh" onClick={() => ubahKonfirm(false)} disabled={sedang}>Batal</Tombol>
+        <div className="p-4 md:p-5">
+          {galat ? (
+            <div className="mb-3">
+              <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+            </div>
+          ) : null}
+          {revisi ? (
+            <Pemberitahuan jenis="warn" judul="Jurnal perlu revisi" uraian="Ubah isian di bawah lalu tekan Perbaiki dan kirim ulang." />
+          ) : null}
+
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-pr mt-4 mb-2">
+            <Ikon nama="file" className="size-3.5" />
+            Detail kegiatan
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="tgl" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Tanggal kegiatan</label>
+              <input
+                id="tgl" type="date" value={isi.tanggal}
+                disabled={!!tanggalTerkunci}
+                max={hariBatas(0)}
+                onChange={(e) => ubahIsi({ ...isi, tanggal: e.target.value })}
+                className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] disabled:text-mu disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+              <small className="block text-mu text-[10px] mt-1 leading-snug">
+                {tanggalTerkunci
+                  ? 'Tanggal terkunci sesuai absensi Anda — isi jurnal untuk hari itu.'
+                  : 'Tanpa masa depan. Hanya tanggal yang Anda absen masuk yang bisa diisi.'}
+              </small>
+            </div>
+            <div>
+              <label htmlFor="jdl" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Judul kegiatan</label>
+              <Masukan
+                id="jdl" value={isi.judul} maxLength={150}
+                onChange={(e) => ubahIsi({ ...isi, judul: e.target.value })}
+                placeholder="Contoh: Membuat wireframe halaman utama"
+                className="!mt-0 !h-[38px]"
+              />
+              <span className="flex justify-between mt-1"><Galat pesan={judulErr} /><Hitung leng={isi.judul.length} maks={150} /></span>
             </div>
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {revisi ? (
-              <Tombol onClick={() => ubahKonfirm(true)} disabled={sedang}>Perbaiki dan kirim ulang</Tombol>
-            ) : (
-              <>
-                <Tombol varian="gh" onClick={() => void simpan(false)} disabled={sedang}>Simpan draft</Tombol>
-                <Tombol onClick={() => ubahKonfirm(true)} disabled={sedang}>Kirim jurnal</Tombol>
-              </>
-            )}
-            {sedang ? <span className="text-mu text-sm self-center">Mengirim…</span> : null}
-            {!daring ? <span className="text-r text-sm font-semibold self-center" role="alert">Luring — isian bisa ditulis, pengiriman butuh koneksi.</span> : null}
+          <div className="mt-3">
+            <label htmlFor="ura" className="block text-[11px] font-bold text-[#4a5a72] mb-1">
+              Uraian kegiatan <span className="text-r">wajib</span>
+            </label>
+            <textarea
+              id="ura" value={isi.uraian} maxLength={MAKS_TEKS} rows={4}
+              onChange={(e) => ubahIsi({ ...isi, uraian: e.target.value })}
+              className="block w-full px-3 py-2 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              placeholder="Rincian kegiatan yang Anda kerjakan pada tanggal tersebut"
+            />
+            <span className="block text-right"><Hitung leng={isi.uraian.length} maks={MAKS_TEKS} /></span>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-pr mt-5 mb-2 pt-4 border-t border-garis">
+            <Ikon nama="activity" className="size-3.5" />
+            Hasil dan rencana
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="hsl" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Hasil</label>
+              <textarea id="hsl" value={isi.hasil} maxLength={MAKS_TEKS} rows={3}
+                onChange={(e) => ubahIsi({ ...isi, hasil: e.target.value })}
+                className="block w-full px-3 py-2 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+                placeholder="Capaian atau output kegiatan (boleh kosong)" />
+              <span className="block text-right"><Hitung leng={isi.hasil.length} maks={MAKS_TEKS} /></span>
+            </div>
+            <div>
+              <label htmlFor="kdl" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Kendala</label>
+              <textarea id="kdl" value={isi.kendala} maxLength={MAKS_TEKS} rows={3}
+                onChange={(e) => ubahIsi({ ...isi, kendala: e.target.value })}
+                className="block w-full px-3 py-2 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+                placeholder="Hambatan yang ditemui (boleh kosong)" />
+              <span className="block text-right"><Hitung leng={isi.kendala.length} maks={MAKS_TEKS} /></span>
+            </div>
+          </div>
+          <div className="mt-3">
+            <label htmlFor="rnc" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Rencana berikutnya</label>
+            <textarea id="rnc" value={isi.rencana} maxLength={MAKS_TEKS} rows={3}
+              onChange={(e) => ubahIsi({ ...isi, rencana: e.target.value })}
+              className="block w-full px-3 py-2 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+              placeholder="Langkah lanjutan (boleh kosong)" />
+            <span className="block text-right"><Hitung leng={isi.rencana.length} maks={MAKS_TEKS} /></span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-pr mt-5 mb-2 pt-4 border-t border-garis">
+            <Ikon nama="image" className="size-3.5" />
+            Lampiran
+          </div>
+          <div>
+            <label htmlFor="lmp" className="block text-[11px] font-bold text-[#4a5a72] mb-1">Foto kegiatan (opsional)</label>
+            {lampiranLama ? (
+              <span className="flex items-center gap-2 text-[11.5px] mb-2">
+                <Ikon nama="image" className="size-3.5 text-mu" />
+                Lampiran saat ini:
+                <button type="button" onClick={() => ubahBukaFoto(true)} className="text-pr font-semibold underline">Lihat</button>
+                <span className="text-[#c3cede]">·</span>
+                <button type="button" onClick={() => void hapusLampiran()} className="text-r font-semibold underline">Hapus</button>
+              </span>
+            ) : null}
+            <input
+              id="lmp" type="file" accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => ubahBerkas(e.target.files?.[0] ?? null)}
+              className="block w-full text-[11.5px] text-mu file:mr-2 file:px-3 file:py-[6px] file:rounded-lg file:border file:border-garis file:bg-bg file:text-[11.5px] file:cursor-pointer"
+            />
+            <small className="block text-mu text-[10px] mt-1">JPG, PNG, atau WebP, maksimal 5 MB.</small>
+          </div>
+
+          {konfirm ? (
+            <div className="mt-4 border border-y rounded-xl px-[14px] py-3 bg-[#fffbeb]" role="dialog" aria-label="Konfirmasi kirim jurnal">
+              <b className="block mb-1 text-[12.5px]">Kirim jurnal sekarang?</b>
+              <p className="text-[11.5px] mb-2 text-[#4a5a72]">
+                Jurnal terkirim dan tidak bisa diubah sampai pembimbing menyetujui atau minta revisi.
+              </p>
+              <div className="flex gap-2">
+                <Tombol onClick={() => void simpan(true)} disabled={sedang}>Ya, kirim</Tombol>
+                <Tombol varian="gh" onClick={() => ubahKonfirm(false)} disabled={sedang}>Batal</Tombol>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-garis">
+              {revisi ? (
+                <Tombol onClick={() => ubahKonfirm(true)} disabled={sedang}>Perbaiki dan kirim ulang</Tombol>
+              ) : (
+                <>
+                  <Tombol varian="gh" onClick={() => void simpan(false)} disabled={sedang}>Simpan draft</Tombol>
+                  <Tombol onClick={() => ubahKonfirm(true)} disabled={sedang}>Kirim jurnal</Tombol>
+                </>
+              )}
+              {sedang ? <span className="text-mu text-[11.5px] self-center">Mengirim…</span> : null}
+              {!daring ? <span className="text-r text-[11.5px] font-semibold self-center" role="alert">Luring — isian bisa ditulis, pengiriman butuh koneksi.</span> : null}
+            </div>
+          )}
+        </div>
       </Kartu>
 
       {bukaFoto && id ? (

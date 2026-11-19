@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>A9 — Halaman Profil Peserta</title>
+  <link rel="stylesheet" href="../aset/gaya.css">
+</head>
+<body>
+  <div class="mockup" data-peran="peserta" data-aktif="/profil">
+    <aside class="sidebar" data-shell-sidebar></aside>
+    <div class="utama">
+      <header class="topbar" data-shell-topbar data-halaman="Profil"></header>
+      <main class="content">
+
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Akun Peserta PKL</div>
+            <h1>Profil Saya</h1>
+            <p class="sub">Kelola foto profil dan keamanan akun Anda.</p>
+          </div>
+          <div class="head-actions"><span class="badge hadir plain">Akun aktif</span></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: .88fr 1.12fr">
+          <div>
+            <section class="card" style="text-align:center;padding:22px 20px">
+              <div style="position:relative;width:88px;margin:0 auto 12px">
+                <div class="avatar lg" style="width:88px;height:88px;font-size:30px">NP</div>
+                <span style="position:absolute;right:0;bottom:0;width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--primary)">
+                  <span data-icon="camera" style="display:block;width:13px;height:13px"></span>
+                </span>
+              </div>
+              <h2 style="font-size:18px;font-weight:800;letter-spacing:-.4px">Nabila Putri Ramadhani</h2>
+              <p class="small muted" style="margin-top:2px">nabila.putri@astakira.id</p>
+              <div class="flex ai-c jc-b" style="justify-content:center;gap:7px;margin-top:9px">
+                <span class="badge izin">Peserta PKL</span>
+                <span class="badge hadir">Aktif</span>
+              </div>
+              <div style="margin-top:13px"><button class="btn btn-ghost" type="button"><span data-icon="camera"></span>Ganti foto</button></div>
+              <p class="tiny muted" style="margin-top:6px">JPEG, PNG, atau WebP · maksimal 2 MB</p>
+            </section>
+
+            <section class="card mt-14">
+              <div class="card-title-row"><span data-icon="user"></span>Detail akun</div>
+              <div class="info-list">
+                <div class="info-row"><span>Nama lengkap</span><b>Nabila Putri Ramadhani</b></div>
+                <div class="info-row"><span>Email</span><b>nabila.putri@astakira.id</b></div>
+                <div class="info-row"><span>Peran</span><b>Peserta PKL</b></div>
+                <div class="info-row"><span>Divisi</span><b>Desain Grafis</b></div>
+                <div class="info-row"><span>Pembimbing</span><b>Rizky Pratama</b></div>
+              </div>
+            </section>
+          </div>
+
+          <div>
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Ubah kata sandi</h2>
+                  <span class="tiny muted">Gunakan kata sandi baru yang kuat dan mudah Anda ingat.</span>
+                </div>
+                <span class="badge netral">Keamanan</span>
+              </div>
+
+              <div class="field">
+                <label for="p0">Kata sandi saat ini</label>
+                <div style="position:relative"><div class="input" id="p0" style="padding-right:38px">••••••••</div><span class="eye"><span data-icon="eye"></span></span></div>
+              </div>
+              <div class="form-grid c2">
+                <div class="field">
+                  <label for="p1">Kata sandi baru</label>
+                  <div style="position:relative"><div class="input" id="p1" style="padding-right:38px">••••••••••</div><span class="eye"><span data-icon="eye"></span></span></div>
+                </div>
+                <div class="field">
+                  <label for="p2">Ulangi kata sandi baru</label>
+                  <div style="position:relative"><div class="input" id="p2" style="padding-right:38px">••••••••••</div><span class="eye"><span data-icon="eye"></span></span></div>
+                </div>
+              </div>
+              <span class="hint">Minimal 8 karakter dan mengandung huruf serta angka.</span>
+              <div class="form-actions">
+                <button class="btn btn-primary" type="button">Simpan kata sandi</button>
+              </div>
+            </section>
+
+            <section class="card mt-14">
+              <div class="card-title-row"><span data-icon="shield"></span>Tips keamanan akun</div>
+              <div class="security-tile">
+                <div class="si"><span data-icon="key"></span></div>
+                <div><b>Gunakan kata sandi yang unik</b><small>Jangan gunakan kata sandi yang sama dengan akun lain.</small></div>
+              </div>
+              <div class="security-tile">
+                <div class="si"><span data-icon="lock"></span></div>
+                <div><b>Jangan bagikan akun Anda</b><small>Absensi dan jurnal tercatat atas nama pemilik akun.</small></div>
+              </div>
+              <div class="security-tile">
+                <div class="si"><span data-icon="user"></span></div>
+                <div><b>Ganti kata sandi awal</b><small>Segera ganti kata sandi dari admin setelah login pertama.</small></div>
+              </div>
+            </section>
+
+            <div class="notice mt-14">
+              <span data-icon="info"></span>
+              <div><b>Perlu bantuan?</b><span>Hubungi pembimbing atau admin bila data akun Anda tidak sesuai.</span></div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script src="../aset/shell.js"></script>
+</body>
+</html>

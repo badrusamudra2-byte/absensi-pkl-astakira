@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import type { JurnalDetail } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Badge, Galat } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Badge, Galat, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { waktuWib } from '../../komponen/umum';
 
@@ -22,13 +23,24 @@ function GarisWaktu({ status, buat, ubah, review }: { status: string; buat: stri
   const tampil = status === 'Draft' ? langkah.slice(0, 1) : langkah;
 
   return (
-    <ol className="flex flex-col gap-1.5">
+    <ol className="list-none p-0 m-0 flex flex-col gap-3">
       {tampil.map((l, n) => (
-        <li key={n} className="flex items-center gap-2 text-sm">
-          <span className={`w-2.5 h-2.5 rounded-full ${n === tampil.length - 1 ? 'bg-pr' : 'bg-g'}`} aria-hidden="true" />
-          <b>{l.s}</b>
-          <small className="text-mu">{l.t}</small>
-          {n === tampil.length - 1 && <Badge s={status} />}
+        <li key={n} className="flex items-start gap-2.5 text-[11.5px]">
+          <span
+            className={`size-6 rounded-full grid place-items-center shrink-0 ${
+              n === tampil.length - 1 ? 'bg-pr text-white' : 'bg-[#dcfce7] text-[#15803d]'
+            }`}
+            aria-hidden="true"
+          >
+            <Ikon nama={n === tampil.length - 1 ? 'clock' : 'check'} className="size-3" />
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <b className="font-bold">{l.s}</b>
+              {n === tampil.length - 1 && <Badge s={status} />}
+            </span>
+            <small className="block text-mu text-[10.5px] mt-0.5">{l.t}</small>
+          </span>
         </li>
       ))}
     </ol>
@@ -70,13 +82,29 @@ export default function JurnalDetail() {
 
   if (galat) {
     return (
-      <Kartu t="Detail jurnal">
-        <Pemberitahuan jenis="er" judul="Belum berhasil dibuka" uraian={galat} />
-        <div className="mt-2"><Tombol onClick={() => navigate('/jurnal')}>Kembali ke daftar jurnal</Tombol></div>
-      </Kartu>
+      <>
+        <JudulHalaman eyebrow="Peserta PKL" judul="Detail Jurnal" sub="Jurnal tidak dapat ditampilkan." />
+        <Kartu>
+          <Pemberitahuan jenis="er" judul="Belum berhasil dibuka" uraian={galat} />
+          <div className="mt-3"><Tombol onClick={() => navigate('/jurnal')}>Kembali ke daftar jurnal</Tombol></div>
+        </Kartu>
+      </>
     );
   }
-  if (!jub) return <Kartu t="Detail jurnal"><Galat pesan={null} /><p className="text-mu text-sm">Memuat…</p></Kartu>;
+  if (!jub) {
+    return (
+      <>
+        <JudulHalaman eyebrow="Peserta PKL" judul="Detail Jurnal" sub="Memuat jurnal…" />
+        <Kartu>
+          <Galat pesan={null} />
+          <div className="flex items-center gap-2 text-mu text-sm py-2">
+            <Ikon nama="refresh" className="size-4 animate-spin" />
+            Memuat…
+          </div>
+        </Kartu>
+      </>
+    );
+  }
 
   const bisaUbah = ['Draft', 'Revisi'].includes(jub.status);
   const review = (jub.reviews ?? []).map((r) => ({
@@ -88,82 +116,99 @@ export default function JurnalDetail() {
 
   return (
     <>
-      <Kartu t={jub.judul}>
-        <div className="flex flex-wrap items-center gap-3 mb-1">
-          <Badge s={jub.status} />
-          <small className="text-mu">Kegiatan tanggal {jub.tanggal}</small>
-        </div>
+      <JudulHalaman
+        eyebrow={`Jurnal · ${jub.tanggal}`}
+        judul={jub.judul}
+        sub={`Terakhir diperbarui ${jam(jub.diubah_pada)} WIB`}
+        aksi={<Badge s={jub.status} />}
+      />
 
-        <h3 className="text-[13px] font-semibold mt-4 mb-1">Perjalanan status</h3>
-        <GarisWaktu status={jub.status} buat={jam(jub.dibuat_pada)} ubah={jam(jub.diubah_pada)} review={review} />
-
-        {review.length ? (
-          <>
-            <h3 className="text-[13px] font-semibold mt-5 mb-2">Catatan pembimbing</h3>
-            <div className="flex flex-col gap-2">
-              {review.map((r, i) => (
-                <div key={i} className="border-2 border-y rounded-lg px-[14px] py-3 bg-[#a1620712] max-w-full">
-                  <b className="block text-sm">{r.keputusan} — {r.nama}</b>
-                  <small className="block text-mu mb-1">{r.waktu}</small>
-                  <p className="text-sm">{r.catatan ?? '(Tanpa catatan)'}</p>
-                </div>
-              ))}
+      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-4 items-start">
+        <Kartu t="Isi jurnal" className="order-2 lg:order-1">
+          <dl className="grid gap-4 m-0">
+            {[
+              { a: 'Uraian kegiatan', b: jub.uraian, i: 'file' as const },
+              { a: 'Hasil', b: jub.hasil, i: 'checkCircle' as const },
+              { a: 'Kendala', b: jub.kendala, i: 'alert' as const },
+              { a: 'Rencana berikutnya', b: jub.rencana, i: 'arrow' as const },
+            ].map((x) => (
+              <div key={x.a} className="rounded-xl border border-garis bg-[#fbfcfe] p-3.5">
+                <dt className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-mu mb-1.5">
+                  <Ikon nama={x.i} className="size-3.5 text-pr" />
+                  {x.a}
+                </dt>
+                <dd className="text-[12px] whitespace-pre-wrap leading-relaxed text-[#334155] m-0">
+                  {x.b || <span className="text-mu">(tidak diisi)</span>}
+                </dd>
+              </div>
+            ))}
+            <div className="rounded-xl border border-garis bg-[#fbfcfe] p-3.5">
+              <dt className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-mu mb-1.5">
+                <Ikon nama="image" className="size-3.5 text-pr" />
+                Lampiran kegiatan
+              </dt>
+              <dd className="m-0">
+                {jub.lampiran ? (
+                  <button
+                    type="button"
+                    onClick={() => ubahBukaFoto(true)}
+                    className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-pr"
+                  >
+                    <Ikon nama="eye" className="size-3.5" />
+                    Lihat lampiran
+                  </button>
+                ) : (
+                  <span className="text-mu text-[11.5px]">(tidak ada lampiran)</span>
+                )}
+              </dd>
             </div>
-          </>
-        ) : jub.status === 'Draft' ? (
-          <Pemberitahuan jenis="info" judul="Masih draf" uraian="Simpan sekarang atau kirim ke pembimbing bila sudah siap." />
-        ) : null}
+          </dl>
+        </Kartu>
 
-        <div className="flex flex-wrap gap-2 mt-4">
-          {bisaUbah ? (
-            <>
-              <Tombol onClick={() => navigate(`/jurnal/${jub.id}/edit`)}>
-                {jub.status === 'Revisi' ? 'Perbaiki dan kirim ulang' : 'Edit jurnal'}
-              </Tombol>
-              {jub.status === 'Draft' ? (
-                <Tombol varian="gh" onClick={() => navigate(`/jurnal/${jub.id}/edit`)}>Buka di editor</Tombol>
+        <div className="order-1 lg:order-2">
+          <Kartu t="Perjalanan status">
+            <GarisWaktu status={jub.status} buat={jam(jub.dibuat_pada)} ubah={jam(jub.diubah_pada)} review={review} />
+
+            {!review.length && jub.status === 'Draft' ? (
+              <div className="mt-3">
+                <Pemberitahuan jenis="info" judul="Masih draf" uraian="Simpan sekarang atau kirim ke pembimbing bila sudah siap." />
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-garis">
+              {bisaUbah ? (
+                <>
+                  <Tombol onClick={() => navigate(`/jurnal/${jub.id}/edit`)}>
+                    {jub.status === 'Revisi' ? 'Perbaiki dan kirim ulang' : 'Edit jurnal'}
+                  </Tombol>
+                  {jub.status === 'Draft' ? (
+                    <Tombol varian="gh" onClick={() => navigate(`/jurnal/${jub.id}/edit`)}>Buka di editor</Tombol>
+                  ) : null}
+                </>
+              ) : jub.status === 'Dikirim' ? (
+                <Tombol varian="gh" disabled={sedangTarik} onClick={() => void tarik()}>
+                  {sedangTarik ? 'Menarik…' : 'Tarik ke draft untuk diedit'}
+                </Tombol>
               ) : null}
-            </>
-          ) : jub.status === 'Dikirim' ? (
-            <Tombol varian="gh" disabled={sedangTarik} onClick={() => void tarik()}>
-              {sedangTarik ? 'Menarik…' : 'Tarik ke draft untuk diedit'}
-            </Tombol>
-          ) : null}
-          <Tombol varian="gh" onClick={() => navigate('/jurnal')}>Kembali ke daftar</Tombol>
-        </div>
-      </Kartu>
-
-      <Kartu t="Isi jurnal">
-        <dl className="grid gap-4">
-          {[
-            ['Uraian kegiatan', jub.uraian],
-            ['Hasil', jub.hasil],
-            ['Kendala', jub.kendala],
-            ['Rencana berikutnya', jub.rencana],
-          ].map(([a, b]) => (
-            <div key={a as string}>
-              <dt className="text-[13px] font-semibold mb-0.5">{a}</dt>
-              <dd className="text-sm whitespace-pre-wrap">{b || <span className="text-mu">(tidak diisi)</span>}</dd>
+              <Tombol varian="gh" onClick={() => navigate('/jurnal')}>Kembali ke daftar</Tombol>
             </div>
-          ))}
-          <div>
-            <dt className="text-[13px] font-semibold mb-0.5">Lampiran kegiatan</dt>
-            <dd>
-              {jub.lampiran ? (
-                <button
-                  type="button"
-                  onClick={() => ubahBukaFoto(true)}
-                  className="text-pr underline"
-                >
-                  Lihat lampiran
-                </button>
-              ) : (
-                <span className="text-mu text-sm">(tidak ada lampiran)</span>
-              )}
-            </dd>
-          </div>
-        </dl>
-      </Kartu>
+          </Kartu>
+
+          {review.length ? (
+            <Kartu t="Catatan pembimbing">
+              <div className="flex flex-col gap-2.5">
+                {review.map((r, i) => (
+                  <div key={i} className="rounded-xl border border-[#fde68a] px-3.5 py-3 bg-[#fffbeb]">
+                    <b className="block text-[11.5px]">{r.keputusan} — {r.nama}</b>
+                    <small className="block text-mu text-[10px] mb-1">{r.waktu}</small>
+                    <p className="text-[11.5px] text-[#4a5a72] m-0 leading-relaxed">{r.catatan ?? '(Tanpa catatan)'}</p>
+                  </div>
+                ))}
+              </div>
+            </Kartu>
+          ) : null}
+        </div>
+      </div>
 
       <PenampilFoto
         buka={bukaFoto}

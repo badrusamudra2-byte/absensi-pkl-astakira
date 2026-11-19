@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Ikon } from './Ikon';
 
 /** Satu titik absensi pada peta (masuk/pulang) */
 export interface TitikPeta {
@@ -29,9 +30,15 @@ export interface PetaAbsensiProps {
 export default function PetaAbsensi({ titik, kantor = null }: PetaAbsensiProps) {
   if (typeof L === 'undefined') {
     return (
-      <p className="text-mu text-sm">
-        Pustaka peta belum termuat. Periksa koneksi internet lalu muat ulang halaman.
-      </p>
+      <div className="flex flex-col items-center rounded-[12px] border border-dashed border-garis bg-[#fbfcfe] px-4 py-8 text-center">
+        <span className="grid size-10 place-items-center rounded-full bg-pl text-pr">
+          <Ikon nama="pin" className="size-5" />
+        </span>
+        <b className="mt-2.5 text-sm">Peta belum termuat</b>
+        <p className="mt-1 max-w-[360px] text-xs leading-relaxed text-mu">
+          Pustaka peta belum termuat. Periksa koneksi internet lalu muat ulang halaman.
+        </p>
+      </div>
     );
   }
   return <PetaDalam titik={titik} kantor={kantor} />;
@@ -146,7 +153,7 @@ function PetaDalam({ titik, kantor }: PetaAbsensiProps) {
       ref={kotakRef}
       role="img"
       aria-label="Peta sebaran absensi"
-      className="w-full h-[300px] rounded-lg border border-garis z-0"
+      className="z-0 h-[300px] w-full overflow-hidden rounded-[12px] border border-garis shadow-[0_10px_24px_-20px_rgba(11,31,77,.4)]"
     />
   );
 }

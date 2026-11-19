@@ -5,12 +5,13 @@ import { teksKode } from '../../lib/petaKode';
 import { ambilLokasiKantor, teksJarak } from '../../lib/kantor';
 import type { Absensi, BarisJurnal } from '../../lib/tipe';
 
-import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useToast } from '../../komponen/Toast';
-import PetaAbsensi, { warnaTitik, type TitikPeta } from '../../komponen/PetaAbsensi';
- 
+import PetaAbsensi, { warnaTitik } from '../../komponen/PetaAbsensi';
+
 import { FxDaftar, FilterTanggal, gunakanTerbaru, isoHariIni, tglIndo, titikTerbaruBerlokasi } from '../../komponen/umum';
 import { unduhBerkas, type FormatLaporan } from '../../lib/unduh';
+import { Ikon } from '../../komponen/Ikon';
 
 export default function Rekap() {
   const [sp] = useSearchParams();
@@ -78,43 +79,84 @@ export default function Rekap() {
     void muat();
   }, [muat]);
 
+  const jumlahHadir = absensi?.filter((a) => a.status === 'Hadir').length ?? null;
+  const jumlahTerlambat = absensi?.filter((a) => a.status === 'Terlambat').length ?? null;
+
+  const ringkas = [
+    { label: 'Baris absensi', nilai: absensi?.length ?? null, ikon: 'absen' as const, warna: 'text-teks' },
+    { label: 'Hadir', nilai: jumlahHadir, ikon: 'checkCircle' as const, warna: 'text-g' },
+    { label: 'Terlambat', nilai: jumlahTerlambat, ikon: 'clock' as const, warna: 'text-y' },
+    { label: 'Jurnal', nilai: jurnal?.length ?? null, ikon: 'book' as const, warna: 'text-pr' },
+  ];
+
   return (
     <>
-      <Kartu t="Rekap berdasarkan periode">
+      <JudulHalaman
+        eyebrow="Pembimbing"
+        judul="Rekap periode"
+        sub="Lihat absensi dan jurnal peserta bimbingan dalam rentang tanggal."
+      />
+
+      <Kartu t="Filter laporan">
         <FilterTanggal dari={dari} sampai={sampai} ubahDari={ubahDari} ubahSampai={ubahSampai} aksi={() => void muat()} />
-        <p className="mt-3">
-          <label htmlFor="pil_psr_rekap" className="block text-[13px] font-semibold mb-1">Peserta (opsional)</label>
+        <div className="mt-3">
+          <label htmlFor="pil_psr_rekap" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.04em] text-mu">
+            Peserta (opsional)
+          </label>
           <select
             id="pil_psr_rekap"
             value={userPilih}
             onChange={(e) => ubahUserPilih(e.target.value ? Number(e.target.value) : '')}
-            className="px-[11px] py-2 border border-garis rounded-lg bg-bg"
+            className="h-[42px] w-full rounded-[11px] border border-garis bg-kartu px-3 text-sm outline-none transition focus:border-pr focus:ring-4 focus:ring-pr/10 sm:max-w-[360px]"
           >
             <option value="">Semua peserta bimbingan</option>
             {peserta.map((p) => (
               <option key={p.id} value={p.id}>{p.nama}</option>
             ))}
           </select>
-        </p>
+        </div>
         {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
-        <p className="mt-4 flex flex-wrap gap-2">
-          <Tombol varian="gh" onClick={() => void unduh('csv')} disabled={sedangUnduh}>Unduh CSV</Tombol>
-          <Tombol varian="gh" onClick={() => void unduh('xlsx')} disabled={sedangUnduh}>Unduh Excel</Tombol>
-          <Tombol varian="gh" onClick={() => void unduh('pdf')} disabled={sedangUnduh}>Unduh PDF</Tombol>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {([
+            ['csv', 'CSV'],
+            ['xlsx', 'Excel'],
+            ['pdf', 'PDF'],
+          ] as const).map(([format, label]) => (
+            <Tombol key={format} varian="gh" onClick={() => void unduh(format)} disabled={sedangUnduh}>
+              <Ikon nama="download" className="size-4" />
+              Unduh {label}
+            </Tombol>
+          ))}
+        </div>
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-snug text-mu">
+          <Ikon nama="info" className="mt-0.5 size-3.5 shrink-0" />
+          Berkas mengikuti filter di atas dan hanya memuat peserta bimbingan Anda.
         </p>
-        <p className="text-mu text-xs mt-3">Berkas mengikuti filter di atas dan hanya memuat peserta bimbingan Anda.</p>
       </Kartu>
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {ringkas.map((s) => (
+          <div key={s.label} className="rounded-kartu border border-garis bg-kartu p-3.5 shadow-kartu">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[9.5px] font-extrabold uppercase tracking-[.6px] text-mu">{s.label}</p>
+              <Ikon nama={s.ikon} className="size-3.5 text-[#a9b6c8]" />
+            </div>
+            <p className={`mt-1.5 text-2xl font-extrabold leading-none ${s.warna}`}>{s.nilai ?? <span className="text-mu">…</span>}</p>
+          </div>
+        ))}
+      </div>
 
       <Kartu t="Absensi">
         <FxDaftar
           rows={absensi}
+          em="Belum ada absensi pada periode ini."
           kolom={[
-            { t: 'Tanggal', isi: (a) => tglIndo(a.tanggal) },
+            { t: 'Tanggal', isi: (a) => <span className="whitespace-nowrap font-semibold">{tglIndo(a.tanggal)}</span> },
             { t: 'Peserta', isi: (a) => a.peserta?.nama ?? '-' },
             { t: 'Jenis', isi: (a) => <b className="capitalize">{a.jenis}</b> },
-            { t: 'Jam', isi: (a) => a.jam.slice(0, 5) },
+            { t: 'Jam', isi: (a) => <span className="tabular-nums">{a.jam.slice(0, 5)}</span> },
             { t: 'Status', isi: (a) => <Badge s={a.status} /> },
-            { t: 'Metode', isi: (a) => a.metode },
+            { t: 'Metode', isi: (a) => <span className="text-xs text-mu">{a.metode}</span> },
           ]}
         />
       </Kartu>
@@ -135,10 +177,10 @@ export default function Rekap() {
                     `${tglIndo(a.tanggal)} (${teksJarak(a.jarak_m)} dari kantor)`,
                 }))}
             />
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
               {titikTerbaruBerlokasi(absensi).map((a) => (
-                <li key={a.id} className="flex items-center gap-1.5 text-sm">
-                  <span aria-hidden="true" className="inline-block w-3 h-3 rounded-full"
+                <li key={a.id} className="flex items-center gap-1.5 text-xs text-mu">
+                  <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full"
                     style={{ background: warnaTitik(a.peserta?.id ?? a.user_id) }} />
                   {a.peserta?.nama ?? 'Peserta'}
                 </li>
@@ -146,19 +188,25 @@ export default function Rekap() {
             </ul>
           </>
         ) : (
-          <p className="text-mu text-sm">
-            Belum ada data lokasi untuk periode ini. Titik absensi muncul bila area kantor sudah diatur admin dan
-            peserta mengirim lokasi saat absen. Hanya absen terbaru berlokasi per peserta yang ditampilkan, agar
-            titik tidak menumpuk di koordinat yang sama.
-          </p>
+          <div className="flex flex-col items-center px-4 py-7 text-center">
+            <span className="grid size-11 place-items-center rounded-full bg-pl text-pr">
+              <Ikon nama="pin" className="size-5" />
+            </span>
+            <b className="mt-2.5 text-sm">Belum ada data lokasi</b>
+            <p className="mt-1 max-w-[520px] text-xs leading-relaxed text-mu">
+              Titik absensi muncul bila area kantor sudah diatur admin dan peserta mengirim lokasi saat absen.
+              Hanya absen terbaru berlokasi per peserta yang ditampilkan, agar titik tidak menumpuk.
+            </p>
+          </div>
         )}
       </Kartu>
 
       <Kartu t="Jurnal kegiatan">
         <FxDaftar
           rows={jurnal}
+          em="Belum ada jurnal pada periode ini."
           kolom={[
-            { t: 'Tanggal', isi: (j) => tglIndo(j.tanggal) },
+            { t: 'Tanggal', isi: (j) => <span className="whitespace-nowrap font-semibold">{tglIndo(j.tanggal)}</span> },
             { t: 'Peserta', isi: (j) => j.peserta?.nama ?? '-' },
             { t: 'Judul', isi: (j) => j.judul },
             { t: 'Status', isi: (j) => <Badge s={j.status} /> },

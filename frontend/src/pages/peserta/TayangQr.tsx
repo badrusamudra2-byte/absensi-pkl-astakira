@@ -4,7 +4,8 @@ import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import type { Absensi, Pengaturan, TayanganQr } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
+import { Kartu, Tombol, Pemberitahuan, Badge, JudulHalaman } from '../../komponen/ui';
+import { Ikon } from '../../komponen/Ikon';
 import { isoHariIni, tercatatPada } from '../../komponen/umum';
 import { useOnline } from '../../komponen/Offline';
 
@@ -22,7 +23,7 @@ function TampilkanQr({ token }: { token: string }) {
     <div
       role="img"
       aria-label="Kode QR absensi milik Anda"
-      className="bg-white p-3 rounded-xl w-fit max-w-full overflow-auto mx-auto"
+      className="w-fit max-w-full overflow-auto mx-auto"
       dangerouslySetInnerHTML={{ __html: q.createSvgTag(10, 0) }}
     />
   );
@@ -200,71 +201,112 @@ export default function TayangQr() {
 
   return (
     <>
-      <Kartu t={`Tayangkan QR absen ${jenis}`}>
-        {beres ? (
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-[#15803d20] text-g text-3xl leading-16 mx-auto mb-2">&#10003;</div>
-            <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} tercatat</h2>
-            <p>
-              Tercatat <b aria-live="polite">{beres.jam.slice(0, 5)}</b> &mdash; <Badge s={beres.status} />
-            </p>
-            <div className="mt-3 flex gap-2 justify-center">
-              <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
-              <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
-            </div>
+      <JudulHalaman
+        eyebrow="Peserta PKL"
+        judul="Tayangkan QR Absen"
+        sub="Tunjukkan QR ini ke pembimbing untuk mencatat kehadiran Anda."
+      />
+      <Kartu className="!p-0 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-garis">
+          <div className="flex items-center gap-2">
+            <span className="size-8 rounded-lg bg-pl text-pr grid place-items-center">
+              <Ikon nama="qr" className="size-4" />
+            </span>
+            <b className="text-[12.5px] font-extrabold">QR absen {jenis}</b>
           </div>
-        ) : galat ? (
-          <>
-            <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
-            {galat[0] === teksKode('WAJAH_BELUM_VERIF')[0] ? (
-              <div className="mt-2 text-center">
-                <Tombol onClick={() => navigate(`/wajah/periksa?jenis=${jenis}&genap=scan`)}>
-                  Verifikasi wajah dahulu
-                </Tombol>
+          {qr && !beres ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-[10px] font-semibold text-mu">
+              <span className="size-1.5 rounded-full bg-[#15803d] animate-pulse" aria-hidden="true" />
+              Aktif
+            </span>
+          ) : null}
+        </div>
+
+        <div className="p-4 md:p-5">
+          {beres ? (
+            <div className="text-center py-4">
+              <div className="size-20 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">
+                <Ikon nama="checkCircle" className="size-10" />
               </div>
-            ) : (
-              <div className="mt-2">
-                <Tombol varian="gh" onClick={() => void tayangkan()} disabled={sedang}>
-                  Coba lagi
-                </Tombol>
+              <h2 className="text-lg font-extrabold mb-2">Absensi {jenis} tercatat</h2>
+              <p className="text-[12.5px] text-[#4a5a72]">
+                Tercatat <b aria-live="polite">{beres.jam.slice(0, 5)}</b> &mdash; <Badge s={beres.status} />
+              </p>
+              <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                <Tombol varian="gh" onClick={() => navigate('/riwayat')}>Lihat riwayat</Tombol>
+                <Tombol onClick={() => navigate('/absensi')}>Selesai</Tombol>
               </div>
-            )}
-          </>
-        ) : qr ? (
-          <>
-            <TampilkanQr token={qr.token} />
-            <p className="mt-3 text-center">
-              Tunjukkan QR ini untuk dipindai oleh pembimbing. QR berganti dalam{' '}
-              <b aria-live="polite">{sisa}</b> detik.
-            </p>
-            <p className="text-mu text-sm text-center">
-              Bila pembimbing sudah berhasil memindai, Anda akan melihatnya di menu Riwayat. Absensi
-              hanya tercatat sekali per jenis per hari. Pada metode QR+Wajah bila verifikasi wajah
-              Anda sudah kedaluwarsa, pindaian akan ditolak — ulangi verifikasi dari menu Absensi.
-            </p>
-            <div className="mt-2 text-center">
-              <Tombol varian="gh" onClick={() => void tayangkan()} disabled={sedang}>
-                {sedang ? 'Menayangkan…' : 'Ganti QR sekarang'}
-              </Tombol>
             </div>
-          </>
-        ) : (
-          <p className="text-mu">{sedang ? 'Menayangkan QR…' : 'Menyiapkan QR…'}</p>
-        )}
+          ) : galat ? (
+            <div className="py-2">
+              <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+              {galat[0] === teksKode('WAJAH_BELUM_VERIF')[0] ? (
+                <div className="mt-3 text-center">
+                  <Tombol onClick={() => navigate(`/wajah/periksa?jenis=${jenis}&genap=scan`)}>
+                    Verifikasi wajah dahulu
+                  </Tombol>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <Tombol varian="gh" onClick={() => void tayangkan()} disabled={sedang}>
+                    Coba lagi
+                  </Tombol>
+                </div>
+              )}
+            </div>
+          ) : qr ? (
+            <div className="grid md:grid-cols-[1fr_0.85fr] gap-5 items-start">
+              <div className="rounded-xl border border-garis bg-white p-3 w-fit max-w-full mx-auto md:mx-0">
+                <TampilkanQr token={qr.token} />
+              </div>
+              <div>
+                <div className="rounded-xl border border-[#d8e3f6] bg-[#f6f9ff] p-3 text-center">
+                  <div className="text-[9.5px] font-extrabold uppercase tracking-[1px] text-mu">QR berganti dalam</div>
+                  <div className="text-[26px] font-extrabold tracking-tight text-pr leading-none mt-1" aria-live="polite">
+                    {sisa}
+                    <span className="text-[12px] text-mu font-bold ml-1">detik</span>
+                  </div>
+                </div>
+                <p className="text-[12px] font-semibold text-[#334155] mt-3">
+                  Tunjukkan QR ini untuk dipindai oleh pembimbing.
+                </p>
+                <p className="text-[11px] text-mu leading-relaxed mt-1.5">
+                  Bila pembimbing sudah berhasil memindai, Anda akan melihatnya di menu Riwayat. Absensi hanya
+                  tercatat sekali per jenis per hari. Pada metode QR + Wajah, verifikasi wajah yang kedaluwarsa
+                  akan ditolak — ulangi verifikasi dari menu Absensi.
+                </p>
+                <div className="mt-3">
+                  <Tombol varian="gh" className="w-full" onClick={() => void tayangkan()} disabled={sedang}>
+                    <Ikon nama="refresh" className="size-3.5" />
+                    {sedang ? 'Menayangkan…' : 'Ganti QR sekarang'}
+                  </Tombol>
+                </div>
+                <p className="text-[10px] text-mu mt-2 flex items-start gap-1.5">
+                  <Ikon nama="info" className="size-3.5 shrink-0 mt-0.5" />
+                  Layar dijaga tetap menyala selama halaman ini terbuka (bila browser mendukung Wake Lock).
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <Ikon nama="refresh" className="size-6 text-pr animate-spin mx-auto mb-2" />
+              <p className="text-mu text-sm">{sedang ? 'Menayangkan QR…' : 'Menyiapkan QR…'}</p>
+            </div>
+          )}
+        </div>
       </Kartu>
-      {qr ? (
-        <p className="text-xs text-mu mt-1">
-          Layar dijaga tetap menyala selama halaman ini terbuka (bila browser mendukung Wake Lock).
-        </p>
-      ) : null}
+
       {!daring ? (
-        <p className="text-r text-sm mt-1 font-semibold" role="alert">
+        <p className="text-r text-sm mt-2 font-semibold" role="alert">
           Anda sedang luring — QR tidak bisa diperbarui tanpa internet.
         </p>
       ) : null}
       {beres ? null : (
-        <p className="text-xs text-mu mt-1">
-          <Link to="/absensi" className="underline">Kembali ke pilihan absensi</Link>
+        <p className="text-[11.5px] text-mu mt-2">
+          <Link to="/absensi" className="inline-flex items-center gap-1 font-semibold text-pr no-underline">
+            <Ikon nama="chevron" className="size-3 rotate-180" />
+            Kembali ke pilihan absensi
+          </Link>
         </p>
       )}
     </>
