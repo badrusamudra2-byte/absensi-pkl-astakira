@@ -1,5 +1,7 @@
+const fs = require('fs');
 const request = require('supertest');
 const app = require('../src/app');
+const berkas = require('../src/utils/berkas');
 const { bagian } = require('../src/utils/waktu');
 const { kosongkanDb, isiDasar, buatUser, tokenUntuk } = require('./helper');
 const M = require('../src/models');
@@ -68,6 +70,16 @@ describe('Kirim pengajuan izin/sakit (peserta)', () => {
       .field('keterangan', 'Melampirkan dokumen teks semata.');
     expect(r.status).toBe(400);
     expect(r.body.kode).toBe('UPLOAD');
+  });
+
+  test('validasi tanggal gagal -> berkas bukti tidak tertinggal', async () => {
+    const sebelum = fs.readdirSync(berkas.pengajuan).length;
+    const r = await kirim(tokPeserta, {
+      jenis: 'Izin', tanggal: TGL_LAMBUAT, keterangan: 'Pengajuan di luar batas tanggal.',
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+    expect(fs.readdirSync(berkas.pengajuan).length).toBe(sebelum);
   });
 
   test('jenis selain Izin/Sakit ditolak', async () => {

@@ -539,7 +539,15 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
 
     const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
     expect(baris.pulang_jam).toBe(waktu.bagian().jam);
-    expect(await M.WajahFoto.count({ where: { absensi_id: baris.id } })).toBe(1);
+    const foto = await M.WajahFoto.findAll({ where: { absensi_id: baris.id }, order: [['jenis', 'ASC']] });
+    expect(foto.map((f) => f.jenis)).toEqual(['masuk', 'pulang']);
+
+    const authzAdm = await tokenUntuk(admin.email);
+    const fPulang = await request(app)
+      .get(`/api/admin/absensi/${baris.id}/foto?jenis=pulang`)
+      .set('Authorization', authzAdm);
+    expect(fPulang.status).toBe(200);
+    expect(String(fPulang.headers['content-type'])).toContain('image/jpeg');
   });
 
   test('/absensi/wajah saat mode qr -> 409 MODE_WAJAH_NONAKTIF', async () => {

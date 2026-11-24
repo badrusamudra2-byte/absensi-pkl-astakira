@@ -35,10 +35,10 @@ const pulangLengkap = (a) => !!(a && a.pulang_jam && a.pulang_status);
 const duplikatAbsenHarian = (e) => e.name === 'SequelizeUniqueConstraintError'
   && /uq_absensi_harian/.test(`${e.parent?.constraint ?? ''} ${e.original?.constraint ?? ''} ${e.message ?? ''}`);
 
-const simpanFotoWajah = async (absensi_id, data, t) => {
-  const foto = await WajahFoto.findOne({ where: { absensi_id }, transaction: t });
+const simpanFotoWajah = async (absensi_id, jenis, data, t) => {
+  const foto = await WajahFoto.findOne({ where: { absensi_id, jenis }, transaction: t });
   if (foto) return foto.update({ data }, { transaction: t });
-  return WajahFoto.create({ absensi_id, data }, { transaction: t });
+  return WajahFoto.create({ absensi_id, jenis, data }, { transaction: t });
 };
 
 // Ganti penanda otomatis menjadi absensi nyata (atomik di dalam transaksi).
@@ -235,7 +235,7 @@ exports.wajah = asyncH(async (req, res) => {
         if (!n) throw new HttpError(409, 'Absen pulang hari ini sudah tercatat.', 'SUDAH_ABSEN');
         a = await Absensi.findByPk(baris.id, { transaction: t });
       }
-      if (fotoCt) await simpanFotoWajah(a.id, fotoCt, t);
+      if (fotoCt) await simpanFotoWajah(a.id, jen, fotoCt, t);
       // Live tracking: sesi dibuka saat masuk, ditutup saat pulang (transaksi yang sama).
       // Hanya peserta yang sudah memberi persetujuan yang punya sesi.
       if (req.user.setuju_live_tracking) {
@@ -397,7 +397,7 @@ exports.scanPeserta = asyncH(async (req, res) => {
           );
         }
         if (fV.foto_ciphertext) {
-          await simpanFotoWajah(a.id, fV.foto_ciphertext, t);
+          await simpanFotoWajah(a.id, jen, fV.foto_ciphertext, t);
         }
       }
       // Live tracking (data peserta dari token, bukan pembimbing pemindai):

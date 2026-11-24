@@ -73,7 +73,7 @@ export default function AbsensiAdmin() {
 
   // Foto wajah absensi (dipakai untuk rekap pembuktian kehadiran)
   const [fotoUrl, ubahFotoUrl] = useState<string | null>(null);
-  const [fotoMuat, ubahFotoMuat] = useState<number | null>(null); // id absensi yang sedang diunduh
+  const [fotoMuat, ubahFotoMuat] = useState<string | null>(null); // "id:jenis" yang sedang diunduh
   const [kantor, ubahKantor] = useState<{ lat: number; lng: number; radius_m: number } | null>(null);
   const terbaru = gunakanTerbaru();
 
@@ -86,11 +86,11 @@ export default function AbsensiAdmin() {
     ubahFotoUrl(null);
   };
 
-  const lihatFoto = async (a: Absensi) => {
-    ubahFotoMuat(a.id);
+  const lihatFoto = async (a: Absensi, jenis: 'masuk' | 'pulang') => {
+    ubahFotoMuat(`${a.id}:${jenis}`);
     ubahGalat(null);
     try {
-      const res = await api<Response>(`/admin/absensi/${a.id}/foto`, { raw: true });
+      const res = await api<Response>(`/admin/absensi/${a.id}/foto?jenis=${jenis}`, { raw: true });
       const blob = await res.blob();
       if (fotoUrl) URL.revokeObjectURL(fotoUrl);
       ubahFotoUrl(URL.createObjectURL(blob));
@@ -289,14 +289,24 @@ export default function AbsensiAdmin() {
                         <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-semibold text-mu">{a.metode}</span>
                         <span className="ml-auto flex flex-wrap gap-1.5">
                           {a.metode.includes('Wajah') ? (
-                            <button
-                              onClick={() => void lihatFoto(a)}
-                              disabled={fotoMuat !== null}
-                              className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-pr transition hover:border-pr hover:bg-pl disabled:opacity-60"
-                            >
-                              <Ikon nama="camera" className="size-3" />
-                              {fotoMuat === a.id ? 'Memuat…' : 'Lihat foto'}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => void lihatFoto(a, 'masuk')}
+                                disabled={fotoMuat !== null}
+                                className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-pr transition hover:border-pr hover:bg-pl disabled:opacity-60"
+                              >
+                                <Ikon nama="camera" className="size-3" />
+                                {fotoMuat === `${a.id}:masuk` ? 'Memuat…' : 'Foto masuk'}
+                              </button>
+                              <button
+                                onClick={() => void lihatFoto(a, 'pulang')}
+                                disabled={fotoMuat !== null}
+                                className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kartu px-2 py-1 text-[11px] font-bold text-pr transition hover:border-pr hover:bg-pl disabled:opacity-60"
+                              >
+                                <Ikon nama="camera" className="size-3" />
+                                {fotoMuat === `${a.id}:pulang` ? 'Memuat…' : 'Foto pulang'}
+                              </button>
+                            </>
                           ) : null}
                           <button
                             onClick={() => bukaEdit(a)}

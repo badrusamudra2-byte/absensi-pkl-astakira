@@ -19,7 +19,8 @@ export default function WajahDaftar() {
   const [kirim, ubahKirim] = useState(false);
   const [beres, ubahBeres] = useState(false);
   const [percobaan, ubahPercobaan] = useState(0);
-  const [status, ubahStatus] = useState<'cek' | 'terdaftar' | 'belum'>('cek');
+  const [status, ubahStatus] = useState<'cek' | 'terdaftar' | 'belum' | 'gagal'>('cek');
+  const [tandaCek, ubahTandaCek] = useState(0);
   const [konfirmasiReset, ubahKonfirmasiReset] = useState(false);
   const [sandiReset, ubahSandiReset] = useState('');
   const [resetMemuat, ubahResetMemuat] = useState(false);
@@ -61,12 +62,12 @@ export default function WajahDaftar() {
         if (hidup) ubahStatus(r.terdaftar ? 'terdaftar' : 'belum');
       })
       .catch(() => {
-        if (hidup) ubahStatus('belum');
+        if (hidup) ubahStatus('gagal');
       });
     return () => {
       hidup = false;
     };
-  }, []);
+  }, [tandaCek]);
 
   const resetTemplate = async () => {
     if (!sandiReset) {
@@ -184,6 +185,20 @@ export default function WajahDaftar() {
             <div className="flex items-center justify-center gap-2 px-4 py-14 text-[12px] text-mu">
               <Ikon nama="refresh" className="size-4 animate-spin" />
               Memeriksa status pendaftaran wajah…
+            </div>
+          ) : status === 'gagal' ? (
+            <div className="px-4 py-10">
+              <Pemberitahuan
+                jenis="er"
+                judul="Status wajah belum bisa dicek"
+                uraian="Koneksi ke server terganggu. Kamera belum dibuka agar Anda tidak mendaftar ulang tanpa perlu."
+              />
+              <div className="mt-3 flex justify-center">
+                <Tombol onClick={() => ubahTandaCek((n) => n + 1)}>
+                  <Ikon nama="refresh" className="size-4" />
+                  Coba lagi
+                </Tombol>
+              </div>
             </div>
           ) : status === 'terdaftar' ? (
             <div className="text-center px-4 py-10">

@@ -127,9 +127,13 @@ const PengajuanIzin = sequelize.define('PengajuanIzin', {
 // Foto wajah siswa pada momen absensi (diambil HP siswa saat verifikasi, terenkripsi
 // AES-256-GCM). Hanya admin yang bisa membaca; dihapus otomatis setelah FACE_FOTO_RETENSI_HARI.
 const WajahFoto = sequelize.define('WajahFoto', {
-  absensi_id: { type: T.INTEGER, allowNull: false, unique: true },
+  absensi_id: { type: T.INTEGER, allowNull: false },
+  jenis: { type: T.ENUM('masuk', 'pulang'), allowNull: false, defaultValue: 'masuk' },
   data: { type: T.TEXT('medium'), allowNull: false }, // "iv.tag.ct" base64 JPEG terenkripsi
-}, { tableName: 'wajah_foto' });
+}, {
+  tableName: 'wajah_foto',
+  indexes: [{ unique: true, name: 'uq_wajah_foto_absensi_jenis', fields: ['absensi_id', 'jenis'] }],
+});
 
 // Baris tunggal (id=1): metode absensi pengaturan penyelenggara.
 const PengaturanAbsensi = sequelize.define('PengaturanAbsensi', {

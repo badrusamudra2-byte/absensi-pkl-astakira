@@ -81,23 +81,26 @@ const rentangOk = (mulaiRaw, selesaiRaw) => {
 /** Peserta kirim pengajuan izin/sakit untuk satu tanggal atau periode + bukti foto. */
 exports.kirim = asyncH(async (req, res) => {
   const uid = req.user.id;
-  const jenis = jenisOk(req.body.jenis);
-  const { mulai, selesai } = rentangOk(req.body.tanggal, req.body.tanggal_selesai);
-  const tanggalList = daftarTanggal(mulai, selesai);
-  const ket = String(req.body.keterangan ?? '').trim();
-  if (ket.length < 3 || ket.length > 1000) {
-    throw new HttpError(400, 'Keterangan wajib 3 sampai 1000 karakter.', 'VALIDASI');
-  }
-  if (!req.file || !req.file.filename) {
-    throw new HttpError(400, 'Lampirkan bukti berupa foto.', 'BUKTI_WAJIB');
-  }
-  // Berkas bukti sudah ditulis middleware ke uploads/pengajuan. Bila validasi
-  // di bawah gagal, berkas wajib dihapus agar tidak menumpuk sebagai berkas yatim.
+  // Berkas sudah ditulis multer sebelum controller berjalan. Siapkan pembersih
+  // lebih awal supaya galat validasi apa pun tidak meninggalkan berkas yatim.
   const hapusBukti = () => {
+    if (!req.file || !req.file.filename) return;
     try { fs.unlinkSync(path.join(berkas.pengajuan, req.file.filename)); } catch { /* sudah tak ada */ }
   };
+  let mulai = '';
+  let selesai = '';
 
   try {
+    const jenis = jenisOk(req.body.jenis);
+    ({ mulai, selesai } = rentangOk(req.body.tanggal, req.body.tanggal_selesai));
+    const tanggalList = daftarTanggal(mulai, selesai);
+    const ket = String(req.body.keterangan ?? '').trim();
+    if (ket.length < 3 || ket.length > 1000) {
+      throw new HttpError(400, 'Keterangan wajib 3 sampai 1000 karakter.', 'VALIDASI');
+    }
+    if (!req.file || !req.file.filename) {
+      throw new HttpError(400, 'Lampirkan bukti berupa foto.', 'BUKTI_WAJIB');
+    }
     // Tanggal mana pun dalam periode yang sudah punya catatan absensi atau pengajuan
     // aktif menutup pengajuan ini. Cek dan tulis dalam satu transaksi (kunci baris
     // yang ada) supaya dua pengiriman bersamaan tidak sama-sama lolos cek duplikat.

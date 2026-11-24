@@ -336,11 +336,15 @@ exports.absensiPerTanggal = asyncH(async (req, res) => {
 exports.fotoWajah = asyncH(async (req, res) => {
   const a = await Absensi.findByPk(req.params.id);
   if (!a) throw new HttpError(404, 'Baris absensi tidak ditemukan.', 'TIDAK_ADA');
-  const f = await WajahFoto.findOne({ where: { absensi_id: a.id } });
-  if (!f) {
-    throw new HttpError(404, 'Absensi ini tidak punya foto wajah (mis. metode QR tanpa wajah).', 'FOTO_ABSEN_TAK_ADA');
+  const jenis = String(req.query.jenis || 'masuk');
+  if (!['masuk', 'pulang'].includes(jenis)) {
+    throw new HttpError(400, 'Jenis foto harus masuk atau pulang.', 'VALIDASI');
   }
-  await audit(req, 'Buka foto absensi', `absensi#${a.id} pes#${a.user_id}`);
+  const f = await WajahFoto.findOne({ where: { absensi_id: a.id, jenis } });
+  if (!f) {
+    throw new HttpError(404, `Absensi ini tidak punya foto wajah ${jenis} (mis. metode QR tanpa wajah).`, 'FOTO_ABSEN_TAK_ADA');
+  }
+  await audit(req, `Buka foto absensi ${jenis}`, `absensi#${a.id} pes#${a.user_id}`);
   res.type('image/jpeg').send(dekripBait(f.data));
 });
 
