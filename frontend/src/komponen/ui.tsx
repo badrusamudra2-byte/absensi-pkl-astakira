@@ -127,14 +127,16 @@ export function MasukanSandi({ className = '', ...props }: Omit<React.InputHTMLA
   );
 }
 
-/** Peringatan blok di dalam kartu (info biru / peringatan kuning / galat merah). */
-export function Pemberitahuan({ jenis = 'info', judul, uraian, aksi }: { jenis?: 'info' | 'warn' | 'er'; judul: string; uraian?: string; aksi?: ReactNode }) {
+/** Peringatan blok di dalam kartu (info biru / berhasil hijau / peringatan kuning / galat merah). */
+export function Pemberitahuan({ jenis = 'info', judul, uraian, aksi }: { jenis?: 'info' | 'ok' | 'warn' | 'er'; judul: string; uraian?: string; aksi?: ReactNode }) {
   const warna =
     jenis === 'er'
       ? 'border-r bg-[#b91c1c10] text-r'
-      : jenis === 'warn'
-        ? 'border-y bg-[#a1620716] text-y'
-        : 'border-pr bg-pl text-pr';
+      : jenis === 'ok'
+        ? 'border-g bg-[#15803d18] text-g'
+        : jenis === 'warn'
+          ? 'border-y bg-[#a1620716] text-y'
+          : 'border-pr bg-pl text-pr';
   return (
     <div className={`rounded-lg border px-[14px] py-3 my-2 max-w-[460px] ${warna}`} role="alert" aria-live="polite">
       <b className="block mb-0.5">{judul}</b>

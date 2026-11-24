@@ -164,6 +164,7 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | BUKTI_WAJIB | 400 | Lampirkan bukti pengajuan izin/sakit terlebih dulu |
 | UPLOAD | 400 | Format bukti/foto tidak didukung (JPG, PNG, atau WebP) |
 | TIDAK_ADA | 404 | Data tidak ditemukan / sudah diputuskan |
+| SANDI_SALAH | 403 | Kata sandi salah saat konfirmasi reset template wajah |
 | BUKAN_BIMBINGAN | 403 | Pengajuan bukan dari peserta bimbingan Anda |
 | ALASAN_WAJIB | 400 | Tulis alasan koreksi |
 | PUNYA_RIWAYAT | 409 | Data punya riwayat, hanya bisa dinonaktifkan |

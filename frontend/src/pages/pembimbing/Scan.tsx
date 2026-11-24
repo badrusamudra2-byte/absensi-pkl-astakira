@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
-import { teksKode } from '../../lib/petaKode';
+import { jenisPemberitahuan, teksKode } from '../../lib/petaKode';
 import type { HasilScan, MetodeAbsensi } from '../../lib/tipe';
 import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge } from '../../komponen/ui';
 import { useOnline } from '../../komponen/Offline';
@@ -18,6 +18,7 @@ export default function Scan() {
   const [tahap, ubahTahap] = useState<Tahap>('mulai');
   const [metode, ubahMetode] = useState<MetodeAbsensi | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const [kodeGalat, ubahKodeGalat] = useState<string | null>(null);
   const [hasil, ubahHasil] = useState<HasilScan | null>(null);
   const [merekam, ubahMerekam] = useState(false);
   const tokenRef = useRef<string | null>(null);
@@ -30,6 +31,7 @@ export default function Scan() {
 
   const ulang = () => {
     ubahGalat(null);
+    ubahKodeGalat(null);
     ubahHasil(null);
     tokenRef.current = null;
     ubahMerekam(false);
@@ -41,6 +43,7 @@ export default function Scan() {
     tokenRef.current = token;
     if (!navigator.onLine) {
       ubahGalat(['Tidak ada koneksi internet', 'Pemindaian perlu server. Sambungkan internet lalu scan ulang QR.']);
+      ubahKodeGalat('JARINGAN');
       ubahTahap('mulai');
       return;
     }
@@ -49,10 +52,12 @@ export default function Scan() {
       const r = await api<HasilScan>('/absensi/scan', { method: 'POST', json: { token } });
       ubahHasil(r);
       ubahGalat(null);
+      ubahKodeGalat(null);
       ubahTahap('beres');
     } catch (e) {
       const err = e as ApiError;
       ubahGalat(teksKode(err.kode ?? 'SERVER', err.message));
+      ubahKodeGalat(err.kode ?? 'SERVER');
       ubahTahap('mulai');
     } finally {
       ubahMerekam(false);
@@ -69,7 +74,7 @@ export default function Scan() {
 
       {galat ? (
         <div className="mb-4">
-          <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+          <Pemberitahuan jenis={jenisPemberitahuan(kodeGalat)} judul={galat[0]} uraian={galat[1]} />
           <div className="mt-2">
             <Tombol varian="gh" onClick={ulang}>Scan ulang</Tombol>
           </div>
@@ -114,7 +119,7 @@ export default function Scan() {
                   : 'Tekan tombol di bawah lalu arahkan kamera HP ke QR yang ditayangkan peserta di HP-nya.'}
               </p>
               <div className="mt-4">
-                <Tombol onClick={() => { ubahGalat(null); ubahTahap('qr'); }} disabled={!daring || metode === null}>
+                <Tombol onClick={() => { ubahGalat(null); ubahKodeGalat(null); ubahTahap('qr'); }} disabled={!daring || metode === null}>
                   <Ikon nama="camera" className="size-4" />
                   Buka kamera
                 </Tombol>

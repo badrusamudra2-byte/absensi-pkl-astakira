@@ -30,6 +30,15 @@ export const tglIndo = (s: string) =>
   new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' })
     .format(new Date(`${s}T12:00:00+07:00`));
 
+/** Rentang tanggal: "Jumat, 17/10/2026" atau "17/10/2026 – 19/10/2026" bila berbeda. */
+export const tglIndoRentang = (mulai: string, selesai?: string | null) =>
+  selesai && selesai !== mulai ? `${tglIndo(mulai)} – ${tglIndo(selesai)}` : tglIndo(mulai);
+
+/** Apakah tanggal `t` berada dalam rentang inklusif [mulai, selesai]. */
+export const dalamRentang = (t: string, mulai: string, selesai?: string | null) =>
+  t >= mulai && t <= (selesai || mulai);
+
+
 /** Format "2026-10-17" singkat "17/10". */
 export const tglPendek = (s: string) => s.slice(8, 10) + '/' + s.slice(5, 7);
 

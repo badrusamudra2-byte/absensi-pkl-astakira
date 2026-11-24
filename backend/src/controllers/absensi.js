@@ -30,6 +30,16 @@ const cekTerkunci = async (user_id, tanggal, nama) => {
 // bukan absensi sungguhan. Bila peserta ternyata datang (telat), penanda diganti
 // absensi nyata — tercatat jujur sebagai Terlambat, bukan ditolak "sudah tercatat".
 const penandaOtomatis = (a) => !!a && a.status === 'Tidak hadir' && a.metode === 'Otomatis';
+const pulangLengkap = (a) => !!(a && a.pulang_jam && a.pulang_status);
+
+const duplikatAbsenHarian = (e) => e.name === 'SequelizeUniqueConstraintError'
+  && /uq_absensi_harian/.test(`${e.parent?.constraint ?? ''} ${e.original?.constraint ?? ''} ${e.message ?? ''}`);
+
+const simpanFotoWajah = async (absensi_id, data, t) => {
+  const foto = await WajahFoto.findOne({ where: { absensi_id }, transaction: t });
+  if (foto) return foto.update({ data }, { transaction: t });
+  return WajahFoto.create({ absensi_id, data }, { transaction: t });
+};
 
 // Ganti penanda otomatis menjadi absensi nyata (atomik di dalam transaksi).
 // Bila baris sudah diganti request lain yang bersamaan, gagal dengan SUDAH_ABSEN.
@@ -89,7 +99,7 @@ exports.qrSaya = asyncH(async (req, res) => {
       status: { [Op.notIn]: ['Izin', 'Sakit'] },
     },
   });
-  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || pulangLengkap(lama))) {
     throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
   }
   if (cfg.metode === 'qr_wajah') {
@@ -165,7 +175,7 @@ exports.wajah = asyncH(async (req, res) => {
   const lama = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
   // Satu baris per hari: masuk ditolak bila baris nyata sudah ada; pulang ditolak
   // hanya bila pulang_jam sudah terisi — bukan sekadar karena baris masuk ada.
-  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || pulangLengkap(lama))) {
     throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
   }
   if (jen === 'pulang' && (!lama || penandaOtomatis(lama))) {
@@ -206,20 +216,26 @@ exports.wajah = asyncH(async (req, res) => {
       } else if (penandaOtomatis(baris)) {
         if (jen === 'pulang') throw new HttpError(422, 'Anda belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
         a = await gantiPenanda(baris.id, isi, t);
-      } else if (jen === 'masuk' || baris.pulang_jam) {
+      } else if (jen === 'masuk' || pulangLengkap(baris)) {
         throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
       } else {
         // Pulang: isi kolom pulang pada baris masuk (MySQL tidak butuh returning —
-        // baca ulang bila perlu). Guard pulang_jam null mencegah dobel-set bersamaan.
+        // baca ulang bila perlu). Data pulang lama yang tidak lengkap ikut diperbaiki.
         // Status masuk (mis. Terlambat) dan lokasi masuk tidak ditimpa.
         const [n] = await Absensi.update(
           { pulang_jam: w.jam, pulang_status: status },
-          { where: { id: baris.id, pulang_jam: null }, transaction: t },
+          {
+            where: {
+              id: baris.id,
+              [Op.or]: [{ pulang_jam: null }, { pulang_status: null }],
+            },
+            transaction: t,
+          },
         );
         if (!n) throw new HttpError(409, 'Absen pulang hari ini sudah tercatat.', 'SUDAH_ABSEN');
         a = await Absensi.findByPk(baris.id, { transaction: t });
       }
-      if (fotoCt) await WajahFoto.create({ absensi_id: a.id, data: fotoCt }, { transaction: t });
+      if (fotoCt) await simpanFotoWajah(a.id, fotoCt, t);
       // Live tracking: sesi dibuka saat masuk, ditutup saat pulang (transaksi yang sama).
       // Hanya peserta yang sudah memberi persetujuan yang punya sesi.
       if (req.user.setuju_live_tracking) {
@@ -228,7 +244,7 @@ exports.wajah = asyncH(async (req, res) => {
       }
     });
   } catch (e) {
-    if (e.name === 'SequelizeUniqueConstraintError') {
+    if (duplikatAbsenHarian(e)) {
       throw new HttpError(409, `Absen ${jen} hari ini sudah tercatat.`, 'SUDAH_ABSEN');
     }
     throw e;
@@ -277,7 +293,7 @@ exports.scanPeserta = asyncH(async (req, res) => {
   const lama = await Absensi.findOne({ where: { user_id: uid, tanggal: w.tanggal } });
   // Satu baris per hari: masuk ditolak bila baris nyata sudah ada; pulang ditolak
   // hanya bila pulang_jam sudah terisi — bukan sekadar karena baris masuk ada.
-  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || lama.pulang_jam)) {
+  if (lama && !penandaOtomatis(lama) && (jen === 'masuk' || pulangLengkap(lama))) {
     throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
   }
   if (jen === 'pulang' && (!lama || penandaOtomatis(lama))) {
@@ -348,14 +364,20 @@ exports.scanPeserta = asyncH(async (req, res) => {
       } else if (penandaOtomatis(baris)) {
         if (jen === 'pulang') throw new HttpError(422, 'Peserta belum absen masuk hari ini.', 'BELUM_ABSEN_MASUK');
         a = await gantiPenanda(baris.id, isi, t);
-      } else if (jen === 'masuk' || baris.pulang_jam) {
+      } else if (jen === 'masuk' || pulangLengkap(baris)) {
         throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
       } else {
-        // Pulang: isi kolom pulang pada baris masuk. Guard pulang_jam null mencegah
-        // dobel-set bersamaan; status masuk (mis. Terlambat) tidak ditimpa.
+        // Pulang: isi kolom pulang pada baris masuk. Data pulang lama yang tidak
+        // lengkap ikut diperbaiki; status masuk (mis. Terlambat) tidak ditimpa.
         const [p] = await Absensi.update(
           { pulang_jam: w.jam, pulang_status: status },
-          { where: { id: baris.id, pulang_jam: null }, transaction: t },
+          {
+            where: {
+              id: baris.id,
+              [Op.or]: [{ pulang_jam: null }, { pulang_status: null }],
+            },
+            transaction: t,
+          },
         );
         if (!p) throw new HttpError(409, 'Peserta ini sudah absen pulang hari ini.', 'SUDAH_ABSEN');
         a = await Absensi.findByPk(baris.id, { transaction: t });
@@ -375,7 +397,7 @@ exports.scanPeserta = asyncH(async (req, res) => {
           );
         }
         if (fV.foto_ciphertext) {
-          await WajahFoto.create({ absensi_id: a.id, data: fV.foto_ciphertext }, { transaction: t });
+          await simpanFotoWajah(a.id, fV.foto_ciphertext, t);
         }
       }
       // Live tracking (data peserta dari token, bukan pembimbing pemindai):
@@ -386,7 +408,7 @@ exports.scanPeserta = asyncH(async (req, res) => {
       }
     });
   } catch (e) {
-    if (e.name === 'SequelizeUniqueConstraintError') {
+    if (duplikatAbsenHarian(e)) {
       throw new HttpError(409, `Peserta ini sudah absen ${jen} hari ini.`, 'SUDAH_ABSEN');
     }
     // Sisanya (termasuk HttpError) dilempar apa adanya: error tak terduga ditangani

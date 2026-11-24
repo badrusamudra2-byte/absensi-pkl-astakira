@@ -418,3 +418,75 @@ describe('Bukti pengajuan via API (gerbang akses)', () => {
     expect(r.status).toBe(200);
   });
 });
+
+describe('Pengajuan periode (dari sampai)', () => {
+  test('kirim periode hari ini s/d besok: 201, rentang tersimpan', async () => {
+    const r = await kirim(tokPeserta, {
+      jenis: 'Izin', tanggal: TGL_KINI, tanggal_selesai: TGL_DEPAN,
+      keterangan: 'Izin dua hari untuk keperluan keluarga.',
+    });
+    expect(r.status).toBe(201);
+    const p = await M.PengajuanIzin.findByPk(r.body.data.id);
+    expect(p.tanggal).toBe(TGL_KINI);
+    expect(p.tanggal_selesai).toBe(TGL_DEPAN);
+  });
+
+  test('Disetujui periode: satu baris absensi Izin/Sakit untuk tiap tanggal', async () => {
+    const k = await kirim(tokPeserta, {
+      jenis: 'Sakit', tanggal: TGL_LAMPAU, tanggal_selesai: TGL_KINI,
+      keterangan: 'Sakit dua hari, surat dokter menyusul.',
+    });
+    expect(k.status).toBe(201);
+    const r = await request(app)
+      .put(`/api/pengajuan/izin/${k.body.data.id}/putuskan`)
+      .set('Authorization', tokPmb)
+      .send({ putusan: 'Disetujui' });
+    expect(r.status).toBe(200);
+    const b = await M.Absensi.findAll({
+      where: { user_id: dasar.peserta.id },
+      order: [['tanggal', 'ASC']],
+    });
+    expect(b.map((x) => x.tanggal)).toEqual([TGL_LAMPAU, TGL_KINI]);
+    expect(b.every((x) => x.status === 'Sakit' && x.metode === 'Sakit')).toBe(true);
+  });
+
+  test('tanggal selesai sebelum tanggal mulai ditolak', async () => {
+    const r = await kirim(tokPeserta, {
+      jenis: 'Izin', tanggal: TGL_KINI, tanggal_selesai: TGL_LAMPAU,
+      keterangan: 'Periode terbalik tidak boleh.',
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+
+  test('akhir periode melewati batas hari ke depan ditolak', async () => {
+    const r = await kirim(tokPeserta, {
+      jenis: 'Izin', tanggal: TGL_KINI, tanggal_selesai: TGL_DEPAN2,
+      keterangan: 'Terlalu jauh ke depan untuk periode.',
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.pesan).toContain('hari ke depan');
+  });
+
+  test('periode yang beririsan dengan absensi yang ada ditolak', async () => {
+    await M.Absensi.create({
+      user_id: dasar.peserta.id, tanggal: TGL_KINI, jenis: 'masuk',
+      jam: '08:00:00', status: 'Hadir', metode: 'QR+Wajah',
+    });
+    const r = await kirim(tokPeserta, {
+      jenis: 'Izin', tanggal: TGL_LAMPAU, tanggal_selesai: TGL_KINI,
+      keterangan: 'Salah satu hari sudah hadir.',
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.kode).toBe('CATATAN_ADA');
+  });
+
+  test('notifikasi mencakup pengajuan Menunggu yang rentangnya melintasi hari ini', async () => {
+    await M.PengajuanIzin.create({
+      user_id: dasar.peserta.id, tanggal: TGL_LAMPAU, tanggal_selesai: TGL_DEPAN,
+      jenis: 'Izin', keterangan: 'Periode melintasi hari ini.', bukti: 'j.jpg',
+    });
+    const r = await request(app).get('/api/pengajuan/notifikasi').set('Authorization', tokPmb);
+    expect(r.body.ada).toBe(true);
+  });
+});

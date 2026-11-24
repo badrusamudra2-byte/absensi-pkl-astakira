@@ -72,3 +72,58 @@ body {
   outline: 3px solid var(--color-pr);
   outline-offset: 2px;
 }
+
+/* Reveal saat berpindah halaman: tiap kartu (rect) muncul berurutan.
+   Judul/elemen non-kartu ikut memudar halus di awal. Tanpa blur agar ringan di HP. */
+@keyframes kotak-masuk {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) rotateX(-8deg) scale(.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes judul-masuk {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hal-masuk {
+  perspective: 1200px;
+}
+
+/* Rectangle utama (Kartu) */
+.hal-masuk section {
+  transform-origin: 50% 100%;
+  animation: kotak-masuk .9s cubic-bezier(.16, 1, .3, 1) both;
+}
+.hal-masuk section:nth-of-type(1) { animation-delay: .05s; }
+.hal-masuk section:nth-of-type(2) { animation-delay: .18s; }
+.hal-masuk section:nth-of-type(3) { animation-delay: .31s; }
+.hal-masuk section:nth-of-type(4) { animation-delay: .44s; }
+.hal-masuk section:nth-of-type(5) { animation-delay: .57s; }
+.hal-masuk section:nth-of-type(6) { animation-delay: .7s; }
+.hal-masuk section:nth-of-type(7) { animation-delay: .83s; }
+.hal-masuk section:nth-of-type(8) { animation-delay: .96s; }
+.hal-masuk section:nth-of-type(n + 9) { animation-delay: 1.09s; }
+
+/* Judul dan elemen yang bukan pembungkus kartu */
+.hal-masuk > :not(section):not(:has(section)) {
+  animation: judul-masuk .7s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hal-masuk section,
+  .hal-masuk > :not(section):not(:has(section)) {
+    animation: none;
+  }
+}

@@ -15,6 +15,7 @@ export default function Absensi() {
   const [jadwal, setJadwal] = useState<Workshift[] | null>(null);
   const [galatJadwal, setGalatJadwal] = useState('');
   const [hariIniRow, ubahHariIniRow] = useState<Absensi[]>([]);
+  const [memuatHari, ubahMemuatHari] = useState(true);
 
   useEffect(() => {
     api<{ metode: MetodeAbsensi }>('/pengaturan/absensi')
@@ -25,7 +26,8 @@ export default function Absensi() {
       .catch(() => setGalatJadwal('Jadwal kerja belum bisa dimuat. Pastikan server aktif lalu muat ulang halaman.'));
     api<{ data: Absensi[] }>('/absensi/riwayat')
       .then((r) => ubahHariIniRow(r.data.filter((x) => x.tanggal === isoHariIni())))
-      .catch(() => ubahHariIniRow([]));
+      .catch(() => ubahHariIniRow([]))
+      .finally(() => ubahMemuatHari(false));
   }, []);
 
   const potong = (t?: string) => (t ? t.slice(0, 5) : '-');
@@ -66,7 +68,14 @@ export default function Absensi() {
         sub="Pilih jenis absensi, lalu lakukan verifikasi wajah dan QR."
       />
 
-      {izinHari ? (
+      {memuatHari ? (
+        <Kartu>
+          <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-mu" role="status" aria-live="polite">
+            <Ikon nama="refresh" className="size-4 animate-spin" />
+            Memeriksa status absensi hari ini…
+          </div>
+        </Kartu>
+      ) : izinHari ? (
         <Kartu>
           <div className="text-center py-4">
             <div className="size-16 rounded-full bg-[#dcfce7] text-[#15803d] grid place-items-center mx-auto mb-3">

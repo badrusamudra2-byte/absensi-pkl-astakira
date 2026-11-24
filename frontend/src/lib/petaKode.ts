@@ -46,6 +46,7 @@ export const PETA: Record<string, [string, string]> = {
   BELUM_LOGIN: ['Belum masuk', 'Silakan login terlebih dahulu.'],
   SESI_HABIS: ['Sesi berakhir', 'Silakan login ulang.'],
   NONAKTIF: ['Akun nonaktif', 'Hubungi admin untuk mengaktifkan kembali akun Anda.'],
+  SANDI_SALAH: ['Kata sandi salah', 'Konfirmasi gagal. Periksa kata sandi Anda lalu coba lagi.'],
   DILARANG: ['Tidak diizinkan', 'Anda tidak punya akses ke fitur ini.'],
   TIDAK_ADA: ['Tidak ditemukan', ''],
   DUPLIKAT: ['Data sudah ada', 'Email atau data yang sama sudah terdaftar.'],
@@ -59,4 +60,9 @@ export function teksKode(kode: string, pesanServer?: string): [string, string] {
   const judul = p?.[0] ?? 'Terjadi kendala';
   const uraian = pesanServer || p?.[1] || 'Coba lagi sebentar.';
   return [judul, uraian];
+}
+
+/** "Sudah absen" bukan kegagalan — tampilkan sebagai pemberitahuan hijau. */
+export function jenisPemberitahuan(kode?: string | null): 'ok' | 'er' {
+  return kode === 'SUDAH_ABSEN' ? 'ok' : 'er';
 }

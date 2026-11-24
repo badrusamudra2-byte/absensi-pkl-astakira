@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
-import { teksKode } from '../../lib/petaKode';
+import { jenisPemberitahuan, teksKode } from '../../lib/petaKode';
 import { ambilLokasi, type TitikLokasi } from '../../lib/lokasi';
 import type { Absensi, Pengaturan, TayanganQr } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Badge, JudulHalaman } from '../../komponen/ui';
@@ -39,6 +39,7 @@ export default function TayangQr() {
   const navigate = useNavigate();
   const [qr, setQr] = useState<TayanganQr | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const [kodeGalat, ubahKodeGalat] = useState<string | null>(null);
   const [sedang, ubahSedang] = useState(false);
   const [sisa, ubahSisa] = useState(0);
   const [beres, ubahBeres] = useState<null | { jam: string; status: Absensi['status'] }>(null);
@@ -71,12 +72,14 @@ export default function TayangQr() {
   const tayangkan = useCallback(async () => {
     if (!navigator.onLine) {
       ubahGalat(['Tidak ada koneksi internet', 'Sambungkan Wi-Fi atau data seluler lalu tayangkan ulang QR.']);
+      ubahKodeGalat('JARINGAN');
       return;
     }
     if (sedangRef.current) return; // permintaan rotasi sebelumnya masih berjalan
     sedangRef.current = true;
     ubahSedang(true);
     ubahGalat(null);
+    ubahKodeGalat(null);
     try {
       // Area kantor diatur: ambil posisi GPS dulu — validasi jarak dilakukan server
       let lokasi: TitikLokasi | null = null;
@@ -96,6 +99,7 @@ export default function TayangQr() {
       ubahSisa(r.berlaku_detik);
     } catch (e) {
       const err = e as ApiError;
+      ubahKodeGalat(err.kode ?? 'SERVER');
       // Server menolak QR tanpa verifikasi wajah aktif: awali dari layar verifikasi, bukan galat mentah
       ubahGalat(
         err.kode === 'WAJAH_BELUM_VERIF' || err.kode === 'SUDAH_ABSEN'
@@ -239,7 +243,7 @@ export default function TayangQr() {
             </div>
           ) : galat ? (
             <div className="py-2">
-              <Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} />
+              <Pemberitahuan jenis={jenisPemberitahuan(kodeGalat)} judul={galat[0]} uraian={galat[1]} />
               {galat[0] === teksKode('WAJAH_BELUM_VERIF')[0] ? (
                 <div className="mt-3 text-center">
                   <Tombol onClick={() => navigate(`/wajah/periksa?jenis=${jenis}&genap=scan`)}>

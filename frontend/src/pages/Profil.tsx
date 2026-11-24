@@ -4,6 +4,7 @@ import { api, ApiError } from '../lib/api';
 import { useToast } from '../komponen/Toast';
 import { Kartu, Tombol, Galat, Label, MasukanSandi, JudulHalaman } from '../komponen/ui';
 import { Ikon } from '../komponen/Ikon';
+import PemotongFoto from '../komponen/PemotongFoto';
 import type { ProfilPeserta, ProfilPembimbing, User } from '../lib/tipe';
 
 const PERAN: Record<string, string> = { peserta: 'Peserta PKL', pembimbing: 'Pembimbing', admin: 'Admin' };
@@ -48,30 +49,42 @@ export default function Profil() {
   const [errPw, setErrPw] = useState('');
   const [memrosesPw, setMemrosesPw] = useState(false);
   const [lihatFoto, ubahLihatFoto] = useState(false);
+  const [fotoPilih, setFotoPilih] = useState<File | null>(null);
+  const [unggahFoto, setUnggahFoto] = useState(false);
 
   const potong = user?.nama?.[0] ?? '?';
 
-  const gantiFoto = (daftar: FileList | null) => {
+  const pilihFoto = (daftar: FileList | null) => {
     const f = daftar?.[0];
-    if (!f || !user) return;
-    if (f.size > 2 * 1024 * 1024) {
-      toast('Ukuran foto maksimal 2 MB.', 'warn');
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) {
+      toast('Ukuran foto maksimal 10 MB.', 'warn');
       return;
     }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) {
       toast('Format foto harus JPEG, PNG, atau WebP.', 'warn');
       return;
     }
+    setFotoPilih(f);
+  };
+
+  const simpanFoto = async (blob: Blob) => {
+    if (!user) return;
     const fd = new FormData();
-    fd.append('foto', f);
-    api<{ foto_url: string }>('/profil/foto', { method: 'POST', body: fd })
-      .then((r) => {
-        // foto_url berbentuk /uploads/foto/xxx — tampilkan nilai terbaru
-        const u: User = { ...user, foto_url: r.foto_url };
-        perbaruiUser(u);
-        toast('Foto profil diperbarui', 'ok');
-      })
-      .catch((e) => toast(e instanceof ApiError ? e.message : 'Gagal mengunggah foto.', 'warn'));
+    fd.append('foto', blob, 'profil.jpg');
+    setUnggahFoto(true);
+    try {
+      const r = await api<{ foto_url: string }>('/profil/foto', { method: 'POST', body: fd });
+      // foto_url berbentuk /uploads/foto/xxx — tampilkan nilai terbaru
+      const u: User = { ...user, foto_url: r.foto_url };
+      perbaruiUser(u);
+      setFotoPilih(null);
+      toast('Foto profil diperbarui', 'ok');
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : 'Gagal mengunggah foto.', 'warn');
+    } finally {
+      setUnggahFoto(false);
+    }
   };
 
   const ubahPw = async () => {
@@ -161,10 +174,13 @@ export default function Profil() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   hidden
-                  onChange={(e) => gantiFoto(e.target.files)}
+                  onChange={(e) => {
+                    pilihFoto(e.target.files);
+                    e.currentTarget.value = '';
+                  }}
                 />
               </label>
-              <small className="text-[9.5px] text-mu">JPEG, PNG, atau WebP · maksimal 2 MB</small>
+              <small className="text-[9.5px] text-mu">JPEG, PNG, atau WebP · maksimal 10 MB · otomatis dipotong 4:3</small>
             </div>
           </Kartu>
 
@@ -230,6 +246,15 @@ export default function Profil() {
 
       {lihatFoto && user?.foto_url && (
         <ModalFoto url={user.foto_url} nama={user.nama ?? ''} tutup={() => ubahLihatFoto(false)} />
+      )}
+
+      {fotoPilih && (
+        <PemotongFoto
+          file={fotoPilih}
+          sedang={unggahFoto}
+          batal={() => !unggahFoto && setFotoPilih(null)}
+          simpan={simpanFoto}
+        />
       )}
     </>
   );

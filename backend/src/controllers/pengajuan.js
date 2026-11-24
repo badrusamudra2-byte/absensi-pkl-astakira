@@ -21,16 +21,26 @@ const jenisOk = (j) => {
 
 // Tanggal YYYY-MM-DD: kalender sah, mengaju sampai PENGAJUAN_MAKS_HARI_MAJU,
 // mundur maksimal JURNAL_MAKS_HARI_BELAKANG
-const tanggalOk = (s) => {
+const TGL_RE = /^\d{4}-\d{2}-\d{2}$/;
+const hariMs = (iso) => new Date(`${iso}T00:00:00Z`).getTime();
+
+/** Kalender sah (YYYY-MM-DD) tanpa batas maju/mundur. */
+const tanggalSah = (s) => {
   const t = String(s ?? '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
+  if (!TGL_RE.test(t)) throw new HttpError(400, 'Tanggal harus berformat YYYY-MM-DD.', 'VALIDASI');
   const [y, m, h] = t.split('-').map(Number);
   const sah = m >= 1 && m <= 12 && h >= 1 && h <= 31
     && new Date(Date.UTC(y, m - 1, h)).toISOString().slice(0, 10) === t;
   if (!sah) throw new HttpError(400, 'Tanggal tidak valid.', 'VALIDASI');
-  const kini = new Date(`${bagian().tanggal}T00:00:00Z`);
-  const hari = new Date(Date.UTC(y, m - 1, h));
-  const batasMaju = new Date(kini.getTime() + env.pengajuan.maksMaju * 86400000);
+  return t;
+};
+
+/** Kalender sah + batas maju/mundur yang sama untuk tanggal mulai maupun akhir. */
+const tanggalOk = (s) => {
+  const t = tanggalSah(s);
+  const kini = hariMs(bagian().tanggal);
+  const hari = hariMs(t);
+  const batasMaju = kini + env.pengajuan.maksMaju * 86400000;
   if (hari > batasMaju) {
     throw new HttpError(
       400,
@@ -38,7 +48,7 @@ const tanggalOk = (s) => {
       'VALIDASI',
     );
   }
-  const batas = new Date(kini.getTime() - env.jurnal.maksBuka * 86400000);
+  const batas = kini - env.jurnal.maksBuka * 86400000;
   if (hari < batas) {
     throw new HttpError(
       400,
@@ -49,11 +59,31 @@ const tanggalOk = (s) => {
   return t;
 };
 
-/** Peserta kirim pengajuan izin/sakit + bukti foto (req.file dari uploadBukti). */
+/** Daftar tanggal ISO dalam rentang inklusif [mulai, selesai]. */
+const daftarTanggal = (mulai, selesai) => {
+  const hasil = [];
+  for (let t = hariMs(mulai); t <= hariMs(selesai); t += 86400000) {
+    hasil.push(new Date(t).toISOString().slice(0, 10));
+  }
+  return hasil;
+};
+
+/** Tanggal mulai & akhir periode yang sudah divalidasi; akhir >= mulai. */
+const rentangOk = (mulaiRaw, selesaiRaw) => {
+  const mulai = tanggalOk(mulaiRaw || bagian().tanggal);
+  const selesai = tanggalOk(selesaiRaw || mulai);
+  if (selesai < mulai) {
+    throw new HttpError(400, 'Tanggal selesai tidak boleh sebelum tanggal mulai.', 'VALIDASI');
+  }
+  return { mulai, selesai };
+};
+
+/** Peserta kirim pengajuan izin/sakit untuk satu tanggal atau periode + bukti foto. */
 exports.kirim = asyncH(async (req, res) => {
   const uid = req.user.id;
   const jenis = jenisOk(req.body.jenis);
-  const tanggal = tanggalOk(req.body.tanggal || bagian().tanggal);
+  const { mulai, selesai } = rentangOk(req.body.tanggal, req.body.tanggal_selesai);
+  const tanggalList = daftarTanggal(mulai, selesai);
   const ket = String(req.body.keterangan ?? '').trim();
   if (ket.length < 3 || ket.length > 1000) {
     throw new HttpError(400, 'Keterangan wajib 3 sampai 1000 karakter.', 'VALIDASI');
@@ -68,44 +98,63 @@ exports.kirim = asyncH(async (req, res) => {
   };
 
   try {
-    // Hari itu sudah memuat catatan absensi apa pun -> tidak bisa diajukan lagi.
-    // Cek dan tulis dalam satu transaksi (kunci baris yang ada) supaya dua
-    // pengiriman bersamaan tidak sama-sama lolos cek duplikat.
+    // Tanggal mana pun dalam periode yang sudah punya catatan absensi atau pengajuan
+    // aktif menutup pengajuan ini. Cek dan tulis dalam satu transaksi (kunci baris
+    // yang ada) supaya dua pengiriman bersamaan tidak sama-sama lolos cek duplikat.
     const p = await sequelize.transaction(async (t) => {
       const adaAbsensi = await Absensi.findOne({
-        where: { user_id: uid, tanggal }, transaction: t, lock: t.LOCK.UPDATE,
+        where: { user_id: uid, tanggal: { [Op.in]: tanggalList } },
+        transaction: t, lock: t.LOCK.UPDATE,
       });
       if (adaAbsensi) {
         throw new HttpError(
           409,
           ['Izin', 'Sakit'].includes(adaAbsensi.status)
-            ? `${tanggal} sudah tercatat ${adaAbsensi.status}.`
-            : `Anda sudah punya absensi pada ${tanggal}.`,
+            ? `${adaAbsensi.tanggal} sudah tercatat ${adaAbsensi.status}.`
+            : `Anda sudah punya absensi pada ${adaAbsensi.tanggal}.`,
           'CATATAN_ADA',
         );
       }
-      // Pengajuan aktif (Menunggu/Disetujui) pada tanggal sama juga menutup duplikat
+      // Pengajuan aktif (Menunggu/Disetujui) yang rentangnya beririsan juga menutup duplikat
       const adaAjukan = await PengajuanIzin.findOne({
-        where: { user_id: uid, tanggal, status: { [Op.ne]: 'Ditolak' } },
+        where: {
+          user_id: uid,
+          status: { [Op.ne]: 'Ditolak' },
+          [Op.and]: [
+            { tanggal: { [Op.lte]: selesai } },
+            {
+              [Op.or]: [
+                { tanggal_selesai: { [Op.gte]: mulai } },
+                { [Op.and]: [{ tanggal_selesai: null }, { tanggal: { [Op.gte]: mulai } }] },
+              ],
+            },
+          ],
+        },
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
       if (adaAjukan) {
-        throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${tanggal} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
+        const akhir = adaAjukan.tanggal_selesai || adaAjukan.tanggal;
+        const rentang = akhir === adaAjukan.tanggal ? adaAjukan.tanggal : `${adaAjukan.tanggal} s/d ${akhir}`;
+        throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${rentang} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
       }
 
       return PengajuanIzin.create({
-        user_id: uid, tanggal, jenis, keterangan: ket, bukti: req.file.filename,
+        user_id: uid, tanggal: mulai, tanggal_selesai: selesai,
+        jenis, keterangan: ket, bukti: req.file.filename,
       }, { transaction: t });
     });
-    await audit(req, `Pengajuan ${jenis} ${tanggal}`, `pes#${uid} pengajuan#${p.id}`);
-    res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
+    await audit(req, `Pengajuan ${jenis} ${mulai}${selesai !== mulai ? ` s/d ${selesai}` : ''}`, `pes#${uid} pengajuan#${p.id}`);
+    res.status(201).json({
+      pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`,
+      data: { id: p.id, status: p.status, tanggal: p.tanggal, tanggal_selesai: p.tanggal_selesai },
+    });
   } catch (e) {
     hapusBukti();
     // Dua kirim bersamaan bisa saling mengunci (deadlock InnoDB): perlakukan
     // seperti duplikat, bukan 500 server error.
     if (e.parent?.code === 'ER_LOCK_DEADLOCK') {
-      throw new HttpError(409, `Sudah ada pengajuan/absensi untuk ${tanggal}.`, 'CATATAN_ADA');
+      throw new HttpError(409, `Sudah ada pengajuan/absensi untuk ${mulai}${selesai !== mulai ? ` s/d ${selesai}` : ''}.`, 'CATATAN_ADA');
     }
     throw e;
   }
@@ -150,12 +199,24 @@ exports.daftar = asyncH(async (req, res) => {
   res.json({ data });
 });
 
-/** Notifikasi pembimbing: ada pengajuan Menunggu untuk hari ini? (lingkaran merah di menu) */
+/** Notifikasi pembimbing: ada pengajuan Menunggu yang mencakup hari ini? (lingkaran merah di menu) */
 exports.notifikasi = asyncH(async (req, res) => {
   const ids = await idBimbingan(req.user.id);
   if (!ids.length) return res.json({ ada: false });
+  const hariIni = bagian().tanggal;
   const ada = await PengajuanIzin.count({
-    where: { user_id: ids, status: 'Menunggu', tanggal: bagian().tanggal },
+    where: {
+      user_id: ids, status: 'Menunggu',
+      [Op.and]: [
+        { tanggal: { [Op.lte]: hariIni } },
+        {
+          [Op.or]: [
+            { tanggal_selesai: { [Op.gte]: hariIni } },
+            { [Op.and]: [{ tanggal_selesai: null }, { tanggal: hariIni }] },
+          ],
+        },
+      ],
+    },
   });
   res.json({ ada: ada > 0 });
 });
@@ -186,15 +247,19 @@ exports.putuskan = asyncH(async (req, res) => {
     }
 
     if (putusan === 'Disetujui') {
-      // Tulis baris absensi izin/sakit (hari terkunci dari QR/wajah); peserta lain tak sempat absen.
+      // Tulis baris absensi izin/sakit untuk tiap tanggal dalam periode (hari terkunci
+      // dari QR/wajah); peserta lain tak sempat absen. Bila satu tanggal saja sudah
+      // punya catatan, keteranganBuat melempar CATATAN_ADA dan seluruh transaksi batal.
       // Hanya batas 7-hari ke belakang yang dilewati (lewatiBatas): tanggalnya sudah
       // tervalidasi saat pengajuan dikirim, jadi keputusan yang telat tetap bisa disetujui.
       // Tanggal depan boleh sampai batas pengajuan.maksMaju (dicek ulang di
       // services/keterangan.js) — baris langsung dibuat dan mengunci hari itu.
-      await keteranganBuat({
-        user_id: p.user_id, tanggal: p.tanggal, status: p.jenis,
-        keterangan: p.keterangan, oleh: pid,
-      }, { transaction: t, lewatiBatas: true });
+      for (const tgl of daftarTanggal(p.tanggal, p.tanggal_selesai || p.tanggal)) {
+        await keteranganBuat({
+          user_id: p.user_id, tanggal: tgl, status: p.jenis,
+          keterangan: p.keterangan, oleh: pid,
+        }, { transaction: t, lewatiBatas: true });
+      }
     }
     await p.update({
       status: putusan, ditangani_oleh: pid,

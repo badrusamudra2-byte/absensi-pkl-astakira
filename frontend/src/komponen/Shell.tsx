@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../konteks/Auth';
 import { api } from '../lib/api';
@@ -207,12 +207,21 @@ export default function Shell() {
             <span className="hidden sm:inline-flex items-center rounded-full bg-pl text-pr px-3 py-1.5 text-[11px] font-bold">
               {user ? PERAN[user.role] : ''}
             </span>
-            <Avatar nama={user?.nama} foto={user?.foto_url} ukuran="sm" />
+            <Link
+              to="/profil"
+              aria-label="Buka halaman profil"
+              title="Profil"
+              className="rounded-full no-underline transition hover:opacity-85 focus-visible:outline-2 focus-visible:outline-pr focus-visible:outline-offset-2"
+            >
+              <Avatar nama={user?.nama} foto={user?.foto_url} ukuran="sm" />
+            </Link>
           </div>
         </header>
         <main className="p-4 md:px-6 md:py-6 w-full max-w-[1200px] mx-auto">
           <BannerLuring />
-          <Outlet />
+          <div key={lokasi.pathname} className="hal-masuk">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

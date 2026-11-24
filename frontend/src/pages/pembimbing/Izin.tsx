@@ -4,8 +4,9 @@ import { teksKode } from '../../lib/petaKode';
 import { sinyalPeriksa } from '../../lib/notifikasi';
 import type { PengajuanIzin } from '../../lib/tipe';
 import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge, Label } from '../../komponen/ui';
+import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { useToast } from '../../komponen/Toast';
-import { isoHariIni } from '../../komponen/umum';
+import { isoHariIni, tglIndoRentang, dalamRentang } from '../../komponen/umum';
 import { Ikon } from '../../komponen/Ikon';
 
 /** Lihat izin/sakit: pengajuan dari peserta (dengan bukti foto); pembimbing menyetujui
@@ -20,22 +21,8 @@ export default function Izin() {
   const [bukaTolak, ubahBukaTolak] = useState<number | null>(null);
   const [alasan, ubahAlasan] = useState('');
   const [sedang, ubahSedang] = useState(false);
-
-  // Bukti hanya bisa diunduh lewat API (token disertakan) — dibuka di tab baru.
-  const bukaBukti = async (p: PengajuanIzin) => {
-    try {
-      const r = await api<Response>(`/pengajuan/bukti/${p.bukti}`, { raw: true });
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const w = window.open(url, '_blank', 'noopener');
-      // URL objek dilepas 5 menit kemudian — cukup untuk dilihat/disimpan di tab baru
-      setTimeout(() => { URL.revokeObjectURL(url); }, 300000);
-      if (!w) ubahGalat(['Pop-up diblokir', 'Izinkan pop-up untuk situs ini agar bukti foto bisa dibuka.']);
-    } catch (e) {
-      const err = e as ApiError;
-      ubahGalat(teksKode(err.kode ?? 'SERVER', err.message) as [string, string]);
-    }
-  };
+  // Bukti foto yang sedang ditampilkan di modal dalam halaman (null = tertutup).
+  const [bukti, ubahBukti] = useState<PengajuanIzin | null>(null);
 
   const muatUlang = useCallback(() => {
     ubahMuat(true);
@@ -104,8 +91,8 @@ export default function Izin() {
 
       <Kartu t="Pengajuan izin / sakit">
         <p className="max-w-[620px] text-xs leading-relaxed text-mu">
-          Pengajuan izin/sakit dikirim oleh peserta beserta bukti foto. Bila Anda setujui, hari itu
-          terekam sebagai Izin/Sakit dan otomatis terkunci dari absensi QR/wajah.
+          Pengajuan izin/sakit dikirim oleh peserta beserta bukti foto. Bila Anda setujui, tanggal-tanggal
+          dalam periode itu terekam sebagai Izin/Sakit dan otomatis terkunci dari absensi QR/wajah.
         </p>
         {muat ? <p className="mt-3 text-sm text-mu">Memuat pengajuan&hellip;</p> : null}
         {!muat && galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
@@ -134,8 +121,8 @@ export default function Izin() {
             <b className="text-[15px]">{p.peserta?.nama ?? `Peserta #${p.user_id}`}</b>
             <Badge s={p.jenis} />
             <Badge s={p.status} />
-            {p.tanggal === isoHariIni() ? <Badge s="Hari ini" /> : null}
-            <span className="ml-auto text-[11px] text-mu">{p.tanggal}</span>
+            {dalamRentang(isoHariIni(), p.tanggal, p.tanggal_selesai) ? <Badge s="Hari ini" /> : null}
+            <span className="ml-auto text-[11px] text-mu">{tglIndoRentang(p.tanggal, p.tanggal_selesai)}</span>
           </div>
 
           <p className="mt-3 max-w-[620px] whitespace-pre-line text-sm leading-relaxed">{p.keterangan}</p>
@@ -143,7 +130,7 @@ export default function Izin() {
           <div className="mt-3">
             <button
               type="button"
-              onClick={() => { void bukaBukti(p); }}
+              onClick={() => ubahBukti(p)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-garis bg-[#fbfcfe] px-2.5 py-1.5 text-xs font-bold text-pr no-underline transition hover:border-pr hover:bg-pl"
             >
               <Ikon nama="image" className="size-3.5" />
@@ -207,6 +194,14 @@ export default function Izin() {
           ) : null}
         </Kartu>
       ))}
+
+      <PenampilFoto
+        buka={bukti !== null}
+        judul={bukti ? `Bukti ${bukti.jenis} — ${bukti.peserta?.nama ?? `Peserta #${bukti.user_id}`} (${tglIndoRentang(bukti.tanggal, bukti.tanggal_selesai)})` : 'Bukti pengajuan'}
+        sumber={bukti ? `/pengajuan/bukti/${bukti.bukti}` : ''}
+        namaBerkas={bukti ? `bukti-${bukti.jenis.toLowerCase()}-${bukti.tanggal}` : 'bukti-pengajuan'}
+        tutup={() => ubahBukti(null)}
+      />
     </>
   );
 }

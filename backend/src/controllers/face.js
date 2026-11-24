@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { FaceTemplate, FaceVerification, Absensi, sequelize } = require('../models');
+const bcrypt = require('bcryptjs');
+const { FaceTemplate, FaceVerification, QrToken, TantanganWajah, User, Absensi, sequelize } = require('../models');
 const env = require('../config/env');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { enc, dec } = require('../utils/crypto');
@@ -32,6 +33,32 @@ exports.enroll = asyncH(async (req, res) => {
 // Tidak mengirim data biometrik apa pun — hanya true/false.
 exports.cekTemplate = asyncH(async (req, res) => {
   res.json({ terdaftar: !!(await FaceTemplate.findOne({ where: { user_id: req.user.id } })) });
+});
+
+// Peserta menghapus template wajahnya sendiri agar dapat mendaftar ulang tanpa admin.
+// Konfirmasi kata sandi wajib: tanpa ini siapa pun yang sempat memakai HP bisa
+// mengganti biometrik pemilik akun.
+exports.resetSendiri = asyncH(async (req, res) => {
+  const sandi = req.body && typeof req.body.kata_sandi === 'string' ? req.body.kata_sandi : '';
+  if (!sandi) throw new HttpError(422, 'Masukkan kata sandi untuk mengonfirmasi reset.', 'VALIDASI');
+
+  const u = await User.findByPk(req.user.id, { attributes: ['id', 'password_hash'] });
+  if (!u || !(await bcrypt.compare(sandi, u.password_hash))) {
+    throw new HttpError(403, 'Kata sandi salah. Reset template dibatalkan.', 'SANDI_SALAH');
+  }
+
+  const hasil = await sequelize.transaction(async (t) => {
+    const n = await FaceTemplate.destroy({ where: { user_id: u.id }, transaction: t });
+    if (!n) throw new HttpError(404, 'Template wajah belum terdaftar.', 'TIDAK_ADA');
+    // Template lama sudah tidak berlaku: batalkan verifikasi, QR, dan tantangan yang masih mengambang.
+    await FaceVerification.destroy({ where: { user_id: u.id }, transaction: t });
+    await QrToken.destroy({ where: { user_id: u.id }, transaction: t });
+    await TantanganWajah.destroy({ where: { user_id: u.id }, transaction: t });
+    return n;
+  });
+
+  await audit(req, 'Reset template wajah (mandiri)');
+  res.json({ pesan: 'Template wajah dihapus. Silakan daftar ulang.', dihapus: hasil });
 });
 
 // Tantangan hanya untuk peserta memverifikasi wajahnya sendiri di HP-nya. Wajah yang

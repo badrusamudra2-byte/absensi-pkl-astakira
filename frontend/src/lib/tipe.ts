@@ -100,7 +100,8 @@ export type StatusPengajuan = 'Menunggu' | 'Disetujui' | 'Ditolak';
 export interface PengajuanIzin {
   id: number;
   user_id: number;
-  tanggal: string; // "2026-11-09"
+  tanggal: string; // "2026-11-09" (tanggal mulai)
+  tanggal_selesai: string | null; // "2026-11-11" (tanggal akhir; null = satu hari)
   jenis: 'Izin' | 'Sakit';
   status: StatusPengajuan;
   keterangan: string;

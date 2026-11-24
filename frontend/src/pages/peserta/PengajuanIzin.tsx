@@ -4,8 +4,9 @@ import { teksKode } from '../../lib/petaKode';
 import type { PengajuanIzin } from '../../lib/tipe';
 import { Kartu, Tombol, Pemberitahuan, Label, Badge, JudulHalaman } from '../../komponen/ui';
 import { Ikon } from '../../komponen/Ikon';
+import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { useToast } from '../../komponen/Toast';
-import { isoHariIni, tglIndo } from '../../komponen/umum';
+import { isoHariIni, tglIndoRentang } from '../../komponen/umum';
 
 const BUKTI_MAKS = 5 * 1024 * 1024;
 const BATAS_HARI = 7; // JURNAL_MAKS_HARI_BELAKANG di backend
@@ -29,30 +30,15 @@ export default function PengajuanIzin() {
   const toast = useToast();
   const [jenis, ubahJenis] = useState<'Izin' | 'Sakit'>('Izin');
   const [tanggal, ubahTanggal] = useState(isoHariIni());
+  const [tanggalSelesai, ubahTanggalSelesai] = useState(isoHariIni());
   const [keterangan, ubahKet] = useState('');
   const [berkas, ubahBerkas] = useState<File | null>(null);
   const [daftar, ubahDaftar] = useState<PengajuanIzin[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
   const [sedang, ubahSedang] = useState(false);
+  // Bukti foto yang sedang ditampilkan di modal dalam halaman (null = tertutup).
+  const [bukti, ubahBukti] = useState<PengajuanIzin | null>(null);
   const unggahRef = useRef<HTMLInputElement>(null);
-
-  /** Bukti hanya tersedia lewat API (token disertakan); buka di tab baru lewat blob URL. */
-  const bukaBukti = async (p: PengajuanIzin) => {
-    try {
-      const r = await api<Response>(`/pengajuan/bukti/${p.bukti}`, { raw: true });
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const tab = window.open(url, '_blank', 'noopener');
-      if (!tab) {
-        // Blokir pop-up: tab tidak terbuka, jangan biarkan tombol terkesan mati
-        ubahGalat(['Pop-up diblokir', 'Izinkan pop-up untuk situs ini lalu tekan "Lihat bukti" sekali lagi.']);
-      }
-      setTimeout(() => { URL.revokeObjectURL(url); }, 300000);
-    } catch (e) {
-      const err = e as ApiError;
-      ubahGalat(teksKode(err.kode ?? 'SERVER', err.message) as [string, string]);
-    }
-  };
 
   const muatUlang = useCallback(() => {
     api<{ data: PengajuanIzin[] }>('/pengajuan/izin')
@@ -85,13 +71,14 @@ export default function PengajuanIzin() {
 
   const kirim = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (keterangan.trim().length < 3 || !berkas) return;
+    if (keterangan.trim().length < 3 || !berkas || !tanggal || !tanggalSelesai || tanggalSelesai < tanggal) return;
     ubahSedang(true);
     ubahGalat(null);
     try {
       const bentuk = new FormData();
       bentuk.append('jenis', jenis);
       bentuk.append('tanggal', tanggal);
+      bentuk.append('tanggal_selesai', tanggalSelesai);
       bentuk.append('keterangan', keterangan.trim());
       bentuk.append('bukti', berkas);
       const r = await api<{ pesan: string }>('/pengajuan/izin', { method: 'POST', bentuk });
@@ -127,7 +114,7 @@ export default function PengajuanIzin() {
           <form onSubmit={kirim} className="p-4 md:p-5">
             <p className="text-[11.5px] text-mu leading-relaxed mb-4">
               Tidak bisa absen QR atau wajah hari itu? Ajukan Izin/Sakit dengan bukti foto. Setelah
-              pembimbing menyetujui, tanggal tersebut terekam dan terkunci dari absensi.
+              pembimbing menyetujui, tanggal-tanggal tersebut terekam dan terkunci dari absensi.
             </p>
 
             <fieldset className="m-0 p-0 border-0">
@@ -156,24 +143,49 @@ export default function PengajuanIzin() {
               </div>
             </fieldset>
 
-            <div className="mt-3">
-              <Label htmlFor="pj_tgl" className="!mt-0">
-                Tanggal <span className="text-r">wajib</span>
-              </Label>
-              <input
-                id="pj_tgl"
-                type="date"
-                required
-                max={isoMaju()}
-                min={isoBatas()}
-                value={tanggal}
-                onChange={(e) => ubahTanggal(e.target.value)}
-                className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-              />
-              <small className="block text-mu text-[10px] mt-1">
-                Boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang.
-              </small>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="pj_tgl" className="!mt-0">
+                  Dari tanggal <span className="text-r">wajib</span>
+                </Label>
+                <input
+                  id="pj_tgl"
+                  type="date"
+                  required
+                  max={isoMaju()}
+                  min={isoBatas()}
+                  value={tanggal}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const mulaiLama = tanggal;
+                    ubahTanggal(v);
+                    // Ikuti tanggal mulai bila akhir masih satu hari dengan mulai lama
+                    // (nilai bawaan), atau bila akhir jadi mendahului mulai.
+                    // Rentang yang memang dipilih lebih panjang tetap dipertahankan.
+                    if (tanggalSelesai < v || tanggalSelesai === mulaiLama) ubahTanggalSelesai(v);
+                  }}
+                  className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pj_tgl_selesai" className="!mt-0">
+                  Sampai tanggal <span className="text-r">wajib</span>
+                </Label>
+                <input
+                  id="pj_tgl_selesai"
+                  type="date"
+                  required
+                  max={isoMaju()}
+                  min={tanggal || isoBatas()}
+                  value={tanggalSelesai}
+                  onChange={(e) => ubahTanggalSelesai(e.target.value)}
+                  className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+                />
+              </div>
             </div>
+            <small className="block text-mu text-[10px] mt-1">
+              Isi tanggal sama bila hanya satu hari. Boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang.
+            </small>
 
             <div className="mt-3">
               <Label htmlFor="pj_ket" className="!mt-0">
@@ -223,7 +235,7 @@ export default function PengajuanIzin() {
             {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
 
             <div className="mt-4 pt-4 border-t border-garis flex flex-wrap items-center gap-2">
-              <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas}>
+              <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas || !tanggal || !tanggalSelesai || tanggalSelesai < tanggal}>
                 {sedang ? 'Mengirim…' : `Kirim pengajuan ${jenis.toLowerCase()}`}
               </Tombol>
               <span className="text-[10px] text-mu">Persetujuan pembimbing diperlukan.</span>
@@ -271,14 +283,14 @@ export default function PengajuanIzin() {
             {daftar.map((p) => (
               <li key={p.id} className="border border-garis rounded-xl p-3.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <b className="text-[11.5px]">{tglIndo(p.tanggal)}</b>
+                  <b className="text-[11.5px]">{tglIndoRentang(p.tanggal, p.tanggal_selesai)}</b>
                   <Badge s={p.jenis} />
                   <Badge s={p.status} />
                 </div>
                 <p className="text-[11.5px] mt-1.5 mb-2 whitespace-pre-line text-[#334155] leading-relaxed">{p.keterangan}</p>
                 <button
                   type="button"
-                  onClick={() => { void bukaBukti(p); }}
+                  onClick={() => ubahBukti(p)}
                   className="inline-flex items-center gap-1.5 text-pr text-[11px] font-semibold no-underline hover:underline"
                 >
                   <Ikon nama="eye" className="size-3.5" />
@@ -302,6 +314,14 @@ export default function PengajuanIzin() {
           </ul>
         )}
       </Kartu>
+
+      <PenampilFoto
+        buka={bukti !== null}
+        judul={bukti ? `Bukti ${bukti.jenis} ${tglIndoRentang(bukti.tanggal, bukti.tanggal_selesai)}` : 'Bukti pengajuan'}
+        sumber={bukti ? `/pengajuan/bukti/${bukti.bukti}` : ''}
+        namaBerkas={bukti ? `bukti-${bukti.jenis.toLowerCase()}-${bukti.tanggal}` : 'bukti-pengajuan'}
+        tutup={() => ubahBukti(null)}
+      />
     </>
   );
 }

@@ -44,9 +44,11 @@ export default function Login() {
     <div className="login-bg relative min-h-screen w-full grid place-items-center p-4 md:p-6">
       <div className="relative w-full max-w-[1080px]">
         <div className="flex items-center justify-center gap-2.5 mb-4 text-nv">
-          <div className="size-[34px] rounded-[10px] bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8] text-white grid place-items-center text-[17px] font-extrabold shadow-[0_8px_18px_-8px_rgba(37,99,235,.8)]">
-            A
-          </div>
+          <img
+            src="/ikon/astakira.jpg"
+            alt="Logo Astakira Media"
+            className="size-[34px] rounded-[10px] object-contain bg-white shadow-[0_8px_18px_-8px_rgba(37,99,235,.8)]"
+          />
           <div>
             <b className="block text-[13px] font-extrabold leading-tight">Astakira Media</b>
             <small className="block text-[10px] text-mu font-semibold">Panel Absensi PKL dan Jurnal Kegiatan</small>
@@ -62,7 +64,11 @@ export default function Login() {
             <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-16 size-52 rounded-full border border-blue-200/10" />
 
             <div className="relative flex items-center gap-2.5 mb-9">
-              <div className="size-[42px] rounded-xl bg-gradient-to-br from-[#60a5fa] to-[#1d4ed8] grid place-items-center text-xl font-extrabold">A</div>
+              <img
+                src="/ikon/astakira.jpg"
+                alt="Logo Astakira Media"
+                className="size-[42px] rounded-xl object-contain bg-white"
+              />
               <div>
                 <b className="block text-base font-extrabold leading-tight">Astakira Media</b>
                 <small className="block text-[9.5px] text-[#8fb0ee] tracking-[.4px]">SISTEM ABSENSI PKL</small>

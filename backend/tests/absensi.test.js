@@ -491,6 +491,57 @@ describe('aturan absen pulang lewat scan (dibuka 5 menit sebelum jam pulang)', (
     expect(r.body).toMatchObject({ kode: 'BELUM_ABSEN_MASUK' });
   });
 
+  test('data pulang lama tak lengkap (jam ada, status kosong) tetap bisa scan ulang', async () => {
+    const { admin, peserta, pembimbing } = await isiDasar();
+    await jadwalKerja();
+    await setMode(await tokenUntuk(admin.email), 'qr');
+    waktu.__jam('15:56');
+    await scanMasuk(peserta, await tokenUntuk(pembimbing.email));
+
+    // Simulasi data lama: jam pulang tersimpan, tetapi status pulangnya kosong.
+    // Riwayat menampilkan pulang sebagai kosong, jadi peserta belum benar-benar pulang.
+    await M.Absensi.update(
+      { pulang_jam: '15:56:00', pulang_status: null },
+      { where: { user_id: peserta.id, tanggal: waktu.bagian().tanggal } },
+    );
+
+    const minta = await request(app).post('/api/absensi/qr-saya')
+      .set('Authorization', await tokenUntuk(peserta.email)).send({ jenis: 'pulang' });
+    expect(minta.status).toBe(201);
+
+    const r = await pindai(await tokenUntuk(pembimbing.email), { token: minta.body.token });
+    expect(r.status).toBe(200);
+    const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
+    expect(baris.pulang_status).toBe('Hadir');
+  });
+
+  test('qr_wajah: scan pulang sukses meski foto wajah masuk sudah ada', async () => {
+    const { admin, peserta, pembimbing } = await isiDasar();
+    await jadwalKerja('16:00:00');
+    await setMode(await tokenUntuk(admin.email), 'qr_wajah');
+    const authzPsr = await tokenUntuk(peserta.email);
+    await daftarWajah(authzPsr);
+
+    waktu.__jam('09:00');
+    const tMasuk = await mintaTantangan(authzPsr);
+    await request(app).post('/api/face/verify').set('Authorization', authzPsr)
+      .send({ jenis: 'masuk', embedding: VEK(), nonce: tMasuk.body.nonce, foto: FOTO_B64 });
+    const qrMasuk = await tayangkanQr(peserta.email, 'masuk');
+    expect((await pindai(await tokenUntuk(pembimbing.email), { token: qrMasuk.token })).status).toBe(200);
+
+    waktu.__jam('15:56');
+    const tPulang = await mintaTantangan(authzPsr);
+    await request(app).post('/api/face/verify').set('Authorization', authzPsr)
+      .send({ jenis: 'pulang', embedding: VEK(), nonce: tPulang.body.nonce, foto: FOTO_B64 });
+    const qrPulang = await tayangkanQr(peserta.email, 'pulang');
+    const r = await pindai(await tokenUntuk(pembimbing.email), { token: qrPulang.token });
+    expect(r.status).toBe(200);
+
+    const baris = await M.Absensi.findOne({ where: { user_id: peserta.id } });
+    expect(baris.pulang_jam).toBe(waktu.bagian().jam);
+    expect(await M.WajahFoto.count({ where: { absensi_id: baris.id } })).toBe(1);
+  });
+
   test('/absensi/wajah saat mode qr -> 409 MODE_WAJAH_NONAKTIF', async () => {
     const { admin, peserta } = await isiDasar();
     await jadwalKerja();

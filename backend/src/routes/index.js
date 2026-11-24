@@ -45,6 +45,7 @@ router.put('/pengaturan/absensi', ...ADMIN, C.pengaturan.ubah);
 
 // Peserta: tayangkan QR absensi, wajah, riwayat, jurnal, pengajuan izin/sakit
 router.get('/face/template', ...PESERTA, C.face.cekTemplate);
+router.delete('/face/template', ...PESERTA, batas(15, 5), C.face.resetSendiri);
 router.post('/face/enroll', ...PESERTA, batas(15, 5), C.face.enroll);
 router.post('/face/tantangan', ...PESERTA, batas(1, 30), C.face.tantangan);
 router.post('/face/verify', ...PESERTA, batas(1, 10), C.face.verify);

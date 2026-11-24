@@ -2,7 +2,7 @@ const request = require('supertest');
 const app = require('../src/app');
 const M = require('../src/models');
 const env = require('../src/config/env');
-const { kosongkanDb, isiDasar, tokenUntuk } = require('./helper');
+const { kosongkanDb, isiDasar, tokenUntuk, SANDI_SEED } = require('./helper');
 const { bagian } = require('../src/utils/waktu');
 const { sha256 } = require('../src/utils/crypto');
 
@@ -86,6 +86,57 @@ describe('status template (/face/template)', () => {
 
     const r2 = await request(app).get('/api/face/template').set('Authorization', await tokenUntuk(pembimbing.email));
     expect(r2.status).toBe(403);
+  });
+});
+
+/* ---------- Reset template mandiri (/face/template DELETE) ---------- */
+describe('reset template mandiri (/face/template DELETE)', () => {
+  const reset = (authz, kata_sandi) =>
+    request(app).delete('/api/face/template').set('Authorization', authz).send({ kata_sandi });
+
+  test('tanpa kata sandi -> 422 VALIDASI dan template tetap ada', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const r = await reset(authz, '');
+    expect(r.status).toBe(422);
+    expect(r.body).toMatchObject({ kode: 'VALIDASI' });
+    expect(await M.FaceTemplate.count({ where: { user_id: peserta.id } })).toBe(1);
+  });
+
+  test('kata sandi salah -> 403 SANDI_SALAH dan template tetap ada', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    const r = await reset(authz, 'sandi-yang-salah');
+    expect(r.status).toBe(403);
+    expect(r.body).toMatchObject({ kode: 'SANDI_SALAH' });
+    expect(await M.FaceTemplate.count({ where: { user_id: peserta.id } })).toBe(1);
+  });
+
+  test('kata sandi benar -> template, verifikasi, QR, dan tantangan ikut terhapus', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    await daftarWajah(authz);
+    await M.FaceVerification.create({
+      user_id: peserta.id, jenis: 'masuk', kedaluwarsa_pada: new Date(Date.now() + 60000),
+    });
+    await M.QrToken.create({
+      token_hash: sha256('reset-sendiri-placeholder'), user_id: peserta.id, jenis: 'masuk',
+      kedaluwarsa_pada: new Date(Date.now() + 60000),
+    });
+    await M.TantanganWajah.create({
+      user_id: peserta.id, nonce_hash: sha256('reset-sendiri-nonce'), kode_gerakan: 'kedip',
+      kedaluwarsa_pada: new Date(Date.now() + 60000),
+    });
+
+    const r = await reset(authz, SANDI_SEED);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ pesan: expect.stringContaining('Template wajah dihapus') });
+    expect(await M.FaceTemplate.count({ where: { user_id: peserta.id } })).toBe(0);
+    expect(await M.FaceVerification.count({ where: { user_id: peserta.id } })).toBe(0);
+    expect(await M.QrToken.count({ where: { user_id: peserta.id } })).toBe(0);
+    expect(await M.TantanganWajah.count({ where: { user_id: peserta.id } })).toBe(0);
   });
 });
 
