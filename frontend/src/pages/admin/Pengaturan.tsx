@@ -70,7 +70,7 @@ export default function Pengaturan() {
     }
   };
 
-  const diubahIsi = isi !== null && (isi.metode !== metode || isi.liveness_aktif !== liveness);
+  const diubahIsi = !isi || isi.metode !== metode || isi.liveness_aktif !== liveness;
 
   const diubahLok = (p: Pengaturan) =>
     fLat.trim() === '' ? p.lat_kantor !== null :
@@ -143,7 +143,6 @@ export default function Pengaturan() {
 
   return (
     <>
-<<<<<<< Updated upstream
       <JudulHalaman
         eyebrow="Admin"
         judul="Pengaturan"
@@ -191,31 +190,6 @@ export default function Pengaturan() {
               <b className="block text-xs">Liveness aktif</b>
               <small className="text-[11px] leading-relaxed text-mu">Tantangan gerakan: kedip / tengok / buka mulut.</small>
             </span>
-=======
-      <Kartu t="Pengaturan absensi">
-        <fieldset disabled={sedang || isi === null}>
-          <legend className="text-sm font-semibold mb-2">Metode absensi untuk semua peserta</legend>
-          {isi === null && !galat ? <p className="text-mu text-sm mb-2">Memuat pengaturan…</p> : null}
-          {SESUAI.map((k) => (
-            <label key={k.metode} className="flex items-start gap-2 my-2">
-              <input
-                type="radio"
-                name="metode"
-                value={k.metode}
-                checked={metode === k.metode}
-                onChange={() => ubahMetode(k.metode)}
-                className="mt-1"
-              />
-              <span>
-                <b>{k.label}</b>
-                <small className="block text-mu">{k.uraian}</small>
-              </span>
-            </label>
-          ))}
-          <label className="flex items-center gap-2 mt-3">
-            <input type="checkbox" checked={liveness} onChange={(e) => ubahLiveness(e.target.checked)} />
-            Liveness aktif (tantangan gerakan: kedip / tengok / buka mulut)
->>>>>>> Stashed changes
           </label>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -235,7 +209,6 @@ export default function Pengaturan() {
       </Kartu>
 
       <Kartu t="Lokasi kantor">
-<<<<<<< Updated upstream
         <div className="flex items-start gap-3 rounded-xl border border-[#c7dbff] bg-[#f8fbff] p-3.5">
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-pr shadow-sm">
             <Ikon nama="pin" className="size-4" />
@@ -243,40 +216,6 @@ export default function Pengaturan() {
           <p className="text-[11.5px] leading-relaxed text-mu">
             Ketika koordinat kantor diisi, peserta wajib berada di dalam radius ini saat absen (QR maupun wajah).
             Kosongkan garis lintang dan garis bujur untuk menonaktifkan validasi lokasi.
-=======
-        <p className="text-mu text-sm">
-          Ketika koordinat kantor diisi, peserta wajib berada di dalam radius ini saat absen (QR maupun wajah).
-          Kosongkan garis lintang dan garis bujur untuk menonaktifkan validasi lokasi.
-        </p>
-        <fieldset disabled={sedangLok || sedang || isi === null} className="mt-2">
-          <p className="grid gap-2 sm:grid-cols-2 max-w-[640px]">
-            <p>
-              <label htmlFor="ktr_lat" className="block text-[13px] font-semibold mb-1">Garis lintang (latitude)</label>
-              <input id="ktr_lat" type="number" step="0.000001" min={-90} max={90} value={fLat}
-                onChange={(e) => ubahFLat(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg"
-                placeholder="Misal: -6.200000" />
-            </p>
-            <p>
-              <label htmlFor="ktr_lng" className="block text-[13px] font-semibold mb-1">Garis bujur (longitude)</label>
-              <input id="ktr_lng" type="number" step="0.000001" min={-180} max={180} value={fLng}
-                onChange={(e) => ubahFLng(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg"
-                placeholder="Misal: 106.816000" />
-            </p>
-            <p>
-              <label htmlFor="ktr_rad" className="block text-[13px] font-semibold mb-1">Radius area (meter, 20–10000)</label>
-              <input id="ktr_rad" type="number" step={10} min={20} max={10000} value={fRadius}
-                onChange={(e) => ubahFRadius(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-            </p>
-            <p>
-              <label htmlFor="ktr_akr" className="block text-[13px] font-semibold mb-1">Akurasi GPS maksimal (meter, 5–500)</label>
-              <input id="ktr_akr" type="number" step={5} min={5} max={500} value={fAkurasi}
-                onChange={(e) => ubahFAkurasi(e.target.value)}
-                className="block w-full px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-            </p>
->>>>>>> Stashed changes
           </p>
         </div>
 

@@ -159,18 +159,11 @@ export function Badge({ s }: { s: string }) {
     Revisi: 'text-o bg-[#c2410c20]',
     Menunggu: 'text-s bg-[#47556920]',
     Diperiksa: 'text-pr bg-pl',
-<<<<<<< Updated upstream
     'Hari ini': 'text-pr bg-pl',
-=======
-    Draft: 'text-s bg-[#47556920]',
-    Dikirim: 'text-pr bg-pl',
-    Revisi: 'text-o bg-[#c2410c20]',
->>>>>>> Stashed changes
   };
-  const label: Record<string, string> = { Revisi: 'Perlu revisi' };
   return (
     <span className={`inline-block px-[10px] py-0.5 rounded-full font-semibold text-xs whitespace-nowrap ${warna[s] ?? warna.Menunggu}`}>
-      {label[s] ?? s}
+      {s}
     </span>
   );
 }

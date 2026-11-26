@@ -2,15 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { teksKode } from '../../lib/petaKode';
 import { ambilLokasiKantor, teksJarak } from '../../lib/kantor';
-<<<<<<< Updated upstream
 import type { Absensi, Jenis, StatusAbsensi } from '../../lib/tipe';
 import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Label, Masukan, Badge } from '../../komponen/ui';
 import PetaAbsensi, { warnaTitik } from '../../komponen/PetaAbsensi';
-=======
-import type { Absensi, StatusAbsensi } from '../../lib/tipe';
-import { Kartu, Tombol, Pemberitahuan, Label, Badge } from '../../komponen/ui';
-import PetaAbsensi, { warnaTitik, type TitikPeta } from '../../komponen/PetaAbsensi';
->>>>>>> Stashed changes
 import { useToast } from '../../komponen/Toast';
 import { isoHariIni, gunakanTerbaru, titikTerbaruBerlokasi } from '../../komponen/umum';
 import { Ikon } from '../../komponen/Ikon';
@@ -69,12 +63,11 @@ export default function AbsensiAdmin() {
   const [rows, ubahRows] = useState<Absensi[] | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
 
-  // Form koreksi per baris (satu baris per hari: masuk + opsional pulang)
+  // Form koreksi per baris
   const [editId, ubahEditId] = useState<number | null>(null);
   const [fJam, ubahFJam] = useState('');
   const [fStatus, ubahFStatus] = useState<StatusAbsensi>('Hadir');
-  const [fPulangJam, ubahFPulangJam] = useState('');
-  const [fPulangStatus, ubahFPulangStatus] = useState<StatusAbsensi>('Hadir');
+  const [fJenis, ubahFJenis] = useState<Jenis>('masuk');
   const [fAlasan, ubahFAlasan] = useState('');
   const [sedang, ubahSedang] = useState(false);
 
@@ -139,8 +132,7 @@ export default function AbsensiAdmin() {
     ubahEditId(a.id);
     ubahFJam(a.jam.slice(0, 5));
     ubahFStatus(a.status);
-    ubahFPulangJam(a.pulang_jam ? a.pulang_jam.slice(0, 5) : '');
-    ubahFPulangStatus((a.pulang_status as StatusAbsensi | null | undefined) ?? 'Hadir');
+    ubahFJenis(a.jenis);
     ubahFAlasan('');
   };
 
@@ -150,18 +142,9 @@ export default function AbsensiAdmin() {
     ubahSedang(true);
     ubahGalat(null);
     try {
-      const pulangJam = fPulangJam.trim();
-      const statusTanpaPulang = ['Izin', 'Sakit', 'Tidak hadir'].includes(fStatus);
       const r = await api<{ pesan: string }>(`/admin/absensi/${editId}`, {
         method: 'PUT',
-        json: {
-          jam: fJam + ':00',
-          status: fStatus,
-          ...(!statusTanpaPulang
-            ? { pulang_jam: pulangJam ? pulangJam + ':00' : null, ...(pulangJam ? { pulang_status: fPulangStatus } : {}) }
-            : {}),
-          alasan: fAlasan,
-        },
+        json: { jam: fJam + ':00', status: fStatus, jenis: fJenis, alasan: fAlasan },
       });
       toast(r.pesan);
       ubahEditId(null);
@@ -227,7 +210,6 @@ export default function AbsensiAdmin() {
         ) : null}
       </Kartu>
 
-<<<<<<< Updated upstream
       {rows !== null && rows.length ? (
         <>
           <Kartu t={`Catatan absensi${pesertaTerpilih ? ` — ${pesertaTerpilih.nama}` : ''}`}>
@@ -342,95 +324,6 @@ export default function AbsensiAdmin() {
                   )}
                 </li>
               ))}
-=======
-        {rows !== null && rows.length ? (
-          <>
-            <ul className="mt-4 flex flex-col gap-2">
-            {rows.map((a) => (
-              <li key={a.id} className="border border-garis rounded-xl p-3">
-                {editId === a.id ? (
-                  <form onSubmit={koreksi} className="grid gap-2 sm:grid-cols-2 max-w-[640px]">
-                    <p>
-                      <Label htmlFor="k_jam">Jam</Label>
-                      <input id="k_jam" type="time" step={60} value={fJam} onChange={(e) => ubahFJam(e.target.value)}
-                        className="block w-full mt-1 px-[11px] py-2 border border-garis rounded-lg bg-bg" />
-                    </p>
-                    <p>
-                      <Label htmlFor="k_status">Status</Label>
-                      <select id="k_status" value={fStatus} onChange={(e) => {
-                        const v = e.target.value as StatusAbsensi;
-                        ubahFStatus(v);
-                        if (['Izin', 'Sakit', 'Tidak hadir'].includes(v)) { ubahFPulangJam(''); ubahFPulangStatus('Hadir'); }
-                      }}
-                        className="block w-full mt-1 px-[11px] py-2 border border-garis rounded-lg bg-bg">
-                        {STATUS.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </p>
-                    <p>
-                      <Label htmlFor="k_pulang_jam">Jam pulang</Label>
-                      <input id="k_pulang_jam" type="time" step={60} value={fPulangJam} onChange={(e) => ubahFPulangJam(e.target.value)}
-                        disabled={['Izin', 'Sakit', 'Tidak hadir'].includes(fStatus)}
-                        className="block w-full mt-1 px-[11px] py-2 border border-garis rounded-lg bg-bg disabled:opacity-50" />
-                      <small className="text-mu text-xs">
-                        {['Izin', 'Sakit', 'Tidak hadir'].includes(fStatus)
-                          ? 'Status ini tidak memiliki data pulang.'
-                          : 'Kosongkan untuk menghapus data pulang.'}
-                      </small>
-                    </p>
-                    <p>
-                      <Label htmlFor="k_pulang_status">Status pulang</Label>
-                      <select id="k_pulang_status" value={fPulangStatus} onChange={(e) => ubahFPulangStatus(e.target.value as StatusAbsensi)}
-                        disabled={!fPulangJam.trim() || ['Izin', 'Sakit', 'Tidak hadir'].includes(fStatus)}
-                        className="block w-full mt-1 px-[11px] py-2 border border-garis rounded-lg bg-bg disabled:opacity-50">
-                        {STATUS.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </p>
-                    <p className="sm:col-span-2">
-                      <Label htmlFor="k_alasan">
-                        Alasan koreksi <span className="text-r">wajib</span> (tercatat di audit log)
-                      </Label>
-                      <textarea id="k_alasan" required minLength={3} maxLength={500} rows={2} value={fAlasan}
-                        onChange={(e) => ubahFAlasan(e.target.value)}
-                        className="block w-full mt-1 px-[11px] py-2 border border-garis rounded-lg bg-bg"
-                        placeholder="Misal: Salah pindai, waktu sebenarnya 07:55." />
-                    </p>
-                    <p className="flex gap-2 sm:col-span-2">
-                      <Tombol type="submit" disabled={sedang || fAlasan.trim().length < 3}>Simpan koreksi</Tombol>
-                      <Tombol varian="gh" onClick={() => ubahEditId(null)} disabled={sedang}>Batal</Tombol>
-                    </p>
-                  </form>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <span><b>Masuk</b> {a.jam.slice(0, 5)}</span>
-                    <Badge s={a.status} />
-                    <span className="text-mu">
-                      Pulang: {a.pulang_jam ? `${a.pulang_jam.slice(0, 5)}${a.pulang_status ? ` (${a.pulang_status})` : ''}` : '—'}
-                    </span>
-                    <span className="text-mu">{a.metode}</span>
-                    {a.keterangan ? <span className="text-mu w-full">“{a.keterangan}”</span> : null}
-                    <span className="flex gap-3">
-                      {a.metode.includes('Wajah') ? (
-                        <button
-                          onClick={() => void lihatFoto(a)}
-                          disabled={fotoMuat !== null}
-                          className="text-pr underline cursor-pointer bg-transparent border-0 p-0 text-sm"
-                        >
-                          {fotoMuat === a.id ? 'Memuat foto…' : 'Lihat foto…'}
-                        </button>
-                      ) : null}
-                      <button onClick={() => bukaEdit(a)} className="text-pr underline cursor-pointer bg-transparent border-0 p-0 text-sm">
-                        Koreksi…
-                      </button>
-                    </span>
-                  </div>
-                )}
-              </li>
-            ))}
->>>>>>> Stashed changes
             </ul>
             {fotoUrl ? <ModalFoto url={fotoUrl} tutup={tutupFoto} /> : null}
           </Kartu>

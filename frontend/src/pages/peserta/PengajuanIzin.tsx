@@ -6,11 +6,7 @@ import { Kartu, Tombol, Pemberitahuan, Label, Badge, JudulHalaman } from '../../
 import { Ikon } from '../../komponen/Ikon';
 import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { useToast } from '../../komponen/Toast';
-<<<<<<< Updated upstream
 import { isoHariIni, tglIndoRentang } from '../../komponen/umum';
-=======
-import { isoHariIni, tglRentang } from '../../komponen/umum';
->>>>>>> Stashed changes
 
 const BUKTI_MAKS = 5 * 1024 * 1024;
 const BATAS_HARI = 7; // JURNAL_MAKS_HARI_BELAKANG di backend
@@ -43,11 +39,7 @@ export default function PengajuanIzin() {
   const toast = useToast();
   const [jenis, ubahJenis] = useState<'Izin' | 'Sakit'>('Izin');
   const [tanggal, ubahTanggal] = useState(isoHariIni());
-<<<<<<< Updated upstream
   const [tanggalSelesai, ubahTanggalSelesai] = useState(isoHariIni());
-=======
-  const [tanggalAkhir, ubahTanggalAkhir] = useState(isoHariIni());
->>>>>>> Stashed changes
   const [keterangan, ubahKet] = useState('');
   const [berkas, ubahBerkas] = useState<File | null>(null);
   const [daftar, ubahDaftar] = useState<PengajuanIzin[] | null>(null);
@@ -56,6 +48,12 @@ export default function PengajuanIzin() {
   // Bukti foto yang sedang ditampilkan di modal dalam halaman (null = tertutup).
   const [bukti, ubahBukti] = useState<PengajuanIzin | null>(null);
   const unggahRef = useRef<HTMLInputElement>(null);
+
+  // Panjang periode (inklusif) untuk validasi klien dan batas input tanggal selesai.
+  const jumlahHari = tanggal && tanggalSelesai ? selisihHari(tanggal, tanggalSelesai) + 1 : 0;
+  const maksSelesai = tanggal
+    ? [geserHari(tanggal, MAKS_RENTANG - 1), isoMaju()].sort()[0]
+    : isoMaju();
 
   const muatUlang = useCallback(() => {
     api<{ data: PengajuanIzin[] }>('/pengajuan/izin')
@@ -86,45 +84,21 @@ export default function PengajuanIzin() {
     ubahBerkas(f);
   };
 
-  const jumlahHari = selisihHari(tanggal, tanggalAkhir) + 1;
-  const maksAkhir = [geserHari(tanggal, MAKS_RENTANG - 1), isoMaju()].sort()[0];
-
-  /** Saat tanggal mulai berubah, jaga agar tanggal selesai tetap sesudahnya dan
-   * tidak melewati batas 7 hari. */
-  const gantiMulai = (v: string) => {
-    ubahGalat(null);
-    ubahTanggal(v);
-    const batasAkhir = [geserHari(v, MAKS_RENTANG - 1), isoMaju()].sort()[0];
-    if (tanggalAkhir < v) ubahTanggalAkhir(v);
-    else if (tanggalAkhir > batasAkhir) ubahTanggalAkhir(batasAkhir);
-  };
-
   const kirim = async (e: React.FormEvent) => {
     e.preventDefault();
-<<<<<<< Updated upstream
     if (keterangan.trim().length < 3 || !berkas || !tanggal || !tanggalSelesai || tanggalSelesai < tanggal) return;
-=======
-    if (keterangan.trim().length < 3 || !berkas) return;
-    if (jumlahHari < 1) {
-      ubahGalat(['Tanggal tidak sah', 'Tanggal selesai tidak boleh sebelum tanggal mulai.']);
-      return;
-    }
+    const jumlahHari = selisihHari(tanggal, tanggalSelesai) + 1;
     if (jumlahHari > MAKS_RENTANG) {
-      ubahGalat(['Terlalu panjang', `Izin/sakit maksimal ${MAKS_RENTANG} hari berturut-turut.`]);
+      ubahGalat(['Periode terlalu panjang', `Izin/sakit maksimal ${MAKS_RENTANG} hari berturut-turut.`]);
       return;
     }
->>>>>>> Stashed changes
     ubahSedang(true);
     ubahGalat(null);
     try {
       const bentuk = new FormData();
       bentuk.append('jenis', jenis);
       bentuk.append('tanggal', tanggal);
-<<<<<<< Updated upstream
       bentuk.append('tanggal_selesai', tanggalSelesai);
-=======
-      bentuk.append('tanggal_akhir', tanggalAkhir);
->>>>>>> Stashed changes
       bentuk.append('keterangan', keterangan.trim());
       bentuk.append('bukti', berkas);
       const r = await api<{ pesan: string }>('/pengajuan/izin', { method: 'POST', bentuk });
@@ -143,7 +117,6 @@ export default function PengajuanIzin() {
 
   return (
     <>
-<<<<<<< Updated upstream
       <JudulHalaman
         eyebrow="Peserta PKL"
         judul="Pengajuan Izin / Sakit"
@@ -208,8 +181,13 @@ export default function PengajuanIzin() {
                     ubahTanggal(v);
                     // Ikuti tanggal mulai bila akhir masih satu hari dengan mulai lama
                     // (nilai bawaan), atau bila akhir jadi mendahului mulai.
-                    // Rentang yang memang dipilih lebih panjang tetap dipertahankan.
+                    // Rentang yang memang dipilih lebih panjang tetap dipertahankan,
+                    // kecuali melewati batas 7 hari.
+                    const batasAkhir = v
+                      ? [geserHari(v, MAKS_RENTANG - 1), isoMaju()].sort()[0]
+                      : isoMaju();
                     if (tanggalSelesai < v || tanggalSelesai === mulaiLama) ubahTanggalSelesai(v);
+                    else if (tanggalSelesai > batasAkhir) ubahTanggalSelesai(batasAkhir);
                   }}
                   className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
                 />
@@ -222,16 +200,17 @@ export default function PengajuanIzin() {
                   id="pj_tgl_selesai"
                   type="date"
                   required
-                  max={isoMaju()}
+                  max={maksSelesai}
                   min={tanggal || isoBatas()}
                   value={tanggalSelesai}
-                  onChange={(e) => ubahTanggalSelesai(e.target.value)}
+                  onChange={(e) => { ubahGalat(null); ubahTanggalSelesai(e.target.value); }}
                   className="block w-full h-[38px] px-3 border border-garis rounded-lg bg-bg text-[12px] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
                 />
               </div>
             </div>
             <small className="block text-mu text-[10px] mt-1">
-              Isi tanggal sama bila hanya satu hari. Boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang.
+              Isi tanggal sama bila hanya satu hari. Maksimal {MAKS_RENTANG} hari berturut-turut;
+              boleh {MAKS_MAJU} hari ke depan, maksimal {BATAS_HARI} hari ke belakang.
             </small>
 
             <div className="mt-3">
@@ -282,7 +261,7 @@ export default function PengajuanIzin() {
             {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
 
             <div className="mt-4 pt-4 border-t border-garis flex flex-wrap items-center gap-2">
-              <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas || !tanggal || !tanggalSelesai || tanggalSelesai < tanggal}>
+              <Tombol type="submit" disabled={sedang || keterangan.trim().length < 3 || !berkas || !tanggal || !tanggalSelesai || tanggalSelesai < tanggal || jumlahHari > MAKS_RENTANG}>
                 {sedang ? 'Mengirim…' : `Kirim pengajuan ${jenis.toLowerCase()}`}
               </Tombol>
               <span className="text-[10px] text-mu">Persetujuan pembimbing diperlukan.</span>
@@ -294,7 +273,7 @@ export default function PengajuanIzin() {
           <Kartu t="Ketentuan pengajuan">
             <ul className="list-none p-0 m-0 flex flex-col gap-3">
               {[
-                { i: 'calendar' as const, t: 'Batas waktu', u: `Maksimal ${MAKS_MAJU} hari ke depan dan ${BATAS_HARI} hari ke belakang.` },
+                { i: 'calendar' as const, t: 'Batas waktu', u: `Maksimal ${MAKS_RENTANG} hari berturut-turut, boleh ${MAKS_MAJU} hari ke depan dan ${BATAS_HARI} hari ke belakang.` },
                 { i: 'image' as const, t: 'Bukti foto wajib', u: 'Format JPG, PNG, atau WebP maksimal 5 MB.' },
                 { i: 'users' as const, t: 'Putusan pembimbing', u: 'Disetujui atau ditolak disertai alasan yang dapat Anda baca.' },
                 { i: 'lock' as const, t: 'Mengunci absensi', u: 'Tanggal yang disetujui tidak memerlukan verifikasi wajah atau QR.' },
@@ -313,102 +292,6 @@ export default function PengajuanIzin() {
           </Kartu>
         </div>
       </div>
-=======
-      <Kartu t="Kirim pengajuan izin / sakit">
-        <p className="text-mu text-sm mb-1 max-w-[560px]">
-          Tidak bisa absen QR atau wajah pada suatu hari? Ajukan Izin/Sakit dengan bukti foto. Setelah
-          pembimbing menyetujui, setiap tanggal dalam rentang terekam dan terkunci — Anda tidak perlu
-          absen lagi pada hari-hari itu.
-        </p>
-        <form onSubmit={kirim} className="max-w-[560px]">
-          <fieldset className="mt-2">
-            <legend className="text-[13px] font-semibold">Jenis pengajuan</legend>
-            <div className="flex gap-4 mt-1">
-              {(['Izin', 'Sakit'] as const).map((s) => (
-                <label key={s} className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="radio" name="pj_jenis" checked={jenis === s} onChange={() => ubahJenis(s)} />
-                  {s}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <p>
-              <Label htmlFor="pj_tgl">Tanggal mulai</Label>
-              <input
-                id="pj_tgl"
-                type="date"
-                required
-                max={isoMaju()}
-                min={isoBatas()}
-                value={tanggal}
-                onChange={(e) => gantiMulai(e.target.value)}
-                className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-              />
-            </p>
-            <p>
-              <Label htmlFor="pj_tgl_akhir">Tanggal selesai</Label>
-              <input
-                id="pj_tgl_akhir"
-                type="date"
-                required
-                min={tanggal}
-                max={maksAkhir}
-                value={tanggalAkhir}
-                onChange={(e) => { ubahGalat(null); ubahTanggalAkhir(e.target.value); }}
-                className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-              />
-            </p>
-          </div>
-          <small className="block -mt-1 mb-2 text-mu">
-            Maksimal {MAKS_RENTANG} hari berturut-turut; pengajuan boleh sampai {MAKS_MAJU} hari ke depan
-            dan maksimal {BATAS_HARI} hari ke belakang.
-          </small>
-          <p>
-            <Label htmlFor="pj_ket">
-              Keterangan <span className="text-r">wajib</span> (3–1000 karakter)
-            </Label>
-            <textarea
-              id="pj_ket"
-              required
-              minLength={3}
-              maxLength={1000}
-              rows={3}
-              value={keterangan}
-              onChange={(e) => ubahKet(e.target.value)}
-              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
-              placeholder="Misal: Demam sejak subuh, surat dokter menyusul."
-            />
-          </p>
-          <p>
-            <Label htmlFor="pj_bukti">
-              Bukti foto <span className="text-r">wajib</span> (JPG/PNG/WebP, maksimal 5 MB)
-            </Label>
-            <input
-              id="pj_bukti"
-              ref={unggahRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              required
-              onChange={(e) => pilihBerkas(e.target.files?.[0] ?? null)}
-              className="block w-full mt-1 px-[11px] py-[7px] border border-garis rounded-lg bg-bg text-sm"
-            />
-            {berkas ? (
-              <small className="block mt-1 text-mu">{berkas.name} ({Math.round(berkas.size / 1024)} KB)</small>
-            ) : null}
-          </p>
-          {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
-          <p className="mt-4">
-            <Tombol
-              type="submit"
-              disabled={sedang || keterangan.trim().length < 3 || !berkas || jumlahHari < 1 || jumlahHari > MAKS_RENTANG}
-            >
-              {sedang ? 'Mengirim…' : `Kirim pengajuan ${jenis.toLowerCase()}`}
-            </Tombol>
-          </p>
-        </form>
-      </Kartu>
->>>>>>> Stashed changes
 
       <Kartu t="Riwayat pengajuan saya">
         <p className="text-[11px] text-mu -mt-1 mb-3">
@@ -426,11 +309,7 @@ export default function PengajuanIzin() {
             {daftar.map((p) => (
               <li key={p.id} className="border border-garis rounded-xl p-3.5">
                 <div className="flex flex-wrap items-center gap-2">
-<<<<<<< Updated upstream
                   <b className="text-[11.5px]">{tglIndoRentang(p.tanggal, p.tanggal_selesai)}</b>
-=======
-                  <b className="text-sm">{tglRentang(p.tanggal, p.tanggal_akhir)}</b>
->>>>>>> Stashed changes
                   <Badge s={p.jenis} />
                   <Badge s={p.status} />
                 </div>
@@ -452,13 +331,8 @@ export default function PengajuanIzin() {
                   <p className="text-mu text-[10.5px] mt-2 mb-0">Menunggu putusan pembimbing.</p>
                 ) : null}
                 {p.status === 'Disetujui' ? (
-<<<<<<< Updated upstream
                   <p className="text-g text-[10.5px] font-semibold mt-2 mb-0">
                     Disetujui — tanggal tersebut terekam {p.jenis.toLowerCase()} dan tidak perlu absen.
-=======
-                  <p className="text-g text-xs font-semibold mt-2 mb-0">
-                    Disetujui — rentang tanggal tersebut terekam {p.jenis.toLowerCase()} dan tidak perlu absen.
->>>>>>> Stashed changes
                   </p>
                 ) : null}
               </li>

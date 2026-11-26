@@ -356,7 +356,7 @@ describe('Reset template wajah (admin) — target harus peserta', () => {
     const { enc } = require('../src/utils/crypto');
     await M.FaceTemplate.create({ user_id: dasar.peserta.id, embedding: enc(Array.from({ length: 128 }, () => 0.1)) });
     await M.FaceVerification.create({ user_id: dasar.peserta.id, jenis: 'masuk', kedaluwarsa_pada: new Date(Date.now() + 3600000) });
-    await M.TantanganWajah.create({ user_id: dasar.peserta.id, nonce: 'n1', kode_gerakan: 'kedip', kedaluwarsa_pada: new Date(Date.now() + 3600000) });
+    await M.TantanganWajah.create({ user_id: dasar.peserta.id, nonce_hash: 'n1'.padEnd(64, '0'), kode_gerakan: 'kedip', kedaluwarsa_pada: new Date(Date.now() + 3600000) });
     const r = await request(app)
       .delete(`/api/admin/face/${dasar.peserta.id}`)
       .set('Authorization', tokAdmin);

@@ -11,10 +11,10 @@ import { waktuWib } from '../../komponen/umum';
 const jam = (iso: string) => (iso ? waktuWib(iso) + ' WIB' : '-');
 
 /** Ikhtisar perjalanan status jurnal. */
-function GarisWaktu({ status, buat, kirim, review }: { status: string; buat: string; kirim: string; review: { keputusan: string; waktu: string }[] }) {
+function GarisWaktu({ status, buat, ubah, review }: { status: string; buat: string; ubah: string; review: { keputusan: string; waktu: string }[] }) {
   const langkah = [
     { s: 'Draft', t: buat },
-    { s: 'Dikirim', t: kirim },
+    { s: 'Dikirim', t: ubah },
   ];
   // Revisi/Disetujui berasal dari keputusan pembimbing (review)
   for (const r of review) langkah.push({ s: r.keputusan, t: r.waktu });
@@ -123,7 +123,6 @@ export default function JurnalDetail() {
         aksi={<Badge s={jub.status} />}
       />
 
-<<<<<<< Updated upstream
       <div className="grid lg:grid-cols-[1.5fr_1fr] gap-4 items-start">
         <Kartu t="Isi jurnal" className="order-2 lg:order-1">
           <dl className="grid gap-4 m-0">
@@ -162,22 +161,6 @@ export default function JurnalDetail() {
                   <span className="text-mu text-[11.5px]">(tidak ada lampiran)</span>
                 )}
               </dd>
-=======
-        <h3 className="text-[13px] font-semibold mt-4 mb-1">Perjalanan status</h3>
-        <GarisWaktu status={jub.status} buat={jam(jub.dibuat_pada)} kirim={jam(jub.dikirim_pada ?? '')} review={review} />
-
-        {review.length ? (
-          <>
-            <h3 className="text-[13px] font-semibold mt-5 mb-2">Catatan pembimbing</h3>
-            <div className="flex flex-col gap-2">
-              {review.map((r, i) => (
-                <div key={i} className="border-2 border-y rounded-lg px-[14px] py-3 bg-[#a1620712] max-w-full">
-                  <b className="block text-sm">{r.keputusan} — {r.nama}</b>
-                  <small className="block text-mu mb-1">{r.waktu}</small>
-                  <p className="text-sm">{r.catatan ?? '(Tanpa catatan)'}</p>
-                </div>
-              ))}
->>>>>>> Stashed changes
             </div>
           </dl>
         </Kartu>

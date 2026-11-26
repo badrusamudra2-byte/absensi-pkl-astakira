@@ -6,12 +6,8 @@ import type { PengajuanIzin } from '../../lib/tipe';
 import { Kartu, JudulHalaman, Tombol, Pemberitahuan, Badge, Label } from '../../komponen/ui';
 import { PenampilFoto } from '../../komponen/PenampilFoto';
 import { useToast } from '../../komponen/Toast';
-<<<<<<< Updated upstream
 import { isoHariIni, tglIndoRentang, dalamRentang } from '../../komponen/umum';
 import { Ikon } from '../../komponen/Ikon';
-=======
-import { isoHariIni, tglRentang } from '../../komponen/umum';
->>>>>>> Stashed changes
 
 /** Lihat izin/sakit: pengajuan dari peserta (dengan bukti foto); pembimbing menyetujui
  * (hari itu terekam Izin/Sakit dan terkunci) atau menolak dengan alasan. */
@@ -73,7 +69,6 @@ export default function Izin() {
 
   return (
     <>
-<<<<<<< Updated upstream
       <JudulHalaman
         eyebrow="Pembimbing"
         judul="Lihat izin / sakit"
@@ -98,12 +93,6 @@ export default function Izin() {
         <p className="max-w-[620px] text-xs leading-relaxed text-mu">
           Pengajuan izin/sakit dikirim oleh peserta beserta bukti foto. Bila Anda setujui, tanggal-tanggal
           dalam periode itu terekam sebagai Izin/Sakit dan otomatis terkunci dari absensi QR/wajah.
-=======
-      <Kartu t="Lihat izin / sakit">
-        <p className="text-mu text-sm mb-2 max-w-[560px]">
-          Pengajuan izin/sakit dikirim oleh peserta beserta bukti foto. Bila Anda setujui, setiap hari
-          dalam rentang terekam sebagai Izin/Sakit dan otomatis terkunci dari absensi QR/wajah.
->>>>>>> Stashed changes
         </p>
         {muat ? <p className="mt-3 text-sm text-mu">Memuat pengajuan&hellip;</p> : null}
         {!muat && galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
@@ -132,13 +121,8 @@ export default function Izin() {
             <b className="text-[15px]">{p.peserta?.nama ?? `Peserta #${p.user_id}`}</b>
             <Badge s={p.jenis} />
             <Badge s={p.status} />
-<<<<<<< Updated upstream
             {dalamRentang(isoHariIni(), p.tanggal, p.tanggal_selesai) ? <Badge s="Hari ini" /> : null}
             <span className="ml-auto text-[11px] text-mu">{tglIndoRentang(p.tanggal, p.tanggal_selesai)}</span>
-=======
-            <span className="text-mu text-sm">{tglRentang(p.tanggal, p.tanggal_akhir)}</span>
-            {isoHariIni() >= p.tanggal && isoHariIni() <= (p.tanggal_akhir || p.tanggal) ? <Badge s="Hari ini" /> : null}
->>>>>>> Stashed changes
           </div>
 
           <p className="mt-3 max-w-[620px] whitespace-pre-line text-sm leading-relaxed">{p.keterangan}</p>

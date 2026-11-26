@@ -85,8 +85,8 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 ## Izin, sakit, dan penutup hari
 
 - **Pengajuan Izin/Sakit kini diberikan oleh peserta** (`POST /api/pengajuan/izin`, multipart):
-  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini), `tanggal_akhir`
-  (`YYYY-MM-DD`, opsional; diisi bila izin lebih dari satu hari), `keterangan` (3â€“1000 karakter)
+  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, hari pertama; default hari ini), `tanggal_selesai`
+  (`YYYY-MM-DD`, hari terakhir inklusif; boleh sama dengan `tanggal` untuk satu hari), `keterangan` (3–1000 karakter)
   dan `bukti` (foto JPG/PNG/WebP maks 5 MB, disimpan acak di `uploads/pengajuan/`).
 - Rentang izin/sakit maksimal `PENGAJUAN_MAKS_HARI` hari berturut-turut (default 7, inklusif —
   mis. 1 s.d. 7 = 7 hari). Tanggal mulai dan tanggal akhir masing-masing harus berada dalam batas
@@ -135,6 +135,7 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 
 | kode | HTTP | Tampilan di frontend |
 |---|---|---|
+| VALIDASI | 400 | Input tidak sah (tanggal/periode izin, keterangan, dll.) |
 | QR_TIDAK_VALID | 404 | QR tidak valid |
 | QR_KEDALUWARSA | 410 | QR kedaluwarsa |
 | QR_SUDAH_DIPAKAI | 409 | QR sudah dipakai |
@@ -167,7 +168,7 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 | DI_LUAR_RADIUS | 422 | Posisi di luar radius kantor — absen harus di dalam area kantor |
 | LIVE_BELUM_SETUJU | 403 | Persetujuan live tracking belum diberikan (banner di HP peserta) |
 | LIVE_TIDAK_AKTIF | 409 | Tidak ada sesi live tracking aktif — hanya berjalan dari absen masuk sampai absen pulang |
-| CATATAN_ADA | 409 | Catatan izin/sakit untuk tanggal itu sudah ada |
+| CATATAN_ADA | 409 | Catatan/pengajuan izin/sakit untuk tanggal itu (atau rentangnya) sudah ada |
 | BUKTI_WAJIB | 400 | Lampirkan bukti pengajuan izin/sakit terlebih dulu |
 | UPLOAD | 400 | Format bukti/foto tidak didukung (JPG, PNG, atau WebP) |
 | TIDAK_ADA | 404 | Data tidak ditemukan / sudah diputuskan |

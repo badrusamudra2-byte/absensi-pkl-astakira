@@ -138,11 +138,7 @@ export default function Dashboard() {
       )}
 
       <Kartu t="Kehadiran 7 hari terakhir">
-<<<<<<< Updated upstream
         {isi ? <Grafik data={isi.grafik} /> : <p className="text-sm text-mu">Memuat grafik&hellip;</p>}
-=======
-        {isi ? <Grafik data={isi.grafik} /> : galat ? <p className="text-mu text-sm">Data grafik tidak dapat dimuat.</p> : <p className="text-mu text-sm">Memuat…</p>}
->>>>>>> Stashed changes
       </Kartu>
     </>
   );

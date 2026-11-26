@@ -59,7 +59,6 @@ const tanggalOk = (s) => {
   return t;
 };
 
-<<<<<<< Updated upstream
 /** Daftar tanggal ISO dalam rentang inklusif [mulai, selesai]. */
 const daftarTanggal = (mulai, selesai) => {
   const hasil = [];
@@ -69,12 +68,20 @@ const daftarTanggal = (mulai, selesai) => {
   return hasil;
 };
 
-/** Tanggal mulai & akhir periode yang sudah divalidasi; akhir >= mulai. */
+/** Tanggal mulai & akhir periode yang sudah divalidasi; akhir >= mulai dan
+ * panjangnya maksimal env.pengajuan.maksHari hari inklusif. */
 const rentangOk = (mulaiRaw, selesaiRaw) => {
   const mulai = tanggalOk(mulaiRaw || bagian().tanggal);
   const selesai = tanggalOk(selesaiRaw || mulai);
   if (selesai < mulai) {
     throw new HttpError(400, 'Tanggal selesai tidak boleh sebelum tanggal mulai.', 'VALIDASI');
+  }
+  if (daftarTanggal(mulai, selesai).length > env.pengajuan.maksHari) {
+    throw new HttpError(
+      400,
+      `Pengajuan izin/sakit maksimal ${env.pengajuan.maksHari} hari berturut-turut.`,
+      'VALIDASI',
+    );
   }
   return { mulai, selesai };
 };
@@ -84,58 +91,6 @@ exports.kirim = asyncH(async (req, res) => {
   const uid = req.user.id;
   // Berkas sudah ditulis multer sebelum controller berjalan. Siapkan pembersih
   // lebih awal supaya galat validasi apa pun tidak meninggalkan berkas yatim.
-=======
-const hariKe = (s) => new Date(`${s}T00:00:00Z`);
-
-/** Daftar tanggal YYYY-MM-DD inklusif dari `mulai` sampai `akhir`. */
-const daftarHari = (mulai, akhir) => {
-  const hari = [];
-  const batas = hariKe(akhir).getTime();
-  for (let t = hariKe(mulai).getTime(); t <= batas; t += 86400000) {
-    hari.push(new Date(t).toISOString().slice(0, 10));
-  }
-  return hari;
-};
-
-/** Validasi rentang pengajuan: kedua ujung dalam batas, akhir >= mulai, dan
- * panjangnya maksimal env.pengajuan.maksHari hari inklusif. `akhir` disimpan
- * NULL bila rentangnya hanya satu hari (sama seperti data lama). */
-const rentangOk = (mulaiAwal, akhirAwal) => {
-  const mulai = tanggalOk(mulaiAwal);
-  const akhir = akhirAwal ? tanggalOk(akhirAwal) : mulai;
-  if (akhir < mulai) {
-    throw new HttpError(400, 'Tanggal akhir tidak boleh sebelum tanggal mulai.', 'VALIDASI');
-  }
-  const hari = daftarHari(mulai, akhir);
-  if (hari.length > env.pengajuan.maksHari) {
-    throw new HttpError(
-      400,
-      `Pengajuan izin/sakit maksimal ${env.pengajuan.maksHari} hari berturut-turut.`,
-      'VALIDASI',
-    );
-  }
-  return { mulai, akhir: akhir === mulai ? null : akhir, hari };
-};
-
-/** Peserta kirim pengajuan izin/sakit + bukti foto (req.file dari uploadBukti). */
-exports.kirim = asyncH(async (req, res) => {
-  const uid = req.user.id;
-  const jenis = jenisOk(req.body.jenis);
-  const { mulai: tanggal, akhir: tanggalAkhir, hari } = rentangOk(
-    req.body.tanggal || bagian().tanggal,
-    req.body.tanggal_akhir,
-  );
-  const labelRentang = tanggalAkhir ? `${tanggal} s.d. ${tanggalAkhir}` : tanggal;
-  const ket = String(req.body.keterangan ?? '').trim();
-  if (ket.length < 3 || ket.length > 1000) {
-    throw new HttpError(400, 'Keterangan wajib 3 sampai 1000 karakter.', 'VALIDASI');
-  }
-  if (!req.file || !req.file.filename) {
-    throw new HttpError(400, 'Lampirkan bukti berupa foto.', 'BUKTI_WAJIB');
-  }
-  // Berkas bukti sudah ditulis middleware ke uploads/pengajuan. Bila validasi
-  // di bawah gagal, berkas wajib dihapus agar tidak menumpuk sebagai berkas yatim.
->>>>>>> Stashed changes
   const hapusBukti = () => {
     if (!req.file || !req.file.filename) return;
     try { fs.unlinkSync(path.join(berkas.pengajuan, req.file.filename)); } catch { /* sudah tak ada */ }
@@ -144,7 +99,6 @@ exports.kirim = asyncH(async (req, res) => {
   let selesai = '';
 
   try {
-<<<<<<< Updated upstream
     const jenis = jenisOk(req.body.jenis);
     ({ mulai, selesai } = rentangOk(req.body.tanggal, req.body.tanggal_selesai));
     const tanggalList = daftarTanggal(mulai, selesai);
@@ -162,22 +116,10 @@ exports.kirim = asyncH(async (req, res) => {
       const adaAbsensi = await Absensi.findOne({
         where: { user_id: uid, tanggal: { [Op.in]: tanggalList } },
         transaction: t, lock: t.LOCK.UPDATE,
-=======
-    // Setiap hari dalam rentang tidak boleh sudah punya catatan absensi maupun
-    // pengajuan aktif lain. Cek dan tulis dalam satu transaksi (kunci baris yang
-    // ada) supaya dua pengiriman bersamaan tidak sama-sama lolos cek duplikat.
-    const p = await sequelize.transaction(async (t) => {
-      const adaAbsensi = await Absensi.findAll({
-        where: { user_id: uid, tanggal: { [Op.in]: hari } },
-        transaction: t,
-        lock: t.LOCK.UPDATE,
->>>>>>> Stashed changes
       });
-      if (adaAbsensi.length) {
-        const a = adaAbsensi.sort((x, y) => (x.tanggal < y.tanggal ? -1 : 1))[0];
+      if (adaAbsensi) {
         throw new HttpError(
           409,
-<<<<<<< Updated upstream
           ['Izin', 'Sakit'].includes(adaAbsensi.status)
             ? `${adaAbsensi.tanggal} sudah tercatat ${adaAbsensi.status}.`
             : `Anda sudah punya absensi pada ${adaAbsensi.tanggal}.`,
@@ -185,21 +127,10 @@ exports.kirim = asyncH(async (req, res) => {
         );
       }
       // Pengajuan aktif (Menunggu/Disetujui) yang rentangnya beririsan juga menutup duplikat
-=======
-          ['Izin', 'Sakit'].includes(a.status)
-            ? `${a.tanggal} sudah tercatat ${a.status}.`
-            : `Anda sudah punya absensi pada ${a.tanggal}.`,
-          'CATATAN_ADA',
-        );
-      }
-      // Pengajuan aktif (Menunggu/Disetujui) yang rentangnya bertabrakan juga
-      // menutup duplikat: mulai_lama <= akhir_baru DAN akhir_lama >= mulai_baru.
->>>>>>> Stashed changes
       const adaAjukan = await PengajuanIzin.findOne({
         where: {
           user_id: uid,
           status: { [Op.ne]: 'Ditolak' },
-<<<<<<< Updated upstream
           [Op.and]: [
             { tanggal: { [Op.lte]: selesai } },
             {
@@ -208,19 +139,12 @@ exports.kirim = asyncH(async (req, res) => {
                 { [Op.and]: [{ tanggal_selesai: null }, { tanggal: { [Op.gte]: mulai } }] },
               ],
             },
-=======
-          tanggal: { [Op.lte]: tanggalAkhir || tanggal },
-          [Op.or]: [
-            { tanggal_akhir: null, tanggal: { [Op.gte]: tanggal } },
-            { tanggal_akhir: { [Op.gte]: tanggal } },
->>>>>>> Stashed changes
           ],
         },
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
       if (adaAjukan) {
-<<<<<<< Updated upstream
         const akhir = adaAjukan.tanggal_selesai || adaAjukan.tanggal;
         const rentang = akhir === adaAjukan.tanggal ? adaAjukan.tanggal : `${adaAjukan.tanggal} s/d ${akhir}`;
         throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${rentang} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
@@ -236,28 +160,12 @@ exports.kirim = asyncH(async (req, res) => {
       pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`,
       data: { id: p.id, status: p.status, tanggal: p.tanggal, tanggal_selesai: p.tanggal_selesai },
     });
-=======
-        const rentangLama = `${adaAjukan.tanggal}${adaAjukan.tanggal_akhir ? ` s.d. ${adaAjukan.tanggal_akhir}` : ''}`;
-        throw new HttpError(409, `Sudah ada pengajuan ${adaAjukan.jenis.toLowerCase()} untuk ${rentangLama} (status ${adaAjukan.status}).`, 'CATATAN_ADA');
-      }
-
-      return PengajuanIzin.create({
-        user_id: uid, tanggal, tanggal_akhir: tanggalAkhir, jenis, keterangan: ket, bukti: req.file.filename,
-      }, { transaction: t });
-    });
-    await audit(req, `Pengajuan ${jenis} ${labelRentang}`, `pes#${uid} pengajuan#${p.id}`);
-    res.status(201).json({ pesan: `Pengajuan ${jenis} terkirim, menunggu persetujuan pembimbing.`, data: { id: p.id, status: p.status } });
->>>>>>> Stashed changes
   } catch (e) {
     hapusBukti();
     // Dua kirim bersamaan bisa saling mengunci (deadlock InnoDB): perlakukan
     // seperti duplikat, bukan 500 server error.
     if (e.parent?.code === 'ER_LOCK_DEADLOCK') {
-<<<<<<< Updated upstream
       throw new HttpError(409, `Sudah ada pengajuan/absensi untuk ${mulai}${selesai !== mulai ? ` s/d ${selesai}` : ''}.`, 'CATATAN_ADA');
-=======
-      throw new HttpError(409, `Sudah ada pengajuan/absensi untuk ${labelRentang}.`, 'CATATAN_ADA');
->>>>>>> Stashed changes
     }
     throw e;
   }
@@ -306,7 +214,6 @@ exports.daftar = asyncH(async (req, res) => {
 exports.notifikasi = asyncH(async (req, res) => {
   const ids = await idBimbingan(req.user.id);
   if (!ids.length) return res.json({ ada: false });
-<<<<<<< Updated upstream
   const hariIni = bagian().tanggal;
   const ada = await PengajuanIzin.count({
     where: {
@@ -319,18 +226,6 @@ exports.notifikasi = asyncH(async (req, res) => {
             { [Op.and]: [{ tanggal_selesai: null }, { tanggal: hariIni }] },
           ],
         },
-=======
-  const tgl = bagian().tanggal;
-  const ada = await PengajuanIzin.count({
-    where: {
-      user_id: ids,
-      status: 'Menunggu',
-      tanggal: { [Op.lte]: tgl },
-      // Rentang Menunggu yang mencakup hari ini, termasuk pengajuan satu hari (tanggal_akhir NULL)
-      [Op.or]: [
-        { tanggal_akhir: null, tanggal: { [Op.gte]: tgl } },
-        { tanggal_akhir: { [Op.gte]: tgl } },
->>>>>>> Stashed changes
       ],
     },
   });
@@ -363,7 +258,6 @@ exports.putuskan = asyncH(async (req, res) => {
     }
 
     if (putusan === 'Disetujui') {
-<<<<<<< Updated upstream
       // Tulis baris absensi izin/sakit untuk tiap tanggal dalam periode (hari terkunci
       // dari QR/wajah); peserta lain tak sempat absen. Bila satu tanggal saja sudah
       // punya catatan, keteranganBuat melempar CATATAN_ADA dan seluruh transaksi batal.
@@ -374,19 +268,6 @@ exports.putuskan = asyncH(async (req, res) => {
       for (const tgl of daftarTanggal(p.tanggal, p.tanggal_selesai || p.tanggal)) {
         await keteranganBuat({
           user_id: p.user_id, tanggal: tgl, status: p.jenis,
-=======
-      // Tulis baris absensi Izin/Sakit untuk SETIAP hari dalam rentang (hari
-      // terkunci dari QR/wajah); semua dalam transaksi yang sama sehingga
-      // persetujuan tidak pernah setengah jadi.
-      // Hanya batas 7-hari ke belakang yang dilewati (lewatiBatas): tanggalnya sudah
-      // tervalidasi saat pengajuan dikirim, jadi keputusan yang telat tetap bisa
-      // disetujui. Tanggal depan tetap dibatasi pengajuan.maksMaju (dicek ulang di
-      // services/keterangan.js).
-      const hari = daftarHari(p.tanggal, p.tanggal_akhir || p.tanggal);
-      for (const tanggal of hari) {
-        await keteranganBuat({
-          user_id: p.user_id, tanggal, status: p.jenis,
->>>>>>> Stashed changes
           keterangan: p.keterangan, oleh: pid,
         }, { transaction: t, lewatiBatas: true });
       }
