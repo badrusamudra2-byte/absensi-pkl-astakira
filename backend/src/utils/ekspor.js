@@ -29,7 +29,7 @@ const barisRekap = (rekap) => rekap.map((k) => [
   k.jurnal_disetujui, k.jurnal_dikirim, k.jurnal_revisi,
 ]);
 const barisAbsensi = (absensi) => absensi.map((a) => [
-  a.tanggal, a.peserta?.nama ?? '-', a.jenis, a.jam, a.status, a.metode,
+  a.tanggal, a.peserta?.nama ?? '-', a.jam, a.status, a.pulang_jam || '-', a.pulang_status || '-', a.metode,
 ]);
 const barisJurnal = (jurnal) => jurnal.map((j) => [
   j.tanggal, j.peserta?.nama ?? '-', j.judul, j.status,
@@ -40,7 +40,7 @@ function csvLaporan({ rekap, absensi, jurnal }) {
   const bagianCsv = (judul, head, rows) => judul + '\r\n' + csv(head, rows).replace(/^\uFEFF/, '');
   return '\uFEFF' + [
     bagianCsv('REKAP PER PESERTA', ['Peserta', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir', 'Jurnal Disetujui', 'Jurnal Dikirim', 'Jurnal Revisi'], barisRekap(rekap)),
-    bagianCsv('ABSENSI', ['Tanggal', 'Peserta', 'Jenis', 'Jam', 'Status', 'Metode'], barisAbsensi(absensi)),
+    bagianCsv('ABSENSI', ['Tanggal', 'Peserta', 'Jam Masuk', 'Status Masuk', 'Jam Pulang', 'Status Pulang', 'Metode'], barisAbsensi(absensi)),
     bagianCsv('JURNAL', ['Tanggal', 'Peserta', 'Judul', 'Status'], barisJurnal(jurnal)),
   ].join('\r\n\r\n');
 }
@@ -55,7 +55,7 @@ async function xlsxLaporan({ rekap, absensi, jurnal }) {
     rows.forEach((row) => ws.addRow(row.map(selXlsx)));
   };
   tambah('Rekap', ['Peserta', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Tidak hadir', 'Jurnal Disetujui', 'Jurnal Dikirim', 'Jurnal Revisi'], barisRekap(rekap));
-  tambah('Absensi', ['Tanggal', 'Peserta', 'Jenis', 'Jam', 'Status', 'Metode'], barisAbsensi(absensi));
+  tambah('Absensi', ['Tanggal', 'Peserta', 'Jam Masuk', 'Status Masuk', 'Jam Pulang', 'Status Pulang', 'Metode'], barisAbsensi(absensi));
   tambah('Jurnal', ['Tanggal', 'Peserta', 'Judul', 'Status'], barisJurnal(jurnal));
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
@@ -106,12 +106,13 @@ function pdfLaporan({ rekap, absensi, jurnal, dari, sampai }) {
     ], rekap.map((k) => [k.nama, k.hadir, k.terlambat, k.izin, k.sakit, k.tidak_hadir,
       `${k.jurnal_disetujui}/${k.jurnal_dikirim}/${k.jurnal_revisi}`]));
     tabel('Absensi', [
-      { t: 'Tanggal', x: 40, w: W * 0.18 },
-      { t: 'Peserta', x: 40 + W * 0.18, w: W * 0.27 },
-      { t: 'Jenis', x: 40 + W * 0.45, w: W * 0.12 },
-      { t: 'Jam', x: 40 + W * 0.57, w: W * 0.12 },
-      { t: 'Status', x: 40 + W * 0.69, w: W * 0.17 },
-      { t: 'Metode', x: 40 + W * 0.86, w: W * 0.14 },
+      { t: 'Tanggal', x: 40, w: W * 0.14 },
+      { t: 'Peserta', x: 40 + W * 0.14, w: W * 0.2 },
+      { t: 'Masuk', x: 40 + W * 0.34, w: W * 0.1 },
+      { t: 'Status', x: 40 + W * 0.44, w: W * 0.13 },
+      { t: 'Pulang', x: 40 + W * 0.57, w: W * 0.1 },
+      { t: 'S. Pulang', x: 40 + W * 0.67, w: W * 0.13 },
+      { t: 'Metode', x: 40 + W * 0.8, w: W * 0.2 },
     ], barisAbsensi(absensi));
     tabel('Jurnal', [
       { t: 'Tanggal', x: 40, w: W * 0.18 },

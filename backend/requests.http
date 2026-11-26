@@ -112,6 +112,14 @@ Content-Disposition: form-data; name="jenis"
 
 Izin
 ------pengajuan
+Content-Disposition: form-data; name="tanggal"
+
+2026-01-01
+------pengajuan
+Content-Disposition: form-data; name="tanggal_akhir"
+
+2026-01-07
+------pengajuan
 Content-Disposition: form-data; name="keterangan"
 
 Menghadiri acara keluarga.

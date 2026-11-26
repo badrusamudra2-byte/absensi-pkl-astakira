@@ -42,6 +42,15 @@ export const dalamRentang = (t: string, mulai: string, selesai?: string | null) 
 /** Format "2026-10-17" singkat "17/10". */
 export const tglPendek = (s: string) => s.slice(8, 10) + '/' + s.slice(5, 7);
 
+/** Format rentang tanggal menjadi "1 Nov 2026 – 7 Nov 2026"; satu tanggal bila
+ * hari terakhir kosong atau sama dengan hari pertama. */
+export const tglRentang = (mulai: string, akhir?: string | null) => {
+  const f = (s: string) => new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta',
+  }).format(new Date(`${s}T12:00:00+07:00`));
+  return !akhir || akhir === mulai ? f(mulai) : `${f(mulai)} – ${f(akhir)}`;
+};
+
 /** Format ISO UTC dari server menjadi "17/10/2026 09.30" WIB.
  * ISO UTC dipotong mentah akan meleset 7 jam (db menyimpan UTC, aplikasi WIB). */
 export const waktuWib = (iso?: string | null) => {

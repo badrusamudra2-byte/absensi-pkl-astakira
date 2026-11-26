@@ -27,11 +27,13 @@ describe('siklus status jurnal', () => {
     const buat = await request(app).post('/api/jurnal').set('Authorization', authz).send({ ...ISI(), tanggal: HARI });
     expect(buat.status).toBe(201);
     expect(buat.body.status).toBe('Draft');
+    expect(buat.body.dikirim_pada).toBeNull();
 
     const kirim = await request(app).put(`/api/jurnal/${buat.body.id}`).set('Authorization', authz)
       .send({ ...ISI(), tanggal: HARI, aksi: 'kirim' });
     expect(kirim.status).toBe(200);
     expect(kirim.body.status).toBe('Dikirim');
+    expect(kirim.body.dikirim_pada).toBeTruthy();
   });
 
   test('langsung kirim saat create (aksi=kirim) -> Dikirim', async () => {
@@ -42,6 +44,30 @@ describe('siklus status jurnal', () => {
       .send({ ...ISI(), tanggal: HARI, aksi: 'kirim' });
     expect(r.status).toBe(201);
     expect(r.body.status).toBe('Dikirim');
+    expect(r.body.dikirim_pada).toBeTruthy();
+  });
+
+  test('waktu dikirim tidak berubah setelah pembimbing mereview', async () => {
+    const { peserta, pembimbing } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    const authP = await tokenUntuk(pembimbing.email);
+    await absen(peserta, HARI);
+
+    const kirim = await request(app).post('/api/jurnal').set('Authorization', authz)
+      .send({ ...ISI(), tanggal: HARI, aksi: 'kirim' });
+    expect(kirim.body.dikirim_pada).toBeTruthy();
+    const awal = await request(app).get(`/api/jurnal/${kirim.body.id}`).set('Authorization', authz);
+    const waktuKirim = awal.body.dikirim_pada;
+    expect(waktuKirim).toBeTruthy();
+
+    const review = await request(app).post(`/api/pembimbing/jurnal/${kirim.body.id}/review`)
+      .set('Authorization', authP).send({ keputusan: 'setujui' });
+    expect(review.status).toBe(200);
+    expect(review.body).toMatchObject({ status: 'Disetujui' });
+
+    const detail = await request(app).get(`/api/jurnal/${kirim.body.id}`).set('Authorization', authz);
+    expect(detail.status).toBe(200);
+    expect(detail.body.dikirim_pada).toBe(waktuKirim);
   });
 
   test('jurnal Revisi: perbaiki dan kirim ulang -> Dikirim; riwayat review ikut di detail', async () => {
@@ -330,6 +356,26 @@ describe('daftar jurnal mengikuti absensi', () => {
     expect(pindah.status).toBe(422);
     expect(pindah.body).toMatchObject({ kode: 'JURNAL_BUTUH_ABSEN' });
   });
+
+  test('lebih dari 200 jurnal: tanggal tertua tetap tampil dengan jurnalnya (bukan "belum diisi")', async () => {
+    const { peserta } = await isiDasar();
+    const authz = await tokenUntuk(peserta.email);
+    const JUMLAH = 205;
+    const tanggal = Array.from({ length: JUMLAH }, (_, i) => hariLalu(i));
+    await M.Absensi.bulkCreate(tanggal.map((t) => ({
+      user_id: peserta.id, tanggal: t, jenis: 'masuk', jam: '08:00:00', status: 'Hadir', metode: 'QR+Wajah',
+    })));
+    await M.Jurnal.bulkCreate(tanggal.map((t, i) => ({
+      user_id: peserta.id, tanggal: t, judul: `Jurnal ${i}`, uraian: 'Kegiatan.', status: 'Disetujui',
+    })));
+
+    const r = await request(app).get('/api/jurnal').set('Authorization', authz);
+    expect(r.status).toBe(200);
+    expect(r.body.data).toHaveLength(JUMLAH);
+    const tertua = r.body.data.find((x) => x.tanggal === hariLalu(JUMLAH - 1));
+    expect(tertua).toMatchObject({ judul: `Jurnal ${JUMLAH - 1}`, status: 'Disetujui' });
+    expect(tertua.id).toEqual(expect.any(Number));
+  });
 });
 
 describe('tarik kembali jurnal Dikirim', () => {
@@ -340,15 +386,18 @@ describe('tarik kembali jurnal Dikirim', () => {
     const buat = await request(app).post('/api/jurnal').set('Authorization', authz)
       .send({ ...ISI(), tanggal: HARI, aksi: 'kirim' });
     const id = buat.body.id;
+    expect(buat.body.dikirim_pada).toBeTruthy();
 
     const tarik = await request(app).post(`/api/jurnal/${id}/tarik`).set('Authorization', authz);
     expect(tarik.status).toBe(200);
     expect(tarik.body.status).toBe('Draft');
+    expect(tarik.body.dikirim_pada).toBeNull();
 
     const ulang = await request(app).put(`/api/jurnal/${id}`).set('Authorization', authz)
       .send({ ...ISI(), judul: 'Sudah diperbaiki', tanggal: HARI, aksi: 'kirim' });
     expect(ulang.status).toBe(200);
     expect(ulang.body.status).toBe('Dikirim');
+    expect(ulang.body.dikirim_pada).toBeTruthy();
   });
 
   test('tarik jurnal Disetujui dan jurnal milik peserta lain ditolak', async () => {

@@ -100,8 +100,13 @@ export type StatusPengajuan = 'Menunggu' | 'Disetujui' | 'Ditolak';
 export interface PengajuanIzin {
   id: number;
   user_id: number;
+<<<<<<< Updated upstream
   tanggal: string; // "2026-11-09" (tanggal mulai)
   tanggal_selesai: string | null; // "2026-11-11" (tanggal akhir; null = satu hari)
+=======
+  tanggal: string; // "2026-11-09" (hari pertama)
+  tanggal_akhir?: string | null; // hari terakhir rentang; null = satu hari
+>>>>>>> Stashed changes
   jenis: 'Izin' | 'Sakit';
   status: StatusPengajuan;
   keterangan: string;
@@ -142,7 +147,11 @@ export interface BarisJurnal {
 
 /** Baris daftar jurnal peserta: gabungan tanggal absensi dan jurnal.
  * id null = baris dari tanggal absensi yang jurnalnya belum diisi. */
-export interface BarisJurnalAbsensi extends BarisJurnal {
+export interface BarisJurnalAbsensi {
+  id: number | null;
+  tanggal: string;
+  judul: string | null;
+  status: StatusJurnal | null;
   absensi?: { masuk: string; status: string } | null;
 }
 
@@ -164,6 +173,7 @@ export interface JurnalDetail extends BarisJurnal {
   lampiran: string | null;
   dibuat_pada: string;
   diubah_pada: string;
+  dikirim_pada: string | null;
   reviews: ReviewJurnal[];
   peserta?: { id: number; nama: string } | null;
 }

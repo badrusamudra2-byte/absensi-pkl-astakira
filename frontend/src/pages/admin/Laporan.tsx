@@ -28,16 +28,22 @@ export default function Laporan() {
   const [tab, ubahTab] = useState<Tab>('rekap');
   const [data, ubahData] = useState<LaporanData | null>(null);
   const [galat, ubahGalat] = useState<[string, string] | null>(null);
+  const [galatPeserta, ubahGalatPeserta] = useState<[string, string] | null>(null);
   const [sedang, ubahSedang] = useState(false);
   const terbaru = gunakanTerbaru();
 
   useEffect(() => {
     api<{ data: { id: number; nama: string }[] }>('/admin/peserta')
       .then((r) => ubahPeserta(r.data.map((p) => ({ id: p.id, nama: p.nama }))))
-      .catch((e) => ubahGalat(teksKode((e as ApiError).kode ?? 'SERVER', (e as ApiError).message)));
+      .catch((e) => ubahGalatPeserta(teksKode((e as ApiError).kode ?? 'SERVER', (e as ApiError).message)));
   }, []);
 
   const muat = useCallback(async (d: string, s: string, u: number | '') => {
+    if (d && s && d > s) {
+      ubahData(null);
+      ubahGalat(['Rentang tanggal tidak valid', 'Tanggal "Dari" tidak boleh lebih baru dari "Sampai".']);
+      return;
+    }
     const sah = terbaru();
     ubahData(null);
     ubahGalat(null);
@@ -58,6 +64,10 @@ export default function Laporan() {
   }, [muat]);
 
   const unduh = async (format: FormatLaporan) => {
+    if (dari && sampai && dari > sampai) {
+      ubahGalat(['Rentang tanggal tidak valid', 'Tanggal "Dari" tidak boleh lebih baru dari "Sampai".']);
+      return;
+    }
     ubahSedang(true);
     ubahGalat(null);
     try {
@@ -104,6 +114,7 @@ export default function Laporan() {
         </div>
 
         {galat ? <div className="mt-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
+        {galatPeserta ? <div className="mt-3"><Pemberitahuan jenis="warn" judul={galatPeserta[0]} uraian={`${galatPeserta[1]} Filter peserta mungkin tidak lengkap.`} /></div> : null}
 
         <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Bagian laporan">
           {TAB.map((t) => (
@@ -171,10 +182,18 @@ export default function Laporan() {
             kolom={[
               { t: 'Tanggal', utama: (a) => tglIndo(a.tanggal), isi: (a) => <span className="whitespace-nowrap font-semibold">{tglIndo(a.tanggal)}</span> },
               { t: 'Peserta', isi: (a) => a.peserta?.nama ?? '-' },
+<<<<<<< Updated upstream
               { t: 'Jenis', isi: (a) => <b className="capitalize">{a.jenis}</b> },
               { t: 'Jam', isi: (a) => <span className="tabular-nums">{a.jam.slice(0, 5)}</span> },
               { t: 'Status', isi: (a) => (a.status === 'Tidak hadir' && a.metode === 'Otomatis' ? <span className="text-mu">Penanda otomatis</span> : <Badge s={a.status} />) },
               { t: 'Metode', isi: (a) => <span className="text-xs text-mu">{a.metode}</span> },
+=======
+              { t: 'Jam masuk', isi: (a) => a.jam.slice(0, 5) },
+              { t: 'Status masuk', isi: (a) => (a.status === 'Tidak hadir' && a.metode === 'Otomatis' ? <span className="text-mu">Penanda otomatis</span> : <Badge s={a.status} />) },
+              { t: 'Jam pulang', isi: (a) => (a.pulang_jam ? a.pulang_jam.slice(0, 5) : '-') },
+              { t: 'Status pulang', isi: (a) => (a.pulang_status ? <Badge s={a.pulang_status} /> : '-') },
+              { t: 'Metode', isi: (a) => a.metode },
+>>>>>>> Stashed changes
             ]}
           />
         </Kartu>

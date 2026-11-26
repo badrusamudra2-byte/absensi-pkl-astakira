@@ -85,22 +85,27 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 ## Izin, sakit, dan penutup hari
 
 - **Pengajuan Izin/Sakit kini diberikan oleh peserta** (`POST /api/pengajuan/izin`, multipart):
-  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini; boleh
-  `PENGAJUAN_MAKS_HARI_MAJU` hari ke depan (default 1 = besok), maksimal
-  `JURNAL_MAKS_HARI_BELAKANG` hari ke belakang), `keterangan` (3â€“1000 karakter) dan
-  `bukti` (foto JPG/PNG/WebP maks 5 MB, disimpan acak di `uploads/pengajuan/`).
+  fields `jenis: "Izin"|"Sakit"`, `tanggal` (`YYYY-MM-DD`, default hari ini), `tanggal_akhir`
+  (`YYYY-MM-DD`, opsional; diisi bila izin lebih dari satu hari), `keterangan` (3â€“1000 karakter)
+  dan `bukti` (foto JPG/PNG/WebP maks 5 MB, disimpan acak di `uploads/pengajuan/`).
+- Rentang izin/sakit maksimal `PENGAJUAN_MAKS_HARI` hari berturut-turut (default 7, inklusif —
+  mis. 1 s.d. 7 = 7 hari). Tanggal mulai dan tanggal akhir masing-masing harus berada dalam batas
+  `PENGAJUAN_MAKS_HARI_MAJU` hari ke depan (default 7) dan `JURNAL_MAKS_HARI_BELAKANG` hari
+  ke belakang; tanggal akhir tidak boleh sebelum tanggal mulai.
 - Pembimbing melihat pengajuan bimbingannya (`GET /api/pengajuan/izin`), memutuskan lewat
-  `PUT /api/pengajuan/izin/:id/putuskan` (`{ putusan: "Disetujui"|"Ditolak", alasan }` â€” alasan
-  wajib saat Ditolak). Bila Disetujui, baris absensi Izin/Sakit dibuat di transaksi yang sama
-  (slot masuk hari itu terkunci, QR/wajah menolak dengan `HARI_TERCATAT`).
+  `PUT /api/pengajuan/izin/:id/putuskan` (`{ putusan: "Disetujui"|"Ditolak", alasan }` — alasan
+  wajib saat Ditolak). Bila Disetujui, satu baris absensi Izin/Sakit dibuat untuk **setiap hari**
+  dalam rentang di transaksi yang sama (slot masuk tiap hari terkunci, QR/wajah menolak dengan
+  `HARI_TERCATAT`). Bila salah satu hari sudah punya absensi nyata, seluruh persetujuan batal
+  dengan `CATATAN_ADA` yang menyebut tanggal bentrok — tidak ada persetujuan setengah jadi.
 - Peserta mengambil daftar miliknya lewat `GET /api/pengajuan/izin`; pembimbing cek
-  `GET /api/pengajuan/notifikasi` (ada pengajuan Menunggu hari ini -> `{ ada: true }`,
+  `GET /api/pengajuan/notifikasi` (ada pengajuan Menunggu yang mencakup hari ini -> `{ ada: true }`,
   dipakai untuk lingkaran merah di menu).
 - Desain memakai batas unik yang sudah ada (`uq_absensi_harian`: user+tanggal+jenis): Izin/Sakit
   ditulis sebagai baris `jenis='masuk'` berstatus Izin/Sakit (metode = statusnya). Satu slot masuk
   per hari berarti catatan mencegah QR maupun absensi wajah di hari itu (`HARI_TERCATAT`), dan dua
-  catatan untuk tanggal sama terlarang database (`CATATAN_ADA`). Pengajuan ganda (tanggal sama,
-  status bukan Ditolak) ditolak juga dengan `CATATAN_ADA`.
+  catatan untuk tanggal sama terlarang database (`CATATAN_ADA`). Pengajuan ganda ditolak juga
+  dengan `CATATAN_ADA` bila rentangnya bertabrakan dan statusnya bukan Ditolak.
 - **Penutup hari** (`src/services/tutup-hari.js`, job tiap 5 menit via `src/services/jobs.js`, manual
   `npm run tutup-hari [tanggal]`): pada hari kerja, setelah `jam_pulang + TUTUP_HARI_MENIT` (default 60),
   peserta aktif tanpa catatan absensi apa pun hari itu diberi baris `Tidak hadir` (metode `Otomatis`).
@@ -118,6 +123,8 @@ lewat scan QR; absen pulang dibuka 5 menit sebelum jam pulang dan wajib absen ma
 - Batas keras satu jurnal per peserta per tanggal (`uq_jurnal_harian`); bentrok -> 409 `JURNAL_ADA`.
 - Siklus status: Draft -> Dikirim -> (Revisi -> Dikirim | Disetujui). Hanya Draft/Revisi yang boleh
   diedit; memakai `aksi: "kirim"` untuk mengirim / mengirim ulang.
+- Waktu kirim disimpan di kolom `dikirim_pada` (migrasi `20260101000017`), terpisah dari
+  `diubah_pada` yang ikut berubah saat review. Tarik kembali ke Draft mengosongkan `dikirim_pada`.
 - Batas panjang: judul 150, uraian/hasil/kendala/rencana 5000 karakter.
 - **Lampiran foto kegiatan (opsional)**: `PUT /api/jurnal/:id/lampiran` (kolom `lampiran`,
   JPG/PNG/WebP maks 5 MB, tersimpan acak di `uploads/lampiran/`; tanpa berkas = hapus lampiran).

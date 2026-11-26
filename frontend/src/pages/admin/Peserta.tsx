@@ -10,13 +10,14 @@ import { Ikon } from '../../komponen/Ikon';
 interface FormNilai {
   id?: number;
   nama: string;
+  username: string;
   email: string;
   password: string;
   divisi: string;
   pembimbing_id: number | '';
 }
 
-const kosong: FormNilai = { nama: '', email: '', password: '', divisi: '', pembimbing_id: '' };
+const kosong: FormNilai = { nama: '', username: '', email: '', password: '', divisi: '', pembimbing_id: '' };
 
 /** Kelola peserta: tambah, edit, nonaktifkan, hapus aman (tolak bila punya riwayat). */
 export default function Peserta() {
@@ -51,9 +52,11 @@ export default function Peserta() {
     ubahSedang(true);
     ubahGalat(null);
     const isi = {
-      nama: form.nama, email: form.email, divisi: form.divisi,
-      ...(form.id ? {} : { password: form.password }),
-      ...(form.pembimbing_id ? { pembimbing_id: form.pembimbing_id } : {}),
+      nama: form.nama,
+      email: form.email,
+      divisi: form.divisi,
+      ...(form.id ? {} : { password: form.password, ...(form.username.trim() ? { username: form.username.trim() } : {}) }),
+      pembimbing_id: form.pembimbing_id || null,
     };
     try {
       if (form.id) {
@@ -142,6 +145,7 @@ export default function Peserta() {
         {galat ? <div className="mb-3"><Pemberitahuan jenis="er" judul={galat[0]} uraian={galat[1]} /></div> : null}
 
         {form ? (
+<<<<<<< Updated upstream
           <div className="mb-5 rounded-[14px] border border-[#c7dbff] bg-[#f8fbff] p-4">
             <div className="mb-3 flex items-start gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-pr shadow-sm">
@@ -155,6 +159,59 @@ export default function Peserta() {
                     : 'Email boleh buatan admin; kata sandi awal dipakai peserta untuk login pertama.'}
                 </p>
               </div>
+=======
+          <form onSubmit={simpan} className="mb-5 border-2 border-garis rounded-xl p-4 max-w-[560px]">
+            <h3 className="font-bold text-sm mb-1">{form.id ? 'Edit peserta' : 'Tambah peserta'}</h3>
+            <p className="text-mu text-sm mb-2">
+              {form.id ? 'Kosongkan kolom yang tidak berubah untuk mempertahankan nilai lama.' : 'Email boleh buatan admin; kata sandi awal di bawah dipakai peserta untuk login pertama.'}
+            </p>
+            <Label htmlFor="psr_nama">Nama lengkap</Label>
+            <input id="psr_nama" required maxLength={100} value={form.nama} onChange={(e) => ubahForm({ ...form, nama: e.target.value })}
+              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
+            <Label htmlFor="psr_email">Email</Label>
+            <input id="psr_email" required type="email" maxLength={120} value={form.email} onChange={(e) => ubahForm({ ...form, email: e.target.value })}
+              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
+            {form.id ? null : (
+              <>
+                <Label htmlFor="psr_username">Username (opsional)</Label>
+                <input id="psr_username" maxLength={50} value={form.username} onChange={(e) => ubahForm({ ...form, username: e.target.value })}
+                  className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
+                  placeholder="Kosongkan untuk memakai bagian depan email" />
+              </>
+            )}
+            {form.id ? null : (
+              <>
+                <Label htmlFor="psr_sandi">Kata sandi awal</Label>
+                <input
+                  id="psr_sandi" required type="password" autoComplete="new-password" minLength={8} maxLength={72}
+                  value={form.password} onChange={(e) => ubahForm({ ...form, password: e.target.value })}
+                  className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg"
+                />
+                <small className="text-mu text-xs">Minimal 8 karakter, mengandung huruf dan angka. Peserta sebaiknya menggantinya setelah login pertama.</small>
+              </>
+            )}
+            <Label htmlFor="psr_divisi">Divisi</Label>
+            <input id="psr_divisi" maxLength={80} value={form.divisi} onChange={(e) => ubahForm({ ...form, divisi: e.target.value })}
+              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg" />
+            <Label htmlFor="psr_pmb">Pembimbing</Label>
+            <select id="psr_pmb" value={form.pembimbing_id} onChange={(e) => ubahForm({ ...form, pembimbing_id: e.target.value ? Number(e.target.value) : '' })}
+              className="block w-full mt-1 px-[11px] py-[9px] border border-garis rounded-lg bg-bg">
+              <option value="">— belum ditentukan —</option>
+              {(() => {
+                const opsi = [...pembimbing];
+                if (form.pembimbing_id && !opsi.some((p) => p.id === form.pembimbing_id)) {
+                  const lama = rows?.find((r) => r.id === form.id)?.peserta?.pembimbing;
+                  opsi.unshift({ id: Number(form.pembimbing_id), nama: `${lama?.nama ?? 'Pembimbing saat ini'} (nonaktif)` });
+                }
+                return opsi.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nama}</option>
+                ));
+              })()}
+            </select>
+            <div className="flex gap-2 mt-4">
+              <Tombol type="submit" disabled={sedang}>Simpan</Tombol>
+              <Tombol varian="gh" onClick={() => ubahForm(null)} disabled={sedang}>Batal</Tombol>
+>>>>>>> Stashed changes
             </div>
             <form onSubmit={simpan} className="max-w-[640px]">
               <div className="grid gap-x-4 sm:grid-cols-2">
@@ -234,7 +291,7 @@ export default function Peserta() {
                   <button
                     onClick={() =>
                       ubahForm({
-                        id: b.id, nama: b.nama, email: b.email, password: '', divisi: b.peserta?.divisi ?? '',
+                        id: b.id, nama: b.nama, username: b.username ?? '', email: b.email, password: '', divisi: b.peserta?.divisi ?? '',
                         pembimbing_id: b.peserta?.pembimbing_id ?? '',
                       })
                     }

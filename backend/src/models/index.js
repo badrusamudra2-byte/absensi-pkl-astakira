@@ -111,8 +111,13 @@ const AbsensiPenolakan = sequelize.define('AbsensiPenolakan', {
 const PengajuanIzin = sequelize.define('PengajuanIzin', {
   user_id: { type: T.INTEGER, allowNull: false },
   tanggal: { type: T.DATEONLY, allowNull: false },
+<<<<<<< Updated upstream
   // Tanggal akhir periode (sama dengan tanggal untuk pengajuan satu hari)
   tanggal_selesai: { type: T.DATEONLY, allowNull: true },
+=======
+  // Hari terakhir rentang (inklusif); NULL = pengajuan satu hari
+  tanggal_akhir: { type: T.DATEONLY, allowNull: true },
+>>>>>>> Stashed changes
   jenis: { type: T.ENUM('Izin', 'Sakit'), allowNull: false },
   status: { type: T.ENUM('Menunggu', 'Disetujui', 'Ditolak'), allowNull: false, defaultValue: 'Menunggu' },
   keterangan: { type: T.TEXT, allowNull: false }, // 3..1000 karakter
@@ -164,6 +169,8 @@ const Jurnal = sequelize.define('Jurnal', {
   kendala: T.TEXT,
   rencana: T.TEXT,
   status: { type: T.ENUM('Draft', 'Dikirim', 'Revisi', 'Disetujui'), allowNull: false, defaultValue: 'Draft' },
+  // Waktu dikirim ke pembimbing; terpisah dari diubah_pada yang ikut berubah saat review.
+  dikirim_pada: { type: T.DATE, allowNull: true },
   lampiran: { type: T.STRING(72), allowNull: true }, // nama berkas di uploads/lampiran/ (opsional)
 }, {
   tableName: 'jurnal',

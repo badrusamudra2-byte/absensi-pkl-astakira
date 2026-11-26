@@ -140,6 +140,21 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect(r.status).toBe(400);
   });
 
+  test('pembimbing_id null mengosongkan pembimbing peserta', async () => {
+    const M = require('../src/models');
+    // dasar.peserta punya pembimbing_id dari isiDasar
+    const sebelum = await M.Peserta.findOne({ where: { user_id: dasar.peserta.id } });
+    expect(sebelum.pembimbing_id).toBeTruthy();
+
+    const r = await request(app)
+      .put(`/api/admin/peserta/${dasar.peserta.id}`)
+      .set('Authorization', tokAdmin)
+      .send({ pembimbing_id: null });
+    expect(r.status).toBe(200);
+    const sesudah = await M.Peserta.findOne({ where: { user_id: dasar.peserta.id } });
+    expect(sesudah.pembimbing_id).toBeNull();
+  });
+
   test('nonaktifkan peserta menghapus template & verifikasi wajah', async () => {
     const M = require('../src/models');
     const { enc } = require('../src/utils/crypto');
@@ -209,6 +224,19 @@ describe('Kelola peserta dan pembimbing (admin)', () => {
     expect(r.body.kode).toBe('PUNYA_RIWAYAT');
   });
 
+  test('pembimbing dengan referensi review/putusan tidak bisa dihapus', async () => {
+    const M = require('../src/models');
+    const tgl = require('../src/utils/waktu').bagian().tanggal;
+    // Buat pembimbing baru tanpa peserta bimbingan, tapi punya review jurnal
+    const pmb = await M.User.create({ nama: 'Pmb Hapus', email: 'pmbhapus@astakira.id', username: 'pmbhapus', role: 'pembimbing', password_hash: 'x', aktif: false });
+    await M.Pembimbing.create({ user_id: pmb.id, divisi: 'Web' });
+    const jurnal = await M.Jurnal.create({ user_id: dasar.peserta.id, tanggal: tgl, judul: 'Tes', uraian: 'Isi', status: 'Dikirim' });
+    await M.JurnalReview.create({ jurnal_id: jurnal.id, pembimbing_id: pmb.id, keputusan: 'Disetujui', catatan: 'OK' });
+    const r = await request(app).delete(`/api/admin/pembimbing/${pmb.id}`).set('Authorization', tokAdmin);
+    expect(r.status).toBe(409);
+    expect(r.body.kode).toBe('PUNYA_RIWAYAT');
+  });
+
   test('peserta dan pembimbing tidak bisa mengakses CRUD admin', async () => {
     const tokPmb = await tokenUntuk('rizal@astakira.id');
     const a = await request(app).get('/api/admin/peserta').set('Authorization', tokPmb);
@@ -236,7 +264,7 @@ describe('Jadwal kerja (workshift)', () => {
     expect(jumat.jam_pulang).toBe('15:30:00');
   });
 
-  test('jumlah hari salah, duplikat, jam pulang mundur, dan nama asing ditolak', async () => {
+  test('jumlah hari salah, duplikat, jam pulang mundur, item null, dan nama asing ditolak', async () => {
     const kurang = jadwal();
     kurang.items.pop();
     const a = await request(app).put('/api/admin/workshift').set('Authorization', tokAdmin).send(kurang);
@@ -251,6 +279,12 @@ describe('Jadwal kerja (workshift)', () => {
     mundur.items[0].jam_pulang = '07:00:00';
     const c = await request(app).put('/api/admin/workshift').set('Authorization', tokAdmin).send(mundur);
     expect(c.status).toBe(400);
+
+    const itemNull = jadwal();
+    itemNull.items[0] = null;
+    const n = await request(app).put('/api/admin/workshift').set('Authorization', tokAdmin).send(itemNull);
+    expect(n.status).toBe(400);
+    expect(n.body.kode).toBe('VALIDASI');
 
     const asing = jadwal();
     asing.items[0].hari = 'HariKiamat';
@@ -315,5 +349,20 @@ describe('Reset template wajah (admin) — target harus peserta', () => {
       .set('Authorization', tokAdmin);
     expect(r.status).toBe(404);
     expect(r.body.kode).toBe('TIDAK_ADA');
+  });
+
+  test('reset menghapus template, verifikasi, dan tantangan wajah', async () => {
+    const M = require('../src/models');
+    const { enc } = require('../src/utils/crypto');
+    await M.FaceTemplate.create({ user_id: dasar.peserta.id, embedding: enc(Array.from({ length: 128 }, () => 0.1)) });
+    await M.FaceVerification.create({ user_id: dasar.peserta.id, jenis: 'masuk', kedaluwarsa_pada: new Date(Date.now() + 3600000) });
+    await M.TantanganWajah.create({ user_id: dasar.peserta.id, nonce: 'n1', kode_gerakan: 'kedip', kedaluwarsa_pada: new Date(Date.now() + 3600000) });
+    const r = await request(app)
+      .delete(`/api/admin/face/${dasar.peserta.id}`)
+      .set('Authorization', tokAdmin);
+    expect(r.status).toBe(200);
+    expect(await M.FaceTemplate.count({ where: { user_id: dasar.peserta.id } })).toBe(0);
+    expect(await M.FaceVerification.count({ where: { user_id: dasar.peserta.id } })).toBe(0);
+    expect(await M.TantanganWajah.count({ where: { user_id: dasar.peserta.id } })).toBe(0);
   });
 });

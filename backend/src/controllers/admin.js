@@ -3,7 +3,7 @@ const fs = require('fs');
 const { Op, fn } = require('sequelize');
 const {
   sequelize, User, Peserta, Pembimbing, Workshift, FaceTemplate, FaceVerification, TantanganWajah,
-  QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, AuditLog, PengajuanIzin,
+  QrToken, AbsensiPenolakan, Absensi, WajahFoto, Jurnal, JurnalReview, AuditLog, PengajuanIzin,
 } = require('../models');
 const { HttpError, asyncH } = require('../utils/httpError');
 const { wajib, jam, email, kuat, pesanSandi } = require('../utils/validasi');
@@ -20,13 +20,26 @@ function crud(role, Profile, alias) {
     ? [{ model: Profile, as: alias, include: [{ model: User, as: 'pembimbing', attributes: ['id', 'nama'] }] }]
     : [{ model: Profile, as: alias }];
 
-  const dataProfil = async (b) => {
+  const dataProfil = async (b, profilSaatIni = null) => {
     const o = {};
     if (b.divisi !== undefined) o.divisi = String(b.divisi).trim().slice(0, 80);
-    if (role === 'peserta' && b.pembimbing_id) {
-      const p = await User.findOne({ where: { id: b.pembimbing_id, role: 'pembimbing', aktif: true } });
-      if (!p) throw new HttpError(400, 'Pembimbing tidak ditemukan atau nonaktif.', 'VALIDASI');
-      o.pembimbing_id = p.id;
+    if (role === 'peserta' && b.pembimbing_id !== undefined) {
+      if (b.pembimbing_id === null || b.pembimbing_id === '' || b.pembimbing_id === 0) {
+        o.pembimbing_id = null;
+      } else {
+        const idPmb = Number(b.pembimbing_id);
+        if (!Number.isInteger(idPmb) || idPmb <= 0) {
+          throw new HttpError(400, 'Pembimbing tidak valid.', 'VALIDASI');
+        }
+        const p = await User.findOne({ where: { id: idPmb, role: 'pembimbing' }, attributes: ['id', 'aktif'] });
+        if (!p) throw new HttpError(400, 'Pembimbing tidak ditemukan.', 'VALIDASI');
+        // Izinkan mempertahankan pembimbing yang sudah nonaktif bila memang sudah terpasang;
+        // tolak penugasan baru ke pembimbing nonaktif.
+        if (!p.aktif && profilSaatIni?.pembimbing_id !== p.id) {
+          throw new HttpError(400, 'Pembimbing tidak aktif.', 'VALIDASI');
+        }
+        o.pembimbing_id = p.id;
+      }
     }
     return o;
   };
@@ -105,7 +118,10 @@ function crud(role, Profile, alias) {
         if (typeof b.aktif !== 'boolean') throw new HttpError(400, 'aktif harus true atau false.', 'VALIDASI');
         f.aktif = b.aktif;
       }
-      const profil = await dataProfil(b);
+      const profilSaatIni = role === 'peserta'
+        ? await Profile.findOne({ where: { user_id: u.id }, attributes: ['pembimbing_id'] })
+        : null;
+      const profil = await dataProfil(b, profilSaatIni);
       await sequelize.transaction(async (t) => {
         if (f.email) await cekBentrokLogin(null, f.email, u.id, t);
         await u.update(f, { transaction: t });
@@ -133,9 +149,15 @@ function crud(role, Profile, alias) {
         // Pengajuan Menunggu belum membuat baris absensi — ikut dihitung agar
         // akun dengan pengajuan aktif tidak bisa dihapus (baris jadi yatim).
         + (await PengajuanIzin.count({ where: { user_id: u.id } }))
-        + (role === 'pembimbing' ? await Peserta.count({ where: { pembimbing_id: u.id } }) : 0);
+        + (await Absensi.count({ where: { dikonfirmasi_oleh: u.id } }))
+        + (role === 'pembimbing'
+          ? (await Peserta.count({ where: { pembimbing_id: u.id } }))
+            + (await JurnalReview.count({ where: { pembimbing_id: u.id } }))
+            + (await AbsensiPenolakan.count({ where: { pembimbing_id: u.id } }))
+            + (await PengajuanIzin.count({ where: { ditangani_oleh: u.id } }))
+          : 0);
       if (pakai) {
-        throw new HttpError(409, 'Data ini sudah punya riwayat atau peserta terkait. Nonaktifkan saja agar riwayat tetap utuh.', 'PUNYA_RIWAYAT');
+        throw new HttpError(409, 'Data ini sudah punya riwayat atau referensi terkait. Nonaktifkan saja agar riwayat tetap utuh.', 'PUNYA_RIWAYAT');
       }
       await sequelize.transaction(async (t) => {
         const w = { where: { user_id: u.id }, transaction: t };
@@ -166,6 +188,7 @@ exports.wsSimpan = asyncH(async (req, res) => {
   const items = req.body.items;
   if (!Array.isArray(items) || items.length !== 7) throw new HttpError(400, 'Kirim 7 hari (Senin sampai Minggu).', 'VALIDASI');
   const baris = items.map((i) => {
+    if (!i || typeof i !== 'object') throw new HttpError(400, 'Setiap item jadwal harus berupa objek.', 'VALIDASI');
     if (!HARI.includes(i.hari)) throw new HttpError(400, 'Nama hari tidak valid.', 'VALIDASI');
     const m = jam(i.jam_masuk), p = jam(i.jam_pulang), tol = Number(i.toleransi_menit);
     if (!m || !p || !Number.isInteger(tol) || tol < 0 || tol > 120) {
@@ -210,6 +233,9 @@ const LIMIT_JURNAL_LAPORAN = 2000;
 async function dataLaporan(query) {
   const r = rentang(query);
   const { dari, sampai } = dariSampai(query);
+  if (dari && sampai && dari > sampai) {
+    throw new HttpError(400, 'Tanggal "dari" tidak boleh lebih baru dari "sampai".', 'VALIDASI');
+  }
   const uidRaw = String(query.user_id || '').trim();
   let uid = null;
   if (uidRaw) {
@@ -304,8 +330,13 @@ exports.resetWajah = asyncH(async (req, res) => {
   // Hanya template milik peserta sah yang boleh di-reset.
   const u = await User.findOne({ where: { id: req.params.id, role: 'peserta' }, attributes: ['id'] });
   if (!u) throw new HttpError(404, 'Peserta tidak ditemukan.', 'TIDAK_ADA');
-  const n = await FaceTemplate.destroy({ where: { user_id: u.id } });
-  if (!n) throw new HttpError(404, 'Peserta belum punya template wajah.', 'TIDAK_ADA');
+  const where = { where: { user_id: u.id } };
+  const [nTpl, nVer, nTan] = await Promise.all([
+    FaceTemplate.destroy(where),
+    FaceVerification.destroy(where),
+    TantanganWajah.destroy(where),
+  ]);
+  if (!nTpl && !nVer && !nTan) throw new HttpError(404, 'Peserta belum punya template wajah.', 'TIDAK_ADA');
   await audit(req, 'Reset template wajah', `user#${u.id}`);
   res.json({ pesan: 'Template wajah dihapus. Peserta bisa mendaftar ulang.' });
 });

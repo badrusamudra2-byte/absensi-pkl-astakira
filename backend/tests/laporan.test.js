@@ -64,6 +64,12 @@ describe('Laporan admin (rekap + jurnal per periode)', () => {
     expect(r.body.absensi.every((a) => a.tanggal >= DARI && a.tanggal <= SAMPAI)).toBe(true);
   });
 
+  test('rentang terbalik ditolak 400', async () => {
+    const r = await laporan(tokAdmin, `?dari=${SAMPAI}&sampai=${DARI}`);
+    expect(r.status).toBe(400);
+    expect(r.body.kode).toBe('VALIDASI');
+  });
+
   test('filter user_id: hanya peserta itu (dan 400/404 untuk masukan salah)', async () => {
     const r = await laporan(tokAdmin, `?user_id=${dasar.peserta.id}`);
     expect(r.status).toBe(200);
@@ -84,10 +90,12 @@ describe('Laporan admin (rekap + jurnal per periode)', () => {
     expect(r.headers['content-disposition']).toContain(`laporan-absensi-${DARI}_${SAMPAI}.csv`);
     const baris = r.text.replace(/^\uFEFF/, '').split('\r\n');
     expect(baris[0]).toBe('REKAP PER PESERTA');
-    expect(baris).toContain('Tanggal,Peserta,Jenis,Jam,Status,Metode');
+    expect(baris).toContain('Tanggal,Peserta,Jam Masuk,Status Masuk,Jam Pulang,Status Pulang,Metode');
     expect(baris).toContain('Tanggal,Peserta,Judul,Status');
     // Rekap berisi jurnal Disetujui/Dikirim milik peserta (dalam rentang: hadir 1, terlambat 1)
     expect(baris.some((b) => b.includes('Alya Rahma,1,1,0,0,0,1,1,0'))).toBe(true);
+    // Baris absensi memuat data pulang
+    expect(baris.some((b) => b.includes(`${DARI},Alya Rahma,08:05:00,Hadir,17:00:00,Hadir,QR+Wajah`))).toBe(true);
   });
 
   test('Excel: berkas xlsx sah (ditandai PK) dan audit tercatat', async () => {

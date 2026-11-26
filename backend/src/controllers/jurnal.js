@@ -156,8 +156,10 @@ exports.list = asyncH(async (req, res) => {
   const wj = { user_id: req.user.id };
   if (status) wj.status = status;
   if (r) wj.tanggal = r;
+  // Tanpa limit: daftar absensi di atas juga tidak dibatasi. Bila jurnal dipotong
+  // lebih awal, tanggal lama akan tampil "belum diisi" padahal jurnalnya ada.
   const jurnal = await Jurnal.findAll({
-    where: wj, order: [['tanggal', 'DESC'], ['id', 'DESC']], limit: 200,
+    where: wj, order: [['tanggal', 'DESC'], ['id', 'DESC']],
     attributes: ['id', 'tanggal', 'judul', 'status'],
   });
 
@@ -187,10 +189,12 @@ exports.list = asyncH(async (req, res) => {
 exports.create = asyncH(async (req, res) => {
   const tanggal = tanggalOk(req.body);
   await absenAda(req.user.id, tanggal);
+  const kirim = req.body.aksi === 'kirim';
   try {
     const j = await Jurnal.create({
       ...ambil(req.body), user_id: req.user.id, tanggal,
-      status: req.body.aksi === 'kirim' ? 'Dikirim' : 'Draft',
+      status: kirim ? 'Dikirim' : 'Draft',
+      dikirim_pada: kirim ? new Date() : null,
     });
     res.status(201).json(j);
   } catch (e) {
@@ -219,7 +223,9 @@ exports.update = asyncH(async (req, res) => {
   if (tanggal !== j.tanggal) await absenAda(req.user.id, tanggal);
   try {
     // Update kondisional: putusan pembimbing yang masuk bersamaan tidak ikut tertimpa
-    const isi = { ...ambil(req.body), tanggal, status: req.body.aksi === 'kirim' ? 'Dikirim' : j.status };
+    const kirim = req.body.aksi === 'kirim';
+    const isi = { ...ambil(req.body), tanggal, status: kirim ? 'Dikirim' : j.status };
+    if (kirim) isi.dikirim_pada = new Date();
     const [n] = await Jurnal.update(isi, { where: { id: j.id, status: ['Draft', 'Revisi'] } });
     if (!n) {
       const kini = await Jurnal.findByPk(j.id, { attributes: ['status'] });
@@ -238,7 +244,10 @@ exports.tarik = asyncH(async (req, res) => {
   const j = await milik(req);
   // Update kondisional: bila pembimbing menyetujui/merevisi bersamaan, baris
   // tidak ikut tertimpa menjadi Draft.
-  const [n] = await Jurnal.update({ status: 'Draft' }, { where: { id: j.id, status: 'Dikirim', user_id: req.user.id } });
+  const [n] = await Jurnal.update(
+    { status: 'Draft', dikirim_pada: null },
+    { where: { id: j.id, status: 'Dikirim', user_id: req.user.id } },
+  );
   if (!n) {
     const kini = await Jurnal.findByPk(j.id, { attributes: ['status'] });
     throw new HttpError(409, `Jurnal berstatus ${kini.status} tidak bisa ditarik.`, 'STATUS_TIDAK_VALID');
